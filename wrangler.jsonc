@@ -1,0 +1,51 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lifepath",
+  "main": "worker/src/index.ts",
+  "tsconfig": "worker/tsconfig.json",
+  "compatibility_date": "2026-04-01",
+  "upload_source_maps": true,
+
+  // The built front end. Requests to /api, /tg and /admin always run the Worker.
+  // Every other path is a file from dist or, when there is none, index.html.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/tg/*", "/admin/*"]
+  },
+
+  // Created with `wrangler d1 create lifepath`. Apply new migrations with
+  // `npx wrangler d1 migrations apply lifepath --remote`.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lifepath",
+      "database_id": "f901657f-7dc8-4883-9caa-1447089272d4",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Per-user limits (per Cloudflare location, approximate). namespace_id is any number unique in the account.
+  "ratelimits": [
+    { "name": "API_LIMIT", "namespace_id": "4101", "simple": { "limit": 60, "period": 60 } },
+    { "name": "INVOICE_LIMIT", "namespace_id": "4102", "simple": { "limit": 5, "period": 60 } }
+  ],
+
+  // Reminders are sent by a cron that runs every minute.
+  "triggers": { "crons": ["* * * * *"] },
+
+  // The app's public address (the Mini App URL set in @BotFather).
+  "workers_dev": true,
+  "preview_urls": false,
+
+  // Secrets (BOT_TOKEN, WEBHOOK_SECRET, SETUP_KEY) are set with `wrangler secret put`.
+  "vars": {
+    "PLUS_STARS": "150",
+    "SUPPORT_CONTACT": "",
+    "APP_URL": "https://lifepath.khurshidbekdev.workers.dev",
+    "TELEGRAM_API": "https://api.telegram.org"
+  },
+
+  "observability": { "enabled": true }
+}

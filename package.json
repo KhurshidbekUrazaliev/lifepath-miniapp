@@ -1,0 +1,36 @@
+{
+  "name": "lifepath-miniapp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5183 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5183 --strictPort",
+    "typecheck": "tsc --noEmit && tsc -p worker/tsconfig.json",
+    "test": "tsx src/lib/logic.test.ts && tsx src/lib/miniapp.test.ts && tsx scripts/check-i18n.ts",
+    "test:logic": "tsx src/lib/logic.test.ts",
+    "test:worker": "node worker/test/e2e.mjs",
+    "worker:dev": "wrangler dev",
+    "mock:telegram": "node worker/test/mock-telegram.mjs 8799",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
+    "lucide-react": "^1.72.0",
+    "motion": "^14.14.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "wrangler": "^4.86.0"
+  }
+}

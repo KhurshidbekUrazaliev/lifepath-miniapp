@@ -1,0 +1,353 @@
+/* Tokens, resets and the app frame. Dark is the reference look; light mirrors it. */
+
+:root {
+  --font: 'Manrope Variable', 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --r-xl: 28px;
+  --r-lg: 22px;
+  --r-md: 16px;
+  --r-sm: 12px;
+  --gutter: 18px;
+  --tabbar-h: 66px;
+  --ease: cubic-bezier(0.22, 0.8, 0.26, 1);
+  /* Telegram reports the notch/status bar and its own floating controls separately (fullscreen mode). */
+  --safe-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
+  --safe-bottom: max(var(--tg-safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px));
+  --kb: 0px; /* on-screen keyboard height, set from JS while a sheet has focus */
+
+  --blue: #3d7bff;
+  --blue-hi: #6aa0ff;
+  --blue-lo: #2a5fee;
+  --green: #34d399;
+  --orange: #ff9f43;
+  --red: #ff5d6c;
+  --violet: #9b8cff;
+  --cyan: #3dd6f5;
+  --pink: #ff6fa8;
+  --gold: #ffcf5c;
+  --accent: var(--blue);
+  --accent-grad: linear-gradient(180deg, #5f9bff 0%, #2f66f6 100%);
+  --on-accent: #ffffff;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #070a13;
+  --bg-2: #0b1020;
+  --glow-a: rgba(52, 104, 255, 0.3);
+  --glow-b: rgba(126, 92, 255, 0.2);
+  --glow-c: rgba(52, 104, 255, 0.34);
+  --card-hi: rgba(255, 255, 255, 0.068);
+  --card-lo: rgba(255, 255, 255, 0.03);
+  --card-solid: #131827;
+  --well: rgba(0, 0, 0, 0.26);
+  --stroke: rgba(255, 255, 255, 0.075);
+  --stroke-2: rgba(255, 255, 255, 0.14);
+  --hi: rgba(255, 255, 255, 0.07);
+  --text: #f3f6ff;
+  --text-2: #a7b0c6;
+  --text-3: #6b7489;
+  --track: rgba(255, 255, 255, 0.075);
+  --shadow-card: 0 14px 30px rgba(0, 0, 0, 0.3);
+  --shadow-pop: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --glass: rgba(15, 19, 32, 0.72);
+  --sheet: #10141f;
+  --scrim: rgba(3, 5, 10, 0.62);
+  --accent-glow: 0 10px 26px rgba(47, 107, 255, 0.5);
+  --accent-soft: rgba(61, 123, 255, 0.16);
+  --tile-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #eef2fa;
+  --bg-2: #f5f7fd;
+  --glow-a: rgba(61, 123, 255, 0.2);
+  --glow-b: rgba(150, 120, 255, 0.16);
+  --glow-c: rgba(61, 123, 255, 0.22);
+  --card-hi: rgba(255, 255, 255, 0.96);
+  --card-lo: rgba(255, 255, 255, 0.8);
+  --card-solid: #ffffff;
+  --well: rgba(20, 40, 90, 0.05);
+  --stroke: rgba(22, 36, 72, 0.075);
+  --stroke-2: rgba(22, 36, 72, 0.15);
+  --hi: rgba(255, 255, 255, 0.9);
+  --text: #0d1326;
+  --text-2: #56617b;
+  --text-3: #8d97ae;
+  --track: rgba(22, 36, 72, 0.09);
+  --shadow-card: 0 12px 28px rgba(34, 54, 110, 0.1);
+  --shadow-pop: 0 24px 60px rgba(34, 54, 110, 0.24);
+  --glass: rgba(255, 255, 255, 0.78);
+  --sheet: #f7f9fe;
+  --scrim: rgba(18, 26, 48, 0.36);
+  --accent-glow: 0 10px 24px rgba(47, 107, 255, 0.36);
+  --accent-soft: rgba(61, 123, 255, 0.12);
+  --tile-shadow: 0 8px 18px rgba(34, 54, 110, 0.1);
+  --green: #12b981;
+  --orange: #f08a1c;
+  --red: #ef4458;
+  --violet: #7a68f0;
+  --cyan: #12b4d8;
+  --pink: #ee4f90;
+  --gold: #e9a920;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font: 500 15px/1.35 var(--font);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+svg {
+  display: block;
+  flex: none;
+}
+
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--blue-hi);
+  outline-offset: 2px;
+}
+
+/* ---------- frame ---------- */
+
+#root {
+  position: fixed;
+  inset: 0;
+}
+
+.app {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(62% 30% at 8% -2%, var(--glow-a), transparent 72%),
+    radial-gradient(52% 28% at 104% 20%, var(--glow-b), transparent 72%),
+    radial-gradient(74% 26% at 50% 106%, var(--glow-c), transparent 72%),
+    linear-gradient(180deg, var(--bg-2), var(--bg) 46%);
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  will-change: transform, opacity;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+  padding: calc(var(--safe-top) + 12px) var(--gutter) calc(var(--tabbar-h) + var(--safe-bottom) + 40px);
+}
+.scroll::-webkit-scrollbar {
+  display: none;
+}
+.scroll.has-fab {
+  padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 108px);
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.col.tight {
+  gap: 10px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.between {
+  justify-content: space-between;
+}
+
+/* ---------- type ---------- */
+
+.t-display {
+  font-size: 30px;
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.t-title {
+  font-size: 19px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.t-h {
+  font-size: 17px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+}
+.t-body {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.t-small {
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 500;
+}
+.t-tiny {
+  font-size: 11.5px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.muted {
+  color: var(--text-2);
+}
+.faint {
+  color: var(--text-3);
+}
+.accent {
+  color: var(--blue-hi);
+}
+:root[data-theme='light'] .accent {
+  color: var(--blue-lo);
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+.clip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clip-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.center {
+  text-align: center;
+}
+.strike {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+  color: var(--text-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Keeps the status bar and Telegram's floating buttons readable over scrolled content (fullscreen mode). */
+.topfade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 15;
+  height: calc(var(--safe-top) + 8px);
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--bg-2) 55%, transparent);
+  opacity: 0.94;
+}
+
+.splash {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.splash img {
+  border-radius: 22px;
+  box-shadow: 0 16px 44px rgba(47, 107, 255, 0.5);
+  animation: splash 1.6s ease-in-out infinite;
+}
+@keyframes splash {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.94);
+    opacity: 0.82;
+  }
+}
