@@ -13,6 +13,9 @@ export interface Env {
   WEBHOOK_SECRET?: string;
   SETUP_KEY?: string;
 
+  /** Who owns the bot and may open the panel: Telegram ids and @usernames, separated by commas (see panel.ts). */
+  ADMINS?: string;
+
   // Vars
   PLUS_STARS?: string;
   SUPPORT_CONTACT?: string;

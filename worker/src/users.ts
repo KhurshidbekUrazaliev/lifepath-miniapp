@@ -28,6 +28,8 @@ export interface UserRow {
   last_active_day: string | null;
   created_at: number;
   updated_at: number;
+  /** When the app was last opened (0 before the first time). */
+  seen_at: number;
 }
 
 export interface Loaded {
@@ -84,6 +86,7 @@ export async function loadUser(
     last_active_day: old?.last_active_day ?? null,
     created_at: old?.created_at ?? now,
     updated_at: old?.updated_at ?? now,
+    seen_at: old?.seen_at ?? 0,
   };
   const writes: D1PreparedStatement[] = [];
   if (!old || PROFILE.some((key) => old[key] !== user[key])) {

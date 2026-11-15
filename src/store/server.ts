@@ -45,6 +45,8 @@ export interface PlusInfo {
   active: boolean;
   expiresAt: number | null;
   priceStars: number;
+  /** Plus is on because the bot's owner gave it, not because it was paid for. */
+  gift?: boolean;
 }
 
 export interface RankProfile {
@@ -72,6 +74,10 @@ export interface Board {
 interface Hello {
   user: { id: number; firstName: string; username: string | null };
   plus: PlusInfo;
+  /** What the bot's owner opened for this person (older servers do not send it). */
+  access?: { levels: boolean; sparks?: number };
+  /** Sent only to the bot's owner. */
+  admin?: boolean;
   rank: RankProfile;
   reminders: { enabled: boolean; canMessage: boolean };
   bot: { username: string | null };
@@ -82,6 +88,12 @@ interface ServerState {
   /** unknown = not asked yet, ok = reachable, off = not reachable (outside Telegram, offline, not deployed). */
   status: 'unknown' | 'ok' | 'off';
   plus: PlusInfo;
+  /** The owner opened everything that waits for a level (wardrobe items for an older companion). */
+  levelsOpen: boolean;
+  /** Sparks the owner gave on top of the earned ones. */
+  sparksGift: number;
+  /** This is the bot's owner: the app shows them the admin panel. */
+  admin: boolean;
   rank: RankProfile;
   canMessage: boolean;
   botUsername: string | null;
@@ -114,9 +126,52 @@ const rememberPlus = (plus: PlusInfo) => {
   }
 };
 
+const LEVELS_KEY = `lp:${tgUser.id}:levels`;
+
+/** Remembered like Plus, so the wardrobe does not lock again while the server is being asked. */
+function cachedLevels(): boolean {
+  try {
+    return localStorage.getItem(LEVELS_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+const rememberLevels = (open: boolean) => {
+  try {
+    if (open) localStorage.setItem(LEVELS_KEY, '1');
+    else localStorage.removeItem(LEVELS_KEY);
+  } catch {
+    // ignore
+  }
+};
+
+const GIFT_KEY = `lp:${tgUser.id}:gift`;
+
+function cachedGift(): number {
+  try {
+    const n = Number(localStorage.getItem(GIFT_KEY));
+    return Number.isInteger(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+const rememberGift = (sparks: number) => {
+  try {
+    if (sparks > 0) localStorage.setItem(GIFT_KEY, String(sparks));
+    else localStorage.removeItem(GIFT_KEY);
+  } catch {
+    // ignore
+  }
+};
+
 export const useServer = create<ServerState>()((set) => ({
   status: 'unknown',
   plus: cachedPlus(),
+  levelsOpen: cachedLevels(),
+  sparksGift: cachedGift(),
+  admin: false,
   rank: { optedIn: false, name: null, country: null },
   canMessage: false,
   botUsername: null,
@@ -124,8 +179,21 @@ export const useServer = create<ServerState>()((set) => ({
   hello: async (tz, lang) => {
     try {
       const h = await api<Hello>('POST', '/hello', { tz, lang });
+      const levelsOpen = h.access?.levels === true;
+      const sparksGift = Math.max(0, Math.floor(h.access?.sparks ?? 0));
       rememberPlus(h.plus);
-      set({ status: 'ok', plus: h.plus, rank: h.rank, canMessage: h.reminders.canMessage, botUsername: h.bot.username });
+      rememberLevels(levelsOpen);
+      rememberGift(sparksGift);
+      set({
+        status: 'ok',
+        plus: h.plus,
+        levelsOpen,
+        sparksGift,
+        admin: h.admin === true,
+        rank: h.rank,
+        canMessage: h.reminders.canMessage,
+        botUsername: h.bot.username,
+      });
     } catch {
       set({ status: 'off' });
     }
@@ -154,3 +222,5 @@ export const useServer = create<ServerState>()((set) => ({
 }));
 
 export const usePlus = (): boolean => useServer((s) => s.plus.active);
+export const useLevelsOpen = (): boolean => useServer((s) => s.levelsOpen);
+export const useSparksGift = (): number => useServer((s) => s.sparksGift);

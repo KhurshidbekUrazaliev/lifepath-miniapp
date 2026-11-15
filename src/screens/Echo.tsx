@@ -6,9 +6,9 @@ import { useStore } from '../store/store';
 import { useNav } from '../store/nav';
 import { growthName, useEcho } from '../store/echo';
 import { useAdvisor } from '../store/advisor';
-import { useServer } from '../store/server';
+import { useLevelsOpen, useServer, useSparksGift } from '../store/server';
 import { ATTRIBUTES, ageInDays, attrLevel } from '../lib/echo';
-import { GROWTH_IDS, GROWTH_LEVELS } from '../lib/companion';
+import { GROWTH_IDS, GROWTH_LEVELS, TOP_STAGE } from '../lib/companion';
 import type { Advice, AdviceKind } from '../lib/advisor';
 import { ITEMS, SLOTS, Slot, canBuy, isOwned, itemById, sparkBalance, wornOutfit } from '../lib/wardrobe';
 import { haptic, shareText } from '../tg/telegram';
@@ -214,7 +214,10 @@ export function Shop() {
   const worn = wornOutfit(profile.outfit, e.gender);
   const tryItem = itemById(trying ?? undefined);
   const preview = tryItem ? { ...worn, [tryItem.slot]: tryItem.id } : worn;
-  const balance = sparkBalance(profile);
+  const gift = useSparksGift();
+  const balance = sparkBalance(profile, gift);
+  // Items wait for the companion to grow, unless the bot's owner opened the levels for this person.
+  const lockStage = useLevelsOpen() ? TOP_STAGE : e.growth.index;
 
   // Only slots with something to offer (3D items appear once their file exists).
   const offered = useMemo(
@@ -254,7 +257,7 @@ export function Shop() {
     }
   };
 
-  const check = tryItem && !isOwned(profile, tryItem) ? canBuy(profile, tryItem.id, e.growth.index, e.gender) : null;
+  const check = tryItem && !isOwned(profile, tryItem) ? canBuy(profile, tryItem.id, lockStage, e.gender, gift) : null;
   const blocked =
     check && !check.ok
       ? check.reason === 'stage'
@@ -300,7 +303,7 @@ export function Shop() {
         {items.map((item) => {
           const owned = isOwned(profile, item);
           const wearing = worn[item.slot] === item.id;
-          const locked = !owned && (item.minStage ?? 0) > e.growth.index;
+          const locked = !owned && (item.minStage ?? 0) > lockStage;
           return (
             <Tap key={item.id} onTap={() => setTrying(item.id)} scale={0.96} hap="select">
               <Card pad={false} className={cx('shop-item', (trying === item.id || (!trying && wearing)) && 'on')}>

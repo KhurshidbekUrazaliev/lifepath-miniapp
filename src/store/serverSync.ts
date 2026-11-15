@@ -146,6 +146,8 @@ async function pushActivity(d: Data): Promise<void> {
     await api('POST', '/activity', {
       lastActiveDay: d.profile.streak.lastDay ?? dayKey(),
       totalXp: provenXp(d.entries),
+      // All of it, proof or not: what the level is worked out from (the owner's panel shows it).
+      xp: Math.round(d.profile.xp),
       weekXp: provenXp(d.entries, week),
       weekStart: week,
       level: levelInfo(d.profile.xp).level,

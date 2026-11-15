@@ -69,7 +69,7 @@ export const TEXT: Record<Lang, BotText> = {
       '1. LifePath is free. LifePath Plus is an optional subscription paid for with Telegram Stars.\n' +
       '2. Plus renews every 30 days until you cancel it in Telegram (Settings → My Stars). After you cancel, Plus stays active until the end of the paid period.\n' +
       '3. For payment questions and refunds, send /paysupport.\n' +
-      '4. We store only what the app needs: your Telegram ID, name, language and time zone, the reminders you set, your score, the friend challenges you join (their members see your first name and score) and, if you join the rankings, the name and country you choose. Pictures you share to Telegram Stories are kept for one day.\n' +
+      '4. We store only what the app needs: your Telegram ID, name, language and time zone, the reminders you set, your score, when you last opened the app, the friend challenges you join (their members see your first name and score) and, if you join the rankings, the name and country you choose. Pictures you share to Telegram Stories are kept for one day.\n' +
       '5. LifePath is provided as is, without warranties.',
     thanks: (date) => `Thank you! LifePath Plus is active until ${date}.`,
     invoiceInvalid: 'This invoice is no longer valid. Open LifePath and try again.',
@@ -111,7 +111,7 @@ export const TEXT: Record<Lang, BotText> = {
       '1. LifePath bepul. LifePath Plus – Telegram Stars orqali toʻlanadigan ixtiyoriy obuna.\n' +
       '2. Plus obunasi Telegram sozlamalarining yulduzlar (Stars) boʻlimida bekor qilinmaguncha har 30 kunda yangilanadi. Bekor qilganingizdan keyin Plus toʻlangan muddat oxirigacha ishlaydi.\n' +
       '3. Toʻlov va uni qaytarish boʻyicha savollar uchun /paysupport buyrugʻini yuboring.\n' +
-      '4. Biz faqat ilova ishlashi uchun zarur maʼlumotlarni saqlaymiz: Telegram ID, ism, til va vaqt mintaqangiz, siz belgilagan eslatmalar, ballaringiz, qoʻshilgan doʻstlar musobaqalari (ularning ishtirokchilari ismingiz va natijangizni koʻradi) hamda reytingga qoʻshilsangiz, oʻzingiz tanlagan ism va davlat. Telegram hikoyalariga (Stories) ulashgan rasmlaringiz bir kun saqlanadi.\n' +
+      '4. Biz faqat ilova ishlashi uchun zarur maʼlumotlarni saqlaymiz: Telegram ID, ism, til va vaqt mintaqangiz, siz belgilagan eslatmalar, ballaringiz, ilovani oxirgi marta qachon ochganingiz, qoʻshilgan doʻstlar musobaqalari (ularning ishtirokchilari ismingiz va natijangizni koʻradi) hamda reytingga qoʻshilsangiz, oʻzingiz tanlagan ism va davlat. Telegram hikoyalariga (Stories) ulashgan rasmlaringiz bir kun saqlanadi.\n' +
       '5. LifePath «qanday boʻlsa, shunday» holatda, kafolatlarsiz taqdim etiladi.',
     thanks: (date) => `Rahmat! LifePath Plus ${date}gacha faol.`,
     invoiceInvalid: 'Bu toʻlov havolasi yaroqsiz. LifePath ilovasini ochib, qaytadan urinib koʻring.',
@@ -159,7 +159,7 @@ export const TEXT: Record<Lang, BotText> = {
       '1. LifePath бесплатен. LifePath Plus — необязательная подписка, которая оплачивается звёздами Telegram.\n' +
       '2. Подписка Plus продлевается каждые 30 дней, пока вы не отмените её в Telegram (Настройки → Мои звёзды). После отмены Plus действует до конца оплаченного периода.\n' +
       '3. По вопросам оплаты и возврата отправьте команду /paysupport.\n' +
-      '4. Мы храним только то, что нужно для работы приложения: ваш Telegram ID, имя, язык и часовой пояс, созданные вами напоминания, ваши очки, соревнования с друзьями, в которых вы участвуете (их участники видят ваше имя и результат), а если вы участвуете в рейтинге — выбранные вами имя и страну. Картинки, которыми вы делитесь в историях Telegram, хранятся один день.\n' +
+      '4. Мы храним только то, что нужно для работы приложения: ваш Telegram ID, имя, язык и часовой пояс, созданные вами напоминания, ваши очки, время, когда вы последний раз открывали приложение, соревнования с друзьями, в которых вы участвуете (их участники видят ваше имя и результат), а если вы участвуете в рейтинге — выбранные вами имя и страну. Картинки, которыми вы делитесь в историях Telegram, хранятся один день.\n' +
       '5. LifePath предоставляется «как есть», без гарантий.',
     thanks: (date) => `Спасибо! LifePath Plus активен до ${date}.`,
     invoiceInvalid: 'Этот счёт недействителен. Откройте LifePath и попробуйте ещё раз.',

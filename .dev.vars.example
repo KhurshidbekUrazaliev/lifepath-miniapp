@@ -9,5 +9,10 @@ SETUP_KEY=local-setup-key
 # Lets the Vite dev server (http://localhost:5183) call the API without Telegram (local hosts only).
 DEV_AUTH=1
 
+# Who may open the owner's panel: Telegram ids and @usernames, separated by commas.
+# "@dev" is the user the local app signs in as. In production this is a secret:
+#   npx wrangler secret put ADMINS
+ADMINS=@dev
+
 TELEGRAM_API=http://127.0.0.1:8799
 APP_URL=http://localhost:5183

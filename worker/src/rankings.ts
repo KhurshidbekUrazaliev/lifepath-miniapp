@@ -24,6 +24,8 @@ interface ScoreRow {
   day: number;
   day_base: number;
   xp_at: number;
+  /** All the XP the app counts, for the owner's panel (total_xp is only what has proof). */
+  xp: number;
 }
 
 const SCORE = 'SELECT * FROM scores WHERE user_id = ?1';
@@ -38,6 +40,8 @@ export async function postActivity(c: Ctx): Promise<Response> {
   const level = int(body.level, 'level', 0, 100_000);
   const streak = int(body.streak, 'streak', 0, 100_000);
   if (weekXp > totalXp) throw badRequest('weekXp: cannot exceed totalXp');
+  // All the XP, proof or not, for the owner's panel (app versions before the panel do not send it).
+  const xp = body.xp === undefined ? null : int(body.xp, 'xp', 0, MAX_XP);
   // The counters friend challenges are scored on (sent by app versions that have challenges).
   const counters = body.counters === undefined ? null : readCounters(body.counters);
 
@@ -61,8 +65,10 @@ export async function postActivity(c: Ctx): Promise<Response> {
     week_start = week;
   }
 
+  const allXp = xp ?? old?.xp ?? 0;
   const changed =
     !old ||
+    old.xp !== allXp ||
     old.total_xp !== totalXp ||
     old.week_xp !== week_xp ||
     old.week_start !== week_start ||
@@ -73,14 +79,14 @@ export async function postActivity(c: Ctx): Promise<Response> {
     writes.push(
       db
         .prepare(
-          `INSERT INTO scores (user_id, total_xp, week_xp, week_start, level, streak, day, day_base, xp_at)
-           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+          `INSERT INTO scores (user_id, total_xp, week_xp, week_start, level, streak, day, day_base, xp_at, xp)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
            ON CONFLICT (user_id) DO UPDATE SET
              total_xp = excluded.total_xp, week_xp = excluded.week_xp, week_start = excluded.week_start,
              level = excluded.level, streak = excluded.streak, day = excluded.day,
-             day_base = excluded.day_base, xp_at = excluded.xp_at`,
+             day_base = excluded.day_base, xp_at = excluded.xp_at, xp = excluded.xp`,
         )
-        .bind(id, totalXp, week_xp, week_start, level, streak, capDay, day_base, scoreMoved ? c.now : (old?.xp_at ?? c.now)),
+        .bind(id, totalXp, week_xp, week_start, level, streak, capDay, day_base, scoreMoved ? c.now : (old?.xp_at ?? c.now), allXp),
     );
   }
   if (user.last_active_day !== lastActiveDay) {

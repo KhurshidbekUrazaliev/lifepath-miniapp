@@ -3,7 +3,7 @@ import { Crown, FlagCheckered, GearSix as Gear, Gift, Medal, Trophy, TShirt } fr
 import { useStore, useVisibleStreak } from '../store/store';
 import { useNav } from '../store/nav';
 import { growthName, useEcho } from '../store/echo';
-import { usePlus, useServer } from '../store/server';
+import { usePlus, useServer, useSparksGift } from '../store/server';
 import { levelInfo } from '../lib/gamify';
 import { sparkBalance } from '../lib/wardrobe';
 import { pendingSparks } from '../lib/evidence';
@@ -27,6 +27,7 @@ export function You() {
   const streak = useVisibleStreak();
   const echo = useEcho();
   const plus = usePlus();
+  const gift = useSparksGift();
   const bot = useServer((s) => s.botUsername);
   const lvl = levelInfo(profile.xp);
   const name = profile.name || tgUser.firstName || t('common.guest');
@@ -90,7 +91,7 @@ export function You() {
 
       <div className="tiles" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
         <StatTile icon={<span style={{ fontSize: 22 }}><Emoji e="⚡" /></span>} value={<Num value={profile.xp} format={(n) => fmtNumber(Math.round(n))} />} label={t('you.totalXp')} />
-        <StatTile icon={<span style={{ fontSize: 22 }}><Emoji e="✨" /></span>} value={<Num value={sparkBalance(profile)} />} label={t('you.sparks')} />
+        <StatTile icon={<span style={{ fontSize: 22 }}><Emoji e="✨" /></span>} value={<Num value={sparkBalance(profile, gift)} />} label={t('you.sparks')} />
         <StatTile icon={<span style={{ fontSize: 22 }}><Emoji e="🔥" /></span>} value={<Num value={streak} />} label={t('you.streak')} />
         <StatTile icon={<span style={{ fontSize: 22 }}><Emoji e="🧊" /></span>} value={<Num value={profile.freezes} />} label={t('you.freezes')} />
       </div>

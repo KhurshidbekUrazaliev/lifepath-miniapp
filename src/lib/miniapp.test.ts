@@ -24,6 +24,7 @@ import { NAME_LANGS, matchIdea, nameIdeas } from './names';
 import { BADGES, bestPrayerRun, earnedBadges } from './achievements';
 import { PART_HEAD, PART_OTHER, PART_TORSO, measureBody, partOf, restCap } from '../companion/fit';
 import { ITEMS } from './wardrobe';
+import { AdminUser, hasPlus, listQuery, profileLink, seenAgo, statsAfter, withAccess } from './admin';
 import { en } from '../i18n/en';
 
 let passed = 0;
@@ -785,6 +786,45 @@ test('wardrobe: every 3D item says where it goes, and every cap how wide its ope
     if (place.anchor === 'head') assert.ok(place.opening && place.opening > 0 && place.opening <= 1, `${item.id} has an opening`);
     else assert.equal(place.opening, undefined, `${item.id} is not a cap`);
   }
+});
+
+const person = (over: Partial<AdminUser> = {}): AdminUser => ({
+  id: 7, firstName: 'Ali', username: 'ali', lang: 'uz', tz: 'Asia/Tashkent', createdAt: 1, seenAt: 1, lastActiveDay: null,
+  level: 3, xp: 500, provenXp: 200, weekXp: 0, streak: 0, canMessage: true, blocked: false, reminders: false,
+  paidUntil: null, levelsOpen: false, plusGift: false, sparksGift: 0, ...over,
+});
+
+test('admin: when someone was last here, in the largest whole unit', () => {
+  const now = 1_800_000_000_000;
+  assert.deepEqual(seenAgo(0, now), { unit: 'never', n: 0 });
+  assert.deepEqual(seenAgo(now - 59_000, now), { unit: 'now', n: 0 });
+  assert.deepEqual(seenAgo(now - 60_000, now), { unit: 'min', n: 1 });
+  assert.deepEqual(seenAgo(now - 59 * 60_000, now), { unit: 'min', n: 59 });
+  assert.deepEqual(seenAgo(now - 3 * 3_600_000 - 5, now), { unit: 'hour', n: 3 });
+  assert.equal(seenAgo(now - 26 * 3_600_000, now).unit, 'date');
+  assert.deepEqual(seenAgo(now + 5000, now), { unit: 'now', n: 0 }, 'a clock that runs ahead is not in the future');
+});
+
+test('admin: flipping a switch changes that person and the counts, and nothing else', () => {
+  const now = 1_800_000_000_000;
+  const stats = { users: 2, today: 1, week: 2, month: 2, fresh: 1, plus: 1, levelsOpen: 0 };
+  const ali = person();
+  const paid = person({ id: 8, paidUntil: now + 1000 });
+  const given = { id: 7, levelsOpen: true, plusGift: true, sparksGift: 300 };
+  const list = withAccess([ali, paid], given);
+  assert.deepEqual([list[0].levelsOpen, list[0].plusGift, list[0].sparksGift, list[1]], [true, true, 300, paid]);
+  assert.deepEqual(statsAfter(stats, ali, given, now), { ...stats, plus: 2, levelsOpen: 1 });
+  // Someone who already pays has Plus either way, so a gift on top is not counted twice.
+  assert.equal(statsAfter(stats, paid, { id: 8, levelsOpen: false, plusGift: true, sparksGift: 0 }, now).plus, 1);
+  assert.equal(statsAfter({ ...stats, plus: 2, levelsOpen: 1 }, list[0], { ...given, levelsOpen: false, plusGift: false }, now).plus, 1);
+  assert.ok(hasPlus(paid, now) && !hasPlus(paid, now + 2000) && hasPlus(person({ plusGift: true }), now) && !hasPlus(ali, now));
+});
+
+test('admin: the list is asked for by search, order and page', () => {
+  assert.equal(listQuery('', 'seen', 0), '/admin/users?sort=seen&offset=0');
+  assert.equal(listQuery('  @ali b ', 'level', 50), '/admin/users?sort=level&offset=50&q=%40ali+b');
+  assert.equal(profileLink(person()), 'https://t.me/ali');
+  assert.equal(profileLink(person({ username: null })), null);
 });
 
 console.log(`\n${passed} tests passed`);

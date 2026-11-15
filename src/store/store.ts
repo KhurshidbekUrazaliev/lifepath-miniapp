@@ -8,7 +8,7 @@ import {
 import { dayKey } from '../lib/dates';
 import { computeProgress, loggedToday } from '../lib/progress';
 import { XP, applyActivity, levelInfo, sparksFor, streakMultiplier, visibleStreak, xpForLog } from '../lib/gamify';
-import { growthFor } from '../lib/companion';
+import { TOP_STAGE, growthFor } from '../lib/companion';
 import { BuyCheck, Slot, canBuy, isOwned, itemById } from '../lib/wardrobe';
 import { cleanEvidence, evidenceBonus, evidenceState, sparksForAward, sparksGranted } from '../lib/evidence';
 import { HABIT_XP, TODO_XP, isChecked, withCheck, withoutHabit } from '../lib/habits';
@@ -17,6 +17,7 @@ import { Data } from '../lib/stats';
 import { WORSHIP_XP, WorshipKey } from '../lib/prayer';
 import { newKhatm, readTo } from '../lib/khatm';
 import { addSession, focusToday, focusXp } from '../lib/focus';
+import { useServer } from './server';
 
 export function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -624,7 +625,9 @@ export const useStore = create<State>()((set, get) => ({
 
   buyItem: (itemId) => {
     const s = get();
-    const check = canBuy(s.profile, itemId, growthFor(s.profile.xp).index, s.profile.echo?.gender ?? 'boy');
+    // The bot's owner can open what waits for a level; then every stage's items can be bought.
+    const stage = useServer.getState().levelsOpen ? TOP_STAGE : growthFor(s.profile.xp).index;
+    const check = canBuy(s.profile, itemId, stage, s.profile.echo?.gender ?? 'boy', useServer.getState().sparksGift);
     if (!check.ok) return check;
     const item = itemById(itemId)!;
     set({

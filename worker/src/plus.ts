@@ -9,7 +9,7 @@ export const PLUS_PERIOD_MS = PLUS_PERIOD_S * 1000;
  * While a subscription renews by itself, Plus stays on for this long after the paid period ends,
  * so that it does not flicker off while the renewal payment is on its way.
  */
-const RENEW_GRACE_MS = 60 * 60 * 1000;
+export const RENEW_GRACE_MS = 60 * 60 * 1000;
 
 export interface Entitlement {
   expires_at: number;
@@ -21,6 +21,8 @@ export interface PlusView {
   active: boolean;
   expiresAt: number | null;
   priceStars: number;
+  /** Plus is on because the owner gave it, not because it was paid for. */
+  gift?: true;
 }
 
 /** Price in Stars from PLUS_STARS. Telegram allows 1 to 10000 for a subscription. */
@@ -34,8 +36,15 @@ export function isPlusActive(ent: Entitlement | null | undefined, now: number): 
   return ent.expires_at + (ent.renew === 'active' ? RENEW_GRACE_MS : 0) > now;
 }
 
-export function plusView(ent: Entitlement | null | undefined, env: Env, now: number): PlusView {
-  return { active: isPlusActive(ent, now), expiresAt: ent?.expires_at ?? null, priceStars: priceStars(env) };
+/** `gift` is Plus given by the owner (see panel.ts): it has no end date, so a paid period that has run out is not shown. */
+export function plusView(ent: Entitlement | null | undefined, env: Env, now: number, gift = false): PlusView {
+  const paid = isPlusActive(ent, now);
+  return {
+    active: paid || gift,
+    expiresAt: gift && !paid ? null : (ent?.expires_at ?? null),
+    priceStars: priceStars(env),
+    ...(gift && { gift: true as const }),
+  };
 }
 
 /** The invoice payload names the user the subscription is for. */

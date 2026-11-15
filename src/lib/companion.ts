@@ -6,6 +6,8 @@ export type Gender = 'boy' | 'girl';
 /** The level at which each growth stage begins. */
 export const GROWTH_LEVELS = [1, 5, 10, 20] as const;
 export const GROWTH_IDS = ['little', 'kid', 'teen', 'grown'] as const;
+/** The last stage. Someone the owner opened the levels for shops as if their companion were grown. */
+export const TOP_STAGE = GROWTH_LEVELS.length - 1;
 export type GrowthId = (typeof GROWTH_IDS)[number];
 
 /** How tall each stage stands next to the grown one (the camera never moves, so growing shows). */

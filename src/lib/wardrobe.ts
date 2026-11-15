@@ -171,10 +171,11 @@ export function hijabTint(worn: Record<Slot, string>, gender: Gender): string | 
  * Sparks you can spend. `profile.sparks` is everything ever earned and only grows; what you have bought
  * is the sum of the prices of the items you own, so two devices that each buy something merge correctly.
  * Items that left the catalog cost nothing, so retiring an item gives its Sparks back.
+ * `gift` is Sparks the bot's owner gave on top (the server keeps that number, not the profile).
  */
-export function sparkBalance(profile: { sparks: number; owned?: string[] }): number {
+export function sparkBalance(profile: { sparks: number; owned?: string[] }, gift = 0): number {
   const spent = (profile.owned ?? []).reduce((sum, id) => sum + (itemById(id)?.price ?? 0), 0);
-  return Math.max(0, profile.sparks - spent);
+  return Math.max(0, profile.sparks + gift - spent);
 }
 
 export const isOwned = (profile: { owned?: string[] }, item: Item): boolean =>
@@ -182,12 +183,12 @@ export const isOwned = (profile: { owned?: string[] }, item: Item): boolean =>
 
 export type BuyCheck = { ok: true } | { ok: false; reason: 'owned' | 'poor' | 'stage' | 'gender' | 'unknown' };
 
-export function canBuy(profile: { sparks: number; owned?: string[] }, itemId: string, stageIndex: number, gender?: Gender): BuyCheck {
+export function canBuy(profile: { sparks: number; owned?: string[] }, itemId: string, stageIndex: number, gender?: Gender, gift = 0): BuyCheck {
   const item = itemById(itemId);
   if (!item) return { ok: false, reason: 'unknown' };
   if (isOwned(profile, item)) return { ok: false, reason: 'owned' };
   if (item.gender && gender && item.gender !== gender) return { ok: false, reason: 'gender' };
   if ((item.minStage ?? 0) > stageIndex) return { ok: false, reason: 'stage' };
-  if (sparkBalance(profile) < item.price) return { ok: false, reason: 'poor' };
+  if (sparkBalance(profile, gift) < item.price) return { ok: false, reason: 'poor' };
   return { ok: true };
 }

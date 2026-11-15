@@ -31,7 +31,8 @@ export type Screen =
   | { name: 'rankings' }
   | { name: 'challenges' }
   | { name: 'challenge'; id: string }
-  | { name: 'plus' };
+  | { name: 'plus' }
+  | { name: 'admin' };
 
 export type Sheet =
   | { name: 'add' }

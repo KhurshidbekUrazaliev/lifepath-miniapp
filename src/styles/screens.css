@@ -1754,3 +1754,73 @@
   flex-direction: column;
   gap: 8px;
 }
+
+/* ---------- the owner's panel ---------- */
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.admin-stats .tile {
+  padding: 13px 6px 11px;
+}
+.admin-stats .tile-val {
+  font-size: 20px;
+}
+.admin-user + .admin-user {
+  border-top: 1px solid var(--stroke);
+}
+.admin-face {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+}
+.admin-marks {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+.admin-meta {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.admin-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 2px 16px 16px;
+}
+.admin-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px 14px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--well);
+  font-size: 13px;
+}
+.admin-facts dt {
+  color: var(--text-2);
+}
+.admin-facts dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.admin-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

@@ -1,6 +1,6 @@
 // Settings and its sub-pages: notifications, appearance, language, prayer & Qurʼan, data and about.
 import { useEffect, useState } from 'react';
-import { ArrowsClockwise, Bell, BellRinging, BookOpen, BookOpenText, Calculator, ChatsCircle, Check as CheckIcon, Cloud, CloudSlash, Database, Globe, Headphones, Info, MapPin, Moon, Mosque, PencilSimple, ShieldCheck, SpeakerHigh, SpinnerGap, Sun, Target, WarningCircle, Waveform } from '@phosphor-icons/react';
+import { ArrowsClockwise, Bell, BellRinging, BookOpen, BookOpenText, Calculator, ChatsCircle, Check as CheckIcon, Cloud, CloudSlash, Database, Globe, Headphones, Info, MapPin, Moon, Mosque, PencilSimple, ShieldCheck, SpeakerHigh, SpinnerGap, Sun, Target, UsersThree, WarningCircle, Waveform } from '@phosphor-icons/react';
 import { useStore, snapshot } from '../store/store';
 import { useNav } from '../store/nav';
 import { exportJson, syncNow, useSync } from '../store/sync';
@@ -48,6 +48,8 @@ export function Settings() {
   const setDailyGoal = useStore((s) => s.setDailyGoal);
   const push = useNav((s) => s.push);
   const sync = useSync();
+  // The bot's owner gets one more row: the admin panel.
+  const admin = useServer((s) => s.admin);
   const [editing, setEditing] = useState(false);
   const [name, setNameDraft] = useState(profile.name || tgUser.firstName);
   const [, tick] = useState(0);
@@ -112,6 +114,12 @@ export function Settings() {
           </Tap>
         ) : null}
       </Card>
+
+      {admin ? (
+        <Card pad={false} className="list">
+          <Row icon={<UsersThree size={21} style={{ color: 'var(--gold-ink)' }} />} title={t('admin.title')} sub={t('admin.row.sub')} onTap={() => push({ name: 'admin' })} />
+        </Card>
+      ) : null}
 
       <Card pad={false} className="list">
         <Row icon={<Bell size={21} />} title={t('settings.notifications')} value={settings.reminders ? t('inbox.reminders.on') : undefined} onTap={() => push({ name: 'notifications' })} />

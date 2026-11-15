@@ -391,6 +391,9 @@ test('wardrobe: balance = earned Sparks minus the price of owned items', () => {
   assert.equal(sparkBalance({ sparks: 100 }), 100);
   assert.equal(sparkBalance({ sparks: 100, owned: ['book'] }), 60);
   assert.equal(sparkBalance({ sparks: 10, owned: ['kitten'] }), 0); // never negative
+  assert.equal(sparkBalance({ sparks: 10, owned: ['kitten'] }, 200), 30); // Sparks the owner gave count too
+  assert.deepEqual(canBuy({ sparks: 0 }, 'kufi', 0, 'boy', 60), { ok: true });
+  assert.deepEqual(canBuy({ sparks: 0 }, 'kufi', 0, 'boy', 59), { ok: false, reason: 'poor' });
   // Items that left the catalog (the 2D clothes) cost nothing, so their Sparks come back.
   assert.equal(sparkBalance({ sparks: 100, owned: ['top-hoodie', 'hat-cap', 'bg-dawn'] }), 80);
 });

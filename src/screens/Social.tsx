@@ -196,6 +196,8 @@ export function Plus() {
                 <CalendarDots size={14} />
                 {t('plus.until', { date: fmtLongDate(plus.expiresAt) })}
               </div>
+            ) : plus.gift ? (
+              <div className="t-small muted">{t('plus.gift')}</div>
             ) : null}
           </div>
         </Card>

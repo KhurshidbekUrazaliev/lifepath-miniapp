@@ -100,16 +100,16 @@ export async function drawStory(card: StoryCard): Promise<Blob> {
     document.fonts?.load(font(600, 50)).catch(() => undefined),
   ]);
 
-  // The logo's greens, deepening downwards, with a soft light behind the emoji.
+  // The logo's night blue, deepening downwards, with a soft violet light (the fig's skin) behind the emoji.
   const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#1B6E53');
-  bg.addColorStop(0.55, '#114A3A');
-  bg.addColorStop(1, '#0A2D23');
+  bg.addColorStop(0, '#232E73');
+  bg.addColorStop(0.55, '#141B4A');
+  bg.addColorStop(1, '#0B1026');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
   const glow = ctx.createRadialGradient(W / 2, 700, 0, W / 2, 700, 560);
-  glow.addColorStop(0, 'rgba(79, 209, 139, 0.42)');
-  glow.addColorStop(1, 'rgba(79, 209, 139, 0)');
+  glow.addColorStop(0, 'rgba(142, 107, 242, 0.46)');
+  glow.addColorStop(1, 'rgba(142, 107, 242, 0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
 

@@ -52,7 +52,8 @@ const env = { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' };
 
 execFileSync('npx', ['wrangler', 'd1', 'migrations', 'apply', 'lifepath', '--local', '--persist-to', dir], { env, stdio: 'pipe' });
 
-const vars = { BOT_TOKEN: TOKEN, WEBHOOK_SECRET, SETUP_KEY, DEV_AUTH: '1', TELEGRAM_API: mock.url, APP_URL, PLUS_STARS: '150' };
+// The owners of the test bot: Alice by her username, Carol by her id.
+const vars = { BOT_TOKEN: TOKEN, WEBHOOK_SECRET, SETUP_KEY, DEV_AUTH: '1', TELEGRAM_API: mock.url, APP_URL, PLUS_STARS: '150', ADMINS: '@alice,333' };
 const dev = spawn(
   'npx',
   [
@@ -542,6 +543,83 @@ try {
   check((await call('GET', '/api/plus', { user: alice })).json?.active === true, 'canceling keeps Plus until the period ends');
   await webhook(message(alice, { refunded_payment: { currency: 'XTR', total_amount: 150, invoice_payload: 'plus:111', telegram_payment_charge_id: 'ch_1' } }));
   check((await call('GET', '/api/plus', { user: alice })).json?.active === false, 'a refund ends Plus');
+
+  // ---------- the owner's panel ----------
+  console.log("\nowner's panel");
+  const hi = (user, lang = 'en') => call('POST', '/api/hello', { user, body: { tz: 'UTC', lang } }).then((r) => r.json);
+  const owner = await hi(alice);
+  check(owner?.admin === true && owner.access.levels === false, 'hello tells an owner, named by username, that the panel is theirs', owner);
+  check((await hi(carol, 'ru'))?.admin === true, 'an owner can be named by id');
+  const guest = await hi(bob, 'uz');
+  check(guest && !('admin' in guest) && guest.access.levels === false, 'and says nothing of it to anyone else', guest);
+  check((await call('GET', '/api/admin/users')).status === 401, 'the panel needs a login');
+  check((await call('GET', '/api/admin/users', { user: bob })).status === 404, 'for anyone else the panel does not exist');
+  check((await call('PUT', '/api/admin/access', { user: bob, body: { id: 222, plus: true } })).status === 404, 'nor can they open things for themselves');
+  check((await call('GET', '/api/admin/users', { user: { ...alice, username: 'ALICE' } })).status === 200, 'a username matches whatever its capitals');
+  check((await call('GET', '/api/admin/users', { user: { id: 999, first_name: 'Eve', username: 'alice2' } })).status === 404, 'a look-alike username is not the owner');
+
+  // Carol, the other owner, asks from here on: every person may only call so often in a minute, and Alice has been busy.
+  await call('POST', '/api/activity', { user: bob, body: { lastActiveDay: '2026-03-01', totalXp: 4200, xp: 5600, weekXp: 0, weekStart: 0, level: 9, streak: 4 } });
+  const panel = await call('GET', '/api/admin/users?sort=level', { user: alice });
+  const person = (id) => panel.json?.users.find((u) => u.id === id);
+  check(
+    panel.status === 200 && panel.json.total >= 3 && panel.json.stats.users === panel.json.total && panel.json.users.length === panel.json.total && panel.json.more === false,
+    'the owner sees everyone',
+    panel.json?.stats,
+  );
+  check(
+    person(222)?.firstName === 'Bobur' && person(222).level === 9 && person(222).xp === 5600 && person(222).provenXp === 4200 && person(222).streak === 4 &&
+      person(222).lastActiveDay === '2026-03-01' && person(222).seenAt > Date.now() - 600_000 && person(111)?.username === 'alice',
+    'with their level, score and when they were last here',
+    person(222),
+  );
+  check(panel.json.users.every((u, i, all) => i === 0 || all[i - 1].level >= u.level), 'highest level first when asked');
+  // An app from before the panel sends no "xp": what was known stays, and nobody shows less than their proven XP.
+  await call('POST', '/api/activity', { user: bob, body: { lastActiveDay: '2026-03-01', totalXp: 4300, weekXp: 0, weekStart: 0, level: 9, streak: 4 } });
+  await call('POST', '/api/activity', { user: carol, body: { lastActiveDay: '2026-03-01', totalXp: 700, weekXp: 0, weekStart: 0, level: 3, streak: 1 } });
+  const older = (await call('GET', '/api/admin/users', { user: alice })).json?.users ?? [];
+  check(
+    older.find((u) => u.id === 222)?.xp === 5600 && older.find((u) => u.id === 222).provenXp === 4300 && older.find((u) => u.id === 333)?.xp === 700,
+    'an older app that does not send all its XP loses nothing',
+    older.map((u) => [u.id, u.xp, u.provenXp]),
+  );
+  check(panel.json.stats.today >= 3 && panel.json.stats.week >= 3 && panel.json.stats.fresh >= 3, 'and how many were here today and joined this week', panel.json.stats);
+  const byName = await call('GET', '/api/admin/users?q=@alice', { user: alice });
+  check(byName.json?.total === 1 && byName.json.users[0].id === 111 && byName.json.stats.users === panel.json.total, 'search by username', byName.json?.users);
+  check((await call('GET', '/api/admin/users?q=222', { user: alice })).json?.users[0]?.id === 222, 'search by id');
+  check((await call('GET', '/api/admin/users?q=%25', { user: alice })).json?.total === 0, 'a percent sign is looked for as itself');
+  check((await call('GET', '/api/admin/users?sort=shoe', { user: alice })).status === 400, 'unknown order: 400');
+
+  const give = await call('PUT', '/api/admin/access', { user: carol, body: { id: 222, levels: true } });
+  check(give.status === 200 && give.json.levelsOpen === true && give.json.plusGift === false, 'the owner opens the levels for someone', give.json);
+  let bobNow = await hi(bob, 'uz');
+  check(bobNow?.access.levels === true && bobNow.plus.active === false, 'and their app is told', bobNow);
+  await call('PUT', '/api/admin/access', { user: carol, body: { id: 222, plus: true } });
+  bobNow = await hi(bob, 'uz');
+  check(
+    bobNow?.access.levels === true && bobNow.plus.active === true && bobNow.plus.gift === true && bobNow.plus.expiresAt === null,
+    'Plus as a gift is on with no end date, and the levels stay open',
+    bobNow?.plus,
+  );
+  check((await call('GET', '/api/plus', { user: bob })).json?.active === true, 'GET /api/plus agrees');
+  const sparks = await call('PUT', '/api/admin/access', { user: carol, body: { id: 222, sparks: 500 } });
+  check(sparks.json?.sparksGift === 500 && sparks.json.levelsOpen === true && sparks.json.plusGift === true, 'the owner gives Sparks, and the switches stay as they were', sparks.json);
+  check((await hi(bob, 'uz'))?.access.sparks === 500 && (await hi(carol, 'ru'))?.access.sparks === 0, 'their app is told how many, and nobody else gets any');
+  check((await call('PUT', '/api/admin/access', { user: carol, body: { id: 222, sparks: -5 } })).status === 400, 'fewer than no Sparks: 400');
+  check((await call('PUT', '/api/admin/access', { user: carol, body: { id: 222, sparks: 100_001 } })).status === 400, 'more Sparks than the limit: 400');
+  const given = await call('GET', '/api/admin/users?q=Bobur', { user: alice });
+  check(
+    given.json?.users[0]?.levelsOpen === true && given.json.users[0].plusGift === true && given.json.users[0].sparksGift === 500 &&
+      given.json.stats.plus === 1 && given.json.stats.levelsOpen === 1,
+    'the panel shows what was given',
+    given.json?.stats,
+  );
+  await call('PUT', '/api/admin/access', { user: carol, body: { id: 222, levels: false, plus: false } });
+  bobNow = await hi(bob, 'uz');
+  check(bobNow?.access.levels === false && bobNow.plus.active === false && !('gift' in bobNow.plus) && bobNow.access.sparks === 500, 'taking the switches back closes both and leaves the Sparks', bobNow);
+  check((await call('PUT', '/api/admin/access', { user: carol, body: { id: 424242, plus: true } })).status === 404, 'someone who never opened the app: 404');
+  check((await call('PUT', '/api/admin/access', { user: carol, body: { id: 222 } })).status === 400, 'nothing to change: 400');
+  check((await call('PUT', '/api/admin/access', { user: carol, body: { id: 222, plus: 'yes' } })).status === 400, 'a switch is on or off: 400');
 
   // ---------- blocking ----------
   console.log('\nblocking');
