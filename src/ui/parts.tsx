@@ -1,7 +1,7 @@
 // Cards that several screens share: a to-do, a goal, a habit row.
 import { ReactNode, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Flame } from 'lucide-react';
+import { Fire } from '@phosphor-icons/react';
 import { Folder, Habit, Plan, Task } from '../lib/types';
 import { computeProgress } from '../lib/progress';
 import { habitStreak, isChecked } from '../lib/habits';
@@ -11,6 +11,7 @@ import { useNav } from '../store/nav';
 import { t, tn } from '../i18n';
 import { dayTimeLabel, fmtClock, fmtProgress, fmtShortDate, pct } from '../i18n/format';
 import { Bar, Bubble, Card, CheckTap, Tap, cx } from './kit';
+import { Emoji } from './Emoji';
 
 export function useFolderOf(): (taskId?: string) => { task?: Task; folder?: Folder } {
   const tasks = useStore((s) => s.tasks);
@@ -107,11 +108,11 @@ export function HabitRow({ habit, day, disabled }: { habit: Habit; day: string; 
       </Tap>
       {streak > 1 ? (
         <span className="pillnote orange">
-          <Flame size={12} strokeWidth={2.6} />
+          <Fire size={12} weight="bold" />
           {streak}
         </span>
       ) : null}
-      <span style={{ fontSize: 20 }}>{habit.icon}</span>
+      <span style={{ fontSize: 20 }}><Emoji e={habit.icon} /></span>
     </Card>
   );
 }
@@ -128,7 +129,7 @@ export function HabitDot({ habit, day }: { habit: Habit; day: string }) {
         transition={{ duration: 0.36 }}
         style={on ? { borderColor: habit.color, background: `${habit.color}2e`, boxShadow: `0 6px 18px ${habit.color}55` } : undefined}
       >
-        {habit.icon}
+        <Emoji e={habit.icon} />
         {on ? <i className="hdot-tick" style={{ background: habit.color }}>✓</i> : null}
       </motion.span>
       <span className="t-tiny clip muted" style={{ maxWidth: 64 }}>{habit.title}</span>

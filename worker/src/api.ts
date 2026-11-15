@@ -4,8 +4,10 @@ import type { Env } from './env';
 import { json, notFound, rateLimited, readJson, serverError } from './http';
 import { TEXT } from './i18n';
 import { payloadFor, PLUS_PERIOD_S, plusView, priceStars, type Entitlement } from './plus';
+import { getChallenge, getChallenges, postChallenge, postJoin, postLeave } from './challenges';
 import { getRankings, postActivity, putRankProfile } from './rankings';
 import { putReminders, reschedule } from './reminders';
+import { postStory } from './stories';
 import { tg } from './telegram';
 import { loadUser, rows, type Ctx } from './users';
 import { lang, timeZone } from './validate';
@@ -79,6 +81,12 @@ const ROUTES = new Map<string, (c: Ctx) => Promise<Response>>([
   ['PUT /api/rankings/profile', putRankProfile],
   ['GET /api/plus', getPlus],
   ['POST /api/plus/invoice', postInvoice],
+  ['GET /api/challenges', getChallenges],
+  ['GET /api/challenges/one', getChallenge],
+  ['POST /api/challenges', postChallenge],
+  ['POST /api/challenges/join', postJoin],
+  ['POST /api/challenges/leave', postLeave],
+  ['POST /api/story', postStory],
 ]);
 
 export async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {

@@ -1,4 +1,5 @@
-// The parts that need the bot's server (a Cloudflare Worker): reminders, rankings and Plus.
+// The parts that need the bot's server (a Cloudflare Worker): reminders, rankings, friend challenges,
+// story pictures and Plus.
 // Everything else works without it, so every call here is allowed to fail quietly.
 import { create } from 'zustand';
 import { inTelegram, initData, tgUser } from '../tg/telegram';
@@ -19,15 +20,17 @@ function authHeader(): string | null {
   return null;
 }
 
+/** Calls the server. The body is sent as JSON, or as it is when it is a file (a Blob, such as a picture). */
 export async function api<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<T> {
   const auth = authHeader();
   if (!auth) throw new ApiError(0, 'outside_telegram');
+  const file = body instanceof Blob ? body : null;
   let res: Response;
   try {
     res = await fetch(`/api${path}`, {
       method,
-      headers: { Authorization: auth, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: { Authorization: auth, ...(body === undefined ? {} : { 'Content-Type': file ? file.type : 'application/json' }) },
+      body: body === undefined ? undefined : file ?? JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, 'network');

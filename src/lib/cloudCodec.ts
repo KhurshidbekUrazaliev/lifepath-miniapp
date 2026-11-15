@@ -20,7 +20,7 @@ export const MANIFEST_KEY = 'm';
 const PROFILE_KEY = 'pr';
 const SETTINGS_KEY = 'st';
 
-const KINDS = ['f', 't', 'e', 'p', 'h', 'c'] as const;
+const KINDS = ['f', 't', 'e', 'p', 'h', 'c', 'w'] as const;
 type Kind = (typeof KINDS)[number];
 
 export interface Manifest {
@@ -145,6 +145,7 @@ export function encode(data: Data, placement: Placement): KeyMap {
     p: data.plans,
     h: data.habits,
     c: checksToRecords(data.checks),
+    w: checksToRecords(data.worship ?? {}),
   };
   const map: KeyMap = {};
   for (const kind of KINDS) {
@@ -229,8 +230,13 @@ export function decode(map: KeyMap, defaults: Data): { data: Data; placement: Pl
     return out;
   };
 
-  const checks: Checks = {};
-  for (const rec of read('c')) if (rec.v && typeof rec.v === 'object') checks[rec.id] = rec.v;
+  const monthsOf = (kind: Kind): Checks => {
+    const out: Checks = {};
+    for (const rec of read(kind)) if (rec.v && typeof rec.v === 'object') out[rec.id] = rec.v;
+    return out;
+  };
+  const checks = monthsOf('c');
+  const worship = monthsOf('w');
 
   const data: Data = {
     folders: read('f') as Folder[],
@@ -239,6 +245,7 @@ export function decode(map: KeyMap, defaults: Data): { data: Data; placement: Pl
     plans: read('p') as Plan[],
     habits: read('h') as Habit[],
     checks,
+    worship,
     profile: { ...defaults.profile, ...parseJson<Partial<Profile>>(map[PROFILE_KEY], {}) },
     settings: { ...defaults.settings, ...parseJson<Partial<Settings>>(map[SETTINGS_KEY], {}) },
   };
@@ -295,11 +302,17 @@ function mergeChecks(local: Checks, base: Checks, remote: Checks): Checks {
 
 function mergeSettings(local: Settings, base: Settings | null, remote: Settings): Settings {
   if (!base) return { ...remote, ...local };
-  const out: any = { ...local };
-  for (const key of Object.keys(remote) as (keyof Settings)[]) {
-    if (local[key] === base[key] && remote[key] !== base[key]) out[key] = remote[key];
+  // Compared by value: a setting can be an object (the prayer place), and a setting put back to
+  // its default disappears from the saved copy, so the other device must clear it too.
+  const same = (a: unknown, b: unknown) => stableStringify(a ?? null) === stableStringify(b ?? null);
+  const out: Record<string, unknown> = { ...local };
+  const keys = new Set([...Object.keys(remote), ...Object.keys(base)]) as Set<keyof Settings>;
+  for (const key of keys) {
+    if (!same(local[key], base[key]) || same(remote[key], base[key])) continue;
+    if (remote[key] === undefined) delete out[key];
+    else out[key] = remote[key];
   }
-  return out as Settings;
+  return out as unknown as Settings;
 }
 
 /** Merges what this device has with what the cloud has. With no `base` nothing is treated as deleted. */
@@ -320,7 +333,7 @@ export function merge(local: Data, base: Data | null, remote: Data): Data {
       profile.sparks = add(local.profile.sparks, base.profile.sparks, remote.profile.sparks);
     }
   }
-  const b = base ?? { folders: [], tasks: [], entries: [], plans: [], habits: [], checks: {} };
+  const b = base ?? { folders: [], tasks: [], entries: [], plans: [], habits: [], checks: {}, worship: {} };
   return {
     folders: mergeList(local.folders, b.folders, remote.folders),
     tasks: mergeList(local.tasks, b.tasks, remote.tasks),
@@ -328,6 +341,7 @@ export function merge(local: Data, base: Data | null, remote: Data): Data {
     plans: mergeList(local.plans, b.plans, remote.plans),
     habits: mergeList(local.habits, b.habits, remote.habits),
     checks: mergeChecks(local.checks, b.checks, remote.checks),
+    worship: mergeChecks(local.worship ?? {}, b.worship ?? {}, remote.worship ?? {}),
     profile,
     settings: mergeSettings(local.settings, base?.settings ?? null, remote.settings),
   };

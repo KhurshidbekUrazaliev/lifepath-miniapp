@@ -1,6 +1,6 @@
 // One goal: progress, pace forecast, steps, planned sessions, reminder, resources and its history.
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, CalendarPlus, Check as CheckIcon, ExternalLink, Pencil, Plus, RotateCcw, Sparkles, Trash2, Wand2, X } from 'lucide-react';
+import { ArrowCounterClockwise, ArrowSquareOut, Bell, CalendarPlus, Check as CheckIcon, MagicWand, PencilSimple, Plus, Sparkle, Timer, Trash, X } from '@phosphor-icons/react';
 import { useStore } from '../store/store';
 import { Route, useNav } from '../store/nav';
 import { usePlus } from '../store/server';
@@ -48,12 +48,12 @@ function EntryRow({ entry, task }: { entry: Entry; task: Task }) {
       </span>
       {state === 'pending' ? (
         <span className="pillnote orange">
-          <Sparkles size={12} />
+          <Sparkle size={12} />
           {left === 0 ? t('goal.proof.lastDay') : tn('goal.proof.left', left)}
         </span>
       ) : state === 'verified' ? (
         <span className="pillnote green">
-          <CheckIcon size={12} strokeWidth={3} />
+          <CheckIcon size={12} weight="bold" />
           {t('goal.proof.added')}
         </span>
       ) : state === 'expired' ? (
@@ -113,7 +113,7 @@ export function Goal({ route }: { route: Extract<Route, { name: 'goal' }> }) {
         title={folder?.name ?? t('goals.title')}
         right={
           <IconBtn onTap={() => open({ name: 'goal', id: task.id })} label={t('goal.edit')}>
-            <Pencil size={18} />
+            <PencilSimple size={18} />
           </IconBtn>
         }
       />
@@ -142,8 +142,14 @@ export function Goal({ route }: { route: Extract<Route, { name: 'goal' }> }) {
         </div>
         {!task.completedAt && !isSteps ? (
           <Tap className="btn primary" style={{ marginTop: 16 }} onTap={() => open({ name: 'log', taskId: task.id })}>
-            <Plus size={19} strokeWidth={2.8} />
+            <Plus size={19} weight="bold" />
             {t('goal.log')}
+          </Tap>
+        ) : null}
+        {!task.completedAt && task.progressType === 'time' ? (
+          <Tap className="btn soft" style={{ marginTop: 10 }} onTap={() => push({ name: 'focus', taskId: task.id })}>
+            <Timer size={19} weight="duotone" />
+            {t('focus.forGoal')}
           </Tap>
         ) : null}
       </Card>
@@ -174,7 +180,7 @@ export function Goal({ route }: { route: Extract<Route, { name: 'goal' }> }) {
                 <CheckTap on={m.done} onTap={() => toggleMilestone(task.id, m.id)} label={m.title} />
                 <span className={cx('grow t-body', m.done && 'strike')}>{m.title}</span>
                 <Tap className="chev" style={{ width: 32, height: 32, display: 'grid', placeItems: 'center' }} onTap={() => removeMilestone(task.id, m.id)} label={t('common.delete')} scale={0.85}>
-                  <X size={16} />
+                  <X size={16} weight="bold" />
                 </Tap>
               </div>
             ))}
@@ -206,7 +212,7 @@ export function Goal({ route }: { route: Extract<Route, { name: 'goal' }> }) {
               {t('goal.plan')}
             </Tap>
             <Tap className="btn soft" style={PLAN_BUTTON} onTap={() => (plus ? open({ name: 'planner', taskId: task.id }) : push({ name: 'plus' }))}>
-              <Wand2 size={18} style={{ color: 'var(--violet)' }} />
+              <MagicWand size={18} style={{ color: 'var(--violet)' }} />
               {t('goal.planSmart')}
             </Tap>
           </div>
@@ -222,11 +228,11 @@ export function Goal({ route }: { route: Extract<Route, { name: 'goal' }> }) {
           {task.resources.map((r) => (
             <div className="lrow" key={r.id}>
               <Tap className="grow row" style={{ gap: 12 }} onTap={() => r.url && openLink(r.url)} scale={0.99} hap={r.url ? 'light' : false}>
-                <span className="lrow-ic" style={{ color: r.url ? 'var(--blue-hi)' : 'var(--text-3)' }}><ExternalLink size={18} /></span>
+                <span className="lrow-ic" style={{ color: r.url ? 'var(--blue-hi)' : 'var(--text-3)' }}><ArrowSquareOut size={18} /></span>
                 <span className="grow t-body clip">{r.title}</span>
               </Tap>
               <Tap className="chev" style={{ width: 32, height: 32, display: 'grid', placeItems: 'center' }} onTap={() => removeResource(task.id, r.id)} label={t('common.delete')} scale={0.85}>
-                <X size={16} />
+                <X size={16} weight="bold" />
               </Tap>
             </div>
           ))}
@@ -266,17 +272,17 @@ export function Goal({ route }: { route: Extract<Route, { name: 'goal' }> }) {
       <div className="col tight" style={{ marginTop: 6 }}>
         {task.completedAt ? (
           <Tap className="btn soft" onTap={() => reopenTask(task.id)}>
-            <RotateCcw size={18} />
+            <ArrowCounterClockwise size={18} />
             {t('goal.reopen')}
           </Tap>
         ) : (
           <Tap className="btn soft" onTap={() => completeTask(task.id)} hap="medium">
-            <CheckIcon size={18} strokeWidth={2.8} style={{ color: 'var(--green)' }} />
+            <CheckIcon size={18} weight="bold" style={{ color: 'var(--green)' }} />
             {t('goal.finish')}
           </Tap>
         )}
         <Tap className="btn danger" onTap={remove}>
-          <Trash2 size={18} />
+          <Trash size={18} />
           {t('goal.delete')}
         </Tap>
       </div>

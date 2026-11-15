@@ -1,69 +1,176 @@
-// Wardrobe catalog (placeholder items; the real art arrives with the commissioned Echo in 1.0).
-// Every item is drawn procedurally by components/EchoAvatar.tsx from its id and colors.
-export type Slot = 'top' | 'hat' | 'accessory' | 'backdrop';
+// Wardrobe: things the companion can wear or keep near, bought with Sparks.
+// Items with a `model` are 3D files made in Tripo; the shop only offers them once the file exists
+// (see public/companion/models.json). Skies are drawn in CSS behind the 3D stage, and hijab colours
+// recolour the girl's ivory hijab (companion/scene.ts; the flat picture draws them too).
+import type { Gender } from './companion';
+
+export type Slot = 'head' | 'color' | 'face' | 'neck' | 'back' | 'hold' | 'pet' | 'place' | 'sky';
+
+/**
+ * Where a 3D item goes. What is worn is fitted to the companion's own measurements (companion/fit.ts),
+ * because a toddler's head is almost half its height and a grown-up's under a third:
+ * - head: a cap. It comes to rest where the head is as wide as its opening; lengths are in head widths.
+ * - face: between the eyes, on the front of the face; lengths are in head widths.
+ * - neck, chest, back: the base of the neck, the front of the chest, the surface of the back; lengths are
+ *   in chest widths.
+ * - ground: beside the companion; the size is in stage units (the grown companion is 1 tall) and the
+ *   offset in platform radii.
+ * - base: under the companion in place of the platform, with its floor at the platform's height.
+ */
+export interface Placement {
+  anchor: 'head' | 'face' | 'neck' | 'chest' | 'back' | 'ground' | 'base';
+  /** The item's longest side. */
+  size: number;
+  /** A cap's opening, as a share of its longest side. */
+  opening?: number;
+  /**
+   * The point of the item that is put on the anchor, measured from the middle of its underside in units
+   * of its longest side (a scarf's is the middle of its ring, a backpack's the side with the straps).
+   */
+  pivot?: [number, number, number];
+  offset?: [number, number, number];
+  rotation?: [number, number, number];
+}
 
 export interface Item {
   id: string;
   slot: Slot;
-  name: string;
   price: number; // Sparks; 0 = everyone owns it
-  color: string;
-  color2?: string; // second color (gradients, trims)
-  minStage?: number; // stage index needed to buy (see STAGES in lib/echo.ts)
+  color: string; // swatch colours (skies, hijab colours) or the tile tint
+  color2?: string;
+  minStage?: number; // growth stage needed to buy: 0 little, 1 kid, 2 teen, 3 grown
+  gender?: Gender; // only for this companion
+  model?: string; // key in models.json
+  place?: Placement;
+  emoji?: string; // tile picture until the 3D thumbnail exists
 }
 
-export const SLOTS: { id: Slot; label: string; icon: string }[] = [
-  { id: 'top', label: 'Tops', icon: '👕' },
-  { id: 'hat', label: 'Hats', icon: '🧢' },
-  { id: 'accessory', label: 'Extras', icon: '🕶️' },
-  { id: 'backdrop', label: 'Scenes', icon: '🌅' },
+export const SLOTS: { id: Slot; emoji: string }[] = [
+  { id: 'head', emoji: '🧢' },
+  { id: 'color', emoji: '🧕' },
+  { id: 'face', emoji: '👓' },
+  { id: 'neck', emoji: '🧣' },
+  { id: 'back', emoji: '🎒' },
+  { id: 'hold', emoji: '📖' },
+  { id: 'pet', emoji: '🐱' },
+  { id: 'place', emoji: '🏝️' },
+  { id: 'sky', emoji: '🌅' },
 ];
 
+// Each worn item's numbers come from its own shape: the kufi's rim is above a rounded underside, the
+// graduation cap's tassel pulls its middle to one side, the scarf's ring sits above its two ends.
+const KUFI: Placement = { anchor: 'head', size: 0.86, opening: 1, pivot: [0, 0.2, 0] };
+const DOPPI: Placement = { anchor: 'head', size: 0.9, opening: 0.97, pivot: [0, 0.04, 0] };
+const GRAD_CAP: Placement = { anchor: 'head', size: 1, opening: 0.8, pivot: [0.03, 0.1, 0] };
+const GLASSES: Placement = { anchor: 'face', size: 0.64, pivot: [0, 0.25, 0.132] };
+const SCARF: Placement = { anchor: 'neck', size: 1.15, pivot: [-0.03, 0.67, 0], offset: [0, -0.05, 0.1], rotation: [-0.35, 0, 0] };
+const MEDAL: Placement = { anchor: 'chest', size: 0.6, pivot: [0, 0.5, 0], offset: [0, 0.05, 0] };
+const BACKPACK: Placement = { anchor: 'back', size: 1.1, pivot: [0, 0.45, -0.42], offset: [0, -0.18, 0.06], rotation: [0, Math.PI, 0] };
+const NEAR: Placement = { anchor: 'ground', size: 0.24, offset: [-0.68, 0, 0.3] };
+const PET: Placement = { anchor: 'ground', size: 0.3, offset: [0.66, 0, 0.26], rotation: [0, -0.45, 0] };
+const BASE: Placement = { anchor: 'base', size: 1.2 };
+
 export const ITEMS: Item[] = [
-  // Tops
-  { id: 'top-tee', slot: 'top', name: 'Everyday tee', price: 0, color: '#8B82FF' },
-  { id: 'top-hoodie', slot: 'top', name: 'Cozy hoodie', price: 40, color: '#FF8A5B', color2: '#E86B3C' },
-  { id: 'top-bomber', slot: 'top', name: 'Bomber jacket', price: 90, color: '#2F6F5E', color2: '#E8E1C8' },
-  { id: 'top-kimono', slot: 'top', name: 'Kimono', price: 160, color: '#B8324F', color2: '#F3D9A4' },
-  { id: 'top-cloak', slot: 'top', name: 'Starlit cloak', price: 260, color: '#2A2A66', color2: '#F6D86B', minStage: 2 },
-  // Hats
-  { id: 'hat-none', slot: 'hat', name: 'No hat', price: 0, color: '#000000' },
-  { id: 'hat-cap', slot: 'hat', name: 'Sport cap', price: 30, color: '#3B82F6', color2: '#1E4FA8' },
-  { id: 'hat-beanie', slot: 'hat', name: 'Winter beanie', price: 30, color: '#E5484D', color2: '#F5F5F5' },
-  { id: 'hat-band', slot: 'hat', name: 'Focus headband', price: 50, color: '#F59E0B' },
-  { id: 'hat-wizard', slot: 'hat', name: 'Wizard hat', price: 200, color: '#5B4FE9', color2: '#F6D86B', minStage: 2 },
-  { id: 'hat-crown', slot: 'hat', name: 'Golden crown', price: 400, color: '#F6C945', color2: '#E0A91B', minStage: 4 },
-  // Extras
-  { id: 'acc-none', slot: 'accessory', name: 'Nothing', price: 0, color: '#000000' },
-  { id: 'acc-glasses', slot: 'accessory', name: 'Round glasses', price: 40, color: '#2B2437' },
-  { id: 'acc-scarf', slot: 'accessory', name: 'Warm scarf', price: 60, color: '#E5484D', color2: '#F5F5F5' },
-  { id: 'acc-headphones', slot: 'accessory', name: 'Headphones', price: 80, color: '#16151A', color2: '#5B4FE9' },
-  { id: 'acc-wings', slot: 'accessory', name: 'Spirit wings', price: 300, color: '#FFFFFF', color2: '#C9C2FF', minStage: 3 },
-  // Scenes
-  { id: 'bg-none', slot: 'backdrop', name: 'Soft glow', price: 0, color: '#8B82FF' },
-  { id: 'bg-dawn', slot: 'backdrop', name: 'Dawn', price: 20, color: '#FFD3A5', color2: '#FD6585' },
-  { id: 'bg-forest', slot: 'backdrop', name: 'Forest', price: 60, color: '#9BE7B5', color2: '#2F8F6B' },
-  { id: 'bg-night', slot: 'backdrop', name: 'Night sky', price: 100, color: '#4B3F9E', color2: '#12102E' },
-  { id: 'bg-sakura', slot: 'backdrop', name: 'Sakura', price: 150, color: '#FFD6E6', color2: '#F58CB5' },
-  { id: 'bg-aurora', slot: 'backdrop', name: 'Aurora', price: 300, color: '#5EEAD4', color2: '#7C3AED', minStage: 3 },
+  // On the head (the girl's hijab stays; caps are for the boy, the graduation cap for both)
+  { id: 'head-none', slot: 'head', price: 0, color: '#8B82FF', emoji: '🙂' },
+  { id: 'kufi', slot: 'head', price: 60, color: '#F4F1EA', gender: 'boy', model: 'kufi', place: KUFI, emoji: '🧶' },
+  { id: 'doppi', slot: 'head', price: 90, color: '#22232B', color2: '#F4F1EA', gender: 'boy', model: 'doppi', place: DOPPI, emoji: '🎩' },
+  { id: 'grad-cap', slot: 'head', price: 220, color: '#24346B', color2: '#F2C14E', minStage: 2, model: 'grad-cap', place: GRAD_CAP, emoji: '🎓' },
+  // The girl's hijab colour (ivory is the model's own)
+  { id: 'color-ivory', slot: 'color', price: 0, color: '#F1E9DA' },
+  { id: 'color-rose', slot: 'color', price: 40, color: '#E2A3B3', gender: 'girl' },
+  { id: 'color-sky', slot: 'color', price: 40, color: '#9DC4E6', gender: 'girl' },
+  { id: 'color-lilac', slot: 'color', price: 50, color: '#BEA7DD', gender: 'girl' },
+  { id: 'color-sand', slot: 'color', price: 60, color: '#D7BE97', gender: 'girl' },
+  { id: 'color-teal', slot: 'color', price: 70, color: '#4E9F9C', gender: 'girl' },
+  { id: 'color-navy', slot: 'color', price: 90, color: '#2F3B63', gender: 'girl', minStage: 1 },
+  { id: 'color-plum', slot: 'color', price: 90, color: '#7A3E62', gender: 'girl', minStage: 1 },
+  { id: 'color-black', slot: 'color', price: 120, color: '#2B2B31', gender: 'girl', minStage: 2 },
+  // Face
+  { id: 'face-none', slot: 'face', price: 0, color: '#8B82FF', emoji: '🙂' },
+  { id: 'glasses', slot: 'face', price: 50, color: '#E3B341', model: 'glasses', place: GLASSES, emoji: '👓' },
+  // Around the neck (the girl's hijab covers hers, so the scarf is the boy's)
+  { id: 'neck-none', slot: 'neck', price: 0, color: '#8B82FF', emoji: '🙂' },
+  { id: 'scarf', slot: 'neck', price: 70, color: '#D9534F', color2: '#F4EBDD', gender: 'boy', model: 'scarf', place: SCARF, emoji: '🧣' },
+  { id: 'medal', slot: 'neck', price: 150, color: '#F2C14E', minStage: 1, model: 'medal', place: MEDAL, emoji: '🏅' },
+  // On the back
+  { id: 'back-none', slot: 'back', price: 0, color: '#8B82FF', emoji: '🙂' },
+  { id: 'backpack', slot: 'back', price: 90, color: '#7FD1B9', model: 'backpack', place: BACKPACK, emoji: '🎒' },
+  // Kept nearby
+  { id: 'hold-none', slot: 'hold', price: 0, color: '#8B82FF', emoji: '✋' },
+  { id: 'sprout-pot', slot: 'hold', price: 30, color: '#C8794A', model: 'sprout-pot', place: NEAR, emoji: '🪴' },
+  { id: 'book', slot: 'hold', price: 40, color: '#1F8A8A', model: 'book', place: NEAR, emoji: '📗' },
+  { id: 'tasbih', slot: 'hold', price: 50, color: '#8A5A3C', model: 'tasbih', place: NEAR, emoji: '📿' },
+  { id: 'piyola', slot: 'hold', price: 60, color: '#2F6FD6', color2: '#FFFFFF', model: 'piyola', place: NEAR, emoji: '🍵' },
+  { id: 'lantern', slot: 'hold', price: 80, color: '#D9A441', model: 'lantern', place: NEAR, emoji: '🏮' },
+  // Pets
+  { id: 'pet-none', slot: 'pet', price: 0, color: '#8B82FF', emoji: '🐾' },
+  { id: 'dove', slot: 'pet', price: 140, color: '#F5F5F5', model: 'dove', place: PET, emoji: '🕊️' },
+  { id: 'kitten', slot: 'pet', price: 180, color: '#F2A65A', model: 'kitten', place: PET, emoji: '🐱' },
+  { id: 'camel', slot: 'pet', price: 260, color: '#D8B27C', minStage: 1, model: 'camel', place: { ...PET, rotation: [0, -1, 0] }, emoji: '🐫' },
+  // Places to stand on
+  { id: 'place-none', slot: 'place', price: 0, color: '#8B82FF', emoji: '⭕' },
+  { id: 'base-garden', slot: 'place', price: 150, color: '#7BC86C', model: 'base-garden', place: BASE, emoji: '🌷' },
+  { id: 'base-study', slot: 'place', price: 200, color: '#B98A5E', model: 'base-study', place: BASE, emoji: '📚' },
+  { id: 'base-courtyard', slot: 'place', price: 250, color: '#2BB5C8', minStage: 1, model: 'base-courtyard', place: BASE, emoji: '🕌' },
+  { id: 'base-night', slot: 'place', price: 300, color: '#2A3A7A', minStage: 2, model: 'base-night', place: BASE, emoji: '🌙' },
+  // Skies behind the stage
+  { id: 'bg-none', slot: 'sky', price: 0, color: '#8B82FF' },
+  { id: 'bg-dawn', slot: 'sky', price: 20, color: '#FFD3A5', color2: '#FD6585' },
+  { id: 'bg-mint', slot: 'sky', price: 30, color: '#C9F5E4', color2: '#5CC6A7' },
+  { id: 'bg-forest', slot: 'sky', price: 60, color: '#9BE7B5', color2: '#2F8F6B' },
+  { id: 'bg-ocean', slot: 'sky', price: 80, color: '#9AD8FF', color2: '#2D6CDF' },
+  { id: 'bg-night', slot: 'sky', price: 100, color: '#4B3F9E', color2: '#12102E' },
+  { id: 'bg-sakura', slot: 'sky', price: 150, color: '#FFD6E6', color2: '#F58CB5' },
+  { id: 'bg-desert', slot: 'sky', price: 70, color: '#F8D8A5', color2: '#C8734A' },
+  { id: 'bg-lavender', slot: 'sky', price: 90, color: '#EBDDFF', color2: '#8D6BEE' },
+  { id: 'bg-turquoise', slot: 'sky', price: 120, color: '#8EE2E7', color2: '#1E6EB1' },
+  { id: 'bg-ramadan', slot: 'sky', price: 200, color: '#1D2A6B', color2: '#C9A13B', minStage: 1 },
+  { id: 'bg-eid', slot: 'sky', price: 250, color: '#FFF0C1', color2: '#D8991D', minStage: 1 },
+  { id: 'bg-aurora', slot: 'sky', price: 300, color: '#5EEAD4', color2: '#7C3AED', minStage: 2 },
 ];
 
 export const itemById = (id: string | undefined): Item | undefined => ITEMS.find((i) => i.id === id);
 
 export const DEFAULT_OUTFIT: Record<Slot, string> = {
-  top: 'top-tee',
-  hat: 'hat-none',
-  accessory: 'acc-none',
-  backdrop: 'bg-none',
+  head: 'head-none',
+  color: 'color-ivory',
+  face: 'face-none',
+  neck: 'neck-none',
+  back: 'back-none',
+  hold: 'hold-none',
+  pet: 'pet-none',
+  place: 'place-none',
+  sky: 'bg-none',
 };
 
 export type Outfit = Partial<Record<Slot, string>>;
+
+/** What is worn in each slot, falling back to the default when an id is unknown or not for this companion. */
+export function wornOutfit(outfit: Outfit | undefined, gender: Gender): Record<Slot, string> {
+  const out = { ...DEFAULT_OUTFIT };
+  // Before the 3D update the sky was called "backdrop".
+  const old = (outfit as { backdrop?: string } | undefined)?.backdrop;
+  const saved: Outfit = { ...(old && !outfit?.sky ? { sky: old } : {}), ...(outfit ?? {}) };
+  for (const slot of Object.keys(DEFAULT_OUTFIT) as Slot[]) {
+    const item = itemById(saved[slot]);
+    if (item && item.slot === slot && (!item.gender || item.gender === gender)) out[slot] = item.id;
+  }
+  return out;
+}
+
+/** The hijab colour to draw, or null to keep the model's own ivory (and for the boy). */
+export function hijabTint(worn: Record<Slot, string>, gender: Gender): string | null {
+  if (gender !== 'girl' || worn.color === DEFAULT_OUTFIT.color) return null;
+  return itemById(worn.color)?.color ?? null;
+}
 
 // ---------- Owning and buying ----------
 
 /**
  * Sparks you can spend. `profile.sparks` is everything ever earned and only grows; what you have bought
  * is the sum of the prices of the items you own, so two devices that each buy something merge correctly.
+ * Items that left the catalog cost nothing, so retiring an item gives its Sparks back.
  */
 export function sparkBalance(profile: { sparks: number; owned?: string[] }): number {
   const spent = (profile.owned ?? []).reduce((sum, id) => sum + (itemById(id)?.price ?? 0), 0);
@@ -73,12 +180,13 @@ export function sparkBalance(profile: { sparks: number; owned?: string[] }): num
 export const isOwned = (profile: { owned?: string[] }, item: Item): boolean =>
   item.price === 0 || (profile.owned ?? []).includes(item.id);
 
-export type BuyCheck = { ok: true } | { ok: false; reason: 'owned' | 'poor' | 'stage' | 'unknown' };
+export type BuyCheck = { ok: true } | { ok: false; reason: 'owned' | 'poor' | 'stage' | 'gender' | 'unknown' };
 
-export function canBuy(profile: { sparks: number; owned?: string[] }, itemId: string, stageIndex: number): BuyCheck {
+export function canBuy(profile: { sparks: number; owned?: string[] }, itemId: string, stageIndex: number, gender?: Gender): BuyCheck {
   const item = itemById(itemId);
   if (!item) return { ok: false, reason: 'unknown' };
   if (isOwned(profile, item)) return { ok: false, reason: 'owned' };
+  if (item.gender && gender && item.gender !== gender) return { ok: false, reason: 'gender' };
   if ((item.minStage ?? 0) > stageIndex) return { ok: false, reason: 'stage' };
   if (sparkBalance(profile) < item.price) return { ok: false, reason: 'poor' };
   return { ok: true };

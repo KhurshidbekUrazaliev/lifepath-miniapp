@@ -1,6 +1,6 @@
-// Home: greeting, the daily verse, today's ring, shortcuts, today's focus and quick habit ticks.
+// Home: greeting, the next prayer, the ayah of the day, today's ring, shortcuts, today's focus and quick habit ticks.
 import { useMemo } from 'react';
-import { CalendarDays, Flame, ListChecks, Repeat, Settings as Gear, Target } from 'lucide-react';
+import { CalendarDots, Fire, GearSix as Gear, ListChecks, Repeat, Target } from '@phosphor-icons/react';
 import { useData, useVisibleStreak } from '../store/store';
 import { useNav } from '../store/nav';
 import { dayKey } from '../lib/dates';
@@ -9,66 +9,17 @@ import { activeHabits, dueHabits } from '../lib/habits';
 import { lastActivity, loggedToday } from '../lib/progress';
 import { XP, levelInfo } from '../lib/gamify';
 import { tgUser } from '../tg/telegram';
-import { Key, t, tn } from '../i18n';
+import { t, tn } from '../i18n';
 import { fmtShortDate, greetingKey, pct } from '../i18n/format';
 import { Avatar, Bubble, Card, Empty, IconBtn, Ring, Screen, Section, Tap } from '../ui/kit';
 import { GoalCard, HabitDot, PlanItem } from '../ui/parts';
-
-/** A night sky with a mosque silhouette, drawn in SVG so it follows the theme and stays sharp. */
-function MosqueArt() {
-  return (
-    <svg className="verse-art" viewBox="0 0 170 120" preserveAspectRatio="xMaxYMax slice" aria-hidden="true">
-      <defs>
-        <linearGradient id="va-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1b2a66" stopOpacity="0" />
-          <stop offset="1" stopColor="#4c6fff" stopOpacity="0.5" />
-        </linearGradient>
-        <radialGradient id="va-glow" cx="0.6" cy="0.72" r="0.55">
-          <stop offset="0" stopColor="#8fb0ff" stopOpacity="0.7" />
-          <stop offset="1" stopColor="#8fb0ff" stopOpacity="0" />
-        </radialGradient>
-        <linearGradient id="va-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#22336f" />
-          <stop offset="1" stopColor="#0b1230" />
-        </linearGradient>
-      </defs>
-      <rect width="170" height="120" fill="url(#va-sky)" />
-      <rect width="170" height="120" fill="url(#va-glow)" />
-      {[[22, 18, 1], [48, 34, 0.7], [70, 12, 1.1], [96, 26, 0.7], [128, 10, 0.9], [150, 30, 0.8], [112, 44, 0.6], [36, 52, 0.6]].map(([x, y, r], i) => (
-        <circle key={i} cx={x} cy={y} r={r} fill="#dfe8ff" opacity={0.85} />
-      ))}
-      <path d="M139 14a9 9 0 1 0 9 12 7.4 7.4 0 0 1-9-12Z" fill="#e9efff" opacity="0.92" />
-      <g fill="url(#va-fill)">
-        {/* minarets */}
-        <path d="M30 120V58l3-9 3 9v62Z" />
-        <path d="M27 62h12v4H27zM28 80h10v3H28z" />
-        <path d="M146 120V50l3.5-11 3.5 11v70Z" />
-        <path d="M143 55h13v4h-13zM144 76h11v3h-11z" />
-        {/* side domes */}
-        <path d="M48 120V94c0-9 7-14 12-18 5 4 12 9 12 18v26Z" />
-        <path d="M112 120V92c0-9 7-15 12-19 5 4 12 10 12 19v28Z" />
-        {/* main dome */}
-        <path d="M62 120V88c0-18 16-26 28-38 12 12 28 20 28 38v32Z" />
-        <path d="M89 50V38h2v12Z" />
-        <circle cx="90" cy="36" r="2.4" />
-        <path d="M20 112h140v8H20z" />
-      </g>
-      <g fill="#ffd98a" opacity="0.9">
-        <path d="M86 120v-14a4 4 0 0 1 8 0v14Z" />
-        <rect x="58" y="104" width="3.4" height="8" rx="1.7" />
-        <rect x="122" y="103" width="3.4" height="8" rx="1.7" />
-        <rect x="74" y="98" width="3" height="7" rx="1.5" />
-        <rect x="103" y="98" width="3" height="7" rx="1.5" />
-      </g>
-    </svg>
-  );
-}
-
-function verseOfDay(day: string): number {
-  let h = 0;
-  for (const ch of day) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return (h % 12) + 1;
-}
+import { useEcho } from '../store/echo';
+import { useAdvisor } from '../store/advisor';
+import { CompanionThumb } from '../companion/CompanionThumb';
+import { Emoji } from '../ui/Emoji';
+import { AyahCard } from '../ui/Ayah';
+import { AdhkarCard, PrayerCard } from './Prayer';
+import { FocusCard } from '../ui/FocusCard';
 
 export function Home() {
   const d = useData();
@@ -99,7 +50,6 @@ export function Home() {
   }, [goals, d.entries, d.profile.questDay, today]);
 
   const name = d.profile.name || tgUser.firstName || t('common.guest');
-  const verse = verseOfDay(today);
   const folderOf = (id: string) => d.folders.find((f) => f.id === id);
 
   const legend: { label: string; value: string; color: string; go: () => void }[] = [
@@ -119,7 +69,7 @@ export function Home() {
       icon: <Repeat size={21} />, color: '#34d399', label: t('home.tile.habits'), go: () => push({ name: 'habits' }),
       sub: stats.habits.total ? t('home.tile.habits.of', { done: stats.habits.done, total: stats.habits.total }) : t('home.tile.habits.none'),
     },
-    { icon: <CalendarDays size={21} />, color: '#9b8cff', label: t('home.tile.calendar'), go: () => push({ name: 'calendar' }), sub: fmtShortDate(Date.now()) },
+    { icon: <CalendarDots size={21} />, color: '#9b8cff', label: t('home.tile.calendar'), go: () => push({ name: 'calendar' }), sub: fmtShortDate(Date.now()) },
     {
       icon: <Target size={21} />, color: '#ff9f43', label: t('home.tile.goals'), go: () => push({ name: 'goals' }),
       sub: goals.length ? tn('home.tile.goals.active', goals.length) : t('home.tile.goals.none'),
@@ -133,7 +83,7 @@ export function Home() {
           <Avatar />
         </Tap>
         <div style={{ minWidth: 0 }}>
-          <div className="t-small muted">{t(greetingKey())} 👋</div>
+          <div className="t-small muted">{t(greetingKey())} <Emoji e="👋" /></div>
           <div className="t-title clip">{name}</div>
         </div>
         <IconBtn onTap={() => push({ name: 'settings' })} label={t('common.settings')}>
@@ -149,22 +99,17 @@ export function Home() {
           <div className="t-body muted" style={{ marginTop: 4, fontWeight: 500 }}>{t('home.tagline')}</div>
         </div>
         <Tap className="streak-pill" onTap={() => push({ name: 'progress' })} scale={0.94} label={tn('home.streak', streak)}>
-          <Flame size={16} strokeWidth={2.6} style={{ color: streak > 0 ? 'var(--orange)' : 'var(--text-3)' }} />
+          <Fire size={16} weight="bold" style={{ color: streak > 0 ? 'var(--orange)' : 'var(--text-3)' }} />
           <span className="num">{streak}</span>
           <i />
           <span className="num">{t('common.lv', { n: lvl.level })}</span>
         </Tap>
       </div>
 
-      {d.settings.verse ? (
-        <Card pad={false} className="verse">
-          <MosqueArt />
-          <div className="verse-text">
-            <p className="t-body" style={{ fontWeight: 600, lineHeight: 1.45 }}>“{t(`verse.${verse}` as Key)}”</p>
-            <p className="t-small muted" style={{ marginTop: 8 }}>— {t('verse.source', { ref: t(`verse.${verse}.ref` as Key) })}</p>
-          </div>
-        </Card>
-      ) : null}
+      <FocusCard />
+      <PrayerCard />
+      <AdhkarCard />
+      {d.settings.verse ? <AyahCard /> : null}
 
       <Card className="row" style={{ gap: 18 }}>
         <Ring value={stats.overall} size={128} stroke={13}>
@@ -193,6 +138,8 @@ export function Home() {
           </Tap>
         ))}
       </div>
+
+      <AdvisorCard />
 
       {habits.length ? (
         <Section title={t('habits.today')} action={`${stats.habits.done} / ${stats.habits.total}`} onAction={() => push({ name: 'habits' })}>
@@ -238,5 +185,30 @@ export function Home() {
         </Section>
       ) : null}
     </Screen>
+  );
+}
+
+/** The companion's hadith of the day; a tap opens the companion for more. */
+function AdvisorCard() {
+  const e = useEcho();
+  const push = useNav((s) => s.push);
+  const { today } = useAdvisor();
+  if (!e.echo) return null;
+  return (
+    <Tap onTap={() => push({ name: 'echo' })} scale={0.98}>
+      <Card pad={false} className="advisor-card">
+        <div className="advisor-thumb">
+          <CompanionThumb size={64} />
+        </div>
+        <div className="grow" style={{ minWidth: 0 }}>
+          <div className="t-tiny advisor-kind">{e.echo.name} · {t('home.hadithOfDay')}</div>
+          <p className="advisor-text">{today.text}</p>
+          <div className="t-tiny faint">
+            {today.source}
+            {today.ai ? ` · ${t('advice.ai')}` : ''}
+          </div>
+        </div>
+      </Card>
+    </Tap>
   );
 }

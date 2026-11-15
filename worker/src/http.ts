@@ -35,8 +35,8 @@ export function errorResponse(e: unknown): Response {
 
 const MAX_BODY_BYTES = 64 * 1024;
 
-/** Reads a JSON object from the request body and refuses bodies over 64 KB. */
-export async function readJson(request: Request): Promise<Record<string, unknown>> {
+/** Reads the request body, refusing one over `max` bytes. */
+export async function readBytes(request: Request, max: number): Promise<Uint8Array> {
   const reader = request.body?.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -44,7 +44,7 @@ export async function readJson(request: Request): Promise<Record<string, unknown
     const { done, value } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > MAX_BODY_BYTES) {
+    if (size > max) {
       await reader.cancel();
       throw badRequest('body too large');
     }
@@ -56,6 +56,12 @@ export async function readJson(request: Request): Promise<Record<string, unknown
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
+  return bytes;
+}
+
+/** Reads a JSON object from the request body and refuses bodies over 64 KB. */
+export async function readJson(request: Request): Promise<Record<string, unknown>> {
+  const bytes = await readBytes(request, MAX_BODY_BYTES);
   let value: unknown;
   try {
     value = JSON.parse(new TextDecoder().decode(bytes));

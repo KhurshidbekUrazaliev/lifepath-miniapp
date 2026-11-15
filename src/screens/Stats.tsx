@@ -1,6 +1,6 @@
 // Analytics: overall trend, the four stat tiles, weekly activity, and a closer look at habits, tasks and goals.
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Clock, Flame, TrendingDown, TrendingUp, Trophy } from 'lucide-react';
+import { CheckCircle, Clock, Fire, TrendDown, TrendUp, Trophy } from '@phosphor-icons/react';
 import { useData } from '../store/store';
 import { useNav } from '../store/nav';
 import { dayKey } from '../lib/dates';
@@ -13,6 +13,7 @@ import { fmtHours, pct, weekdayMini } from '../i18n/format';
 import { Bar, Card, Chips, Empty, Header, Num, Ring, Screen, Section, cx } from '../ui/kit';
 import { BarChart, LineChart } from '../ui/charts';
 import { StatTile } from '../ui/parts';
+import { Emoji } from '../ui/Emoji';
 
 type View = 'overview' | 'habits' | 'tasks' | 'goals';
 const DAY = 86400_000;
@@ -23,7 +24,7 @@ function Trend({ delta }: { delta: number | null }) {
   const up = delta >= 0;
   return (
     <span className={cx('pillnote', up ? 'green' : 'orange')}>
-      {up ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+      {up ? <TrendUp size={13} /> : <TrendDown size={13} />}
       {up ? '+' : ''}{delta}%
     </span>
   );
@@ -108,9 +109,9 @@ export function Stats() {
 
           <Section title={t('stats.yourStats')}>
             <div className="tiles">
-              <StatTile icon={<CheckCircle2 size={26} style={{ color: 'var(--green)' }} />} value={<Num value={m.all.tasksDone} />} label={t('stats.tasksDone')} onTap={() => setView('tasks')} />
-              <StatTile icon={<Flame size={26} style={{ color: 'var(--orange)' }} fill="currentColor" />} value={<Num value={m.all.habitStreak} />} label={t('stats.habitStreak')} onTap={() => setView('habits')} />
-              <StatTile icon={<Clock size={26} style={{ color: 'var(--blue-hi)' }} />} value={fmtHours(m.all.focusMinutes)} label={t('stats.focus')} />
+              <StatTile icon={<CheckCircle size={26} style={{ color: 'var(--green)' }} />} value={<Num value={m.all.tasksDone} />} label={t('stats.tasksDone')} onTap={() => setView('tasks')} />
+              <StatTile icon={<Fire size={26} style={{ color: 'var(--orange)' }} fill="currentColor" />} value={<Num value={m.all.habitStreak} />} label={t('stats.habitStreak')} onTap={() => setView('habits')} />
+              <StatTile icon={<Clock size={26} style={{ color: 'var(--blue-hi)' }} />} value={fmtHours(m.all.focusMinutes + (d.profile.focus?.free ?? 0))} label={t('stats.focus')} />
               <StatTile icon={<Trophy size={26} style={{ color: 'var(--gold)' }} />} value={<Num value={m.all.goalsActive} />} label={t('stats.goalsActive')} onTap={() => setView('goals')} />
             </div>
           </Section>
@@ -136,8 +137,8 @@ export function Stats() {
             </div>
           </Card>
           <div className="tiles">
-            <StatTile icon={<CheckCircle2 size={26} style={{ color: 'var(--green)' }} />} value={<Num value={m.ticks30} />} label={t('stats.ticks')} />
-            <StatTile icon={<Flame size={26} style={{ color: 'var(--orange)' }} fill="currentColor" />} value={<Num value={m.bestStreak} />} label={t('stats.bestStreak')} />
+            <StatTile icon={<CheckCircle size={26} style={{ color: 'var(--green)' }} />} value={<Num value={m.ticks30} />} label={t('stats.ticks')} />
+            <StatTile icon={<Fire size={26} style={{ color: 'var(--orange)' }} fill="currentColor" />} value={<Num value={m.bestStreak} />} label={t('stats.bestStreak')} />
           </div>
           {m.perHabit.length ? (
             <Section title={t('stats.perHabit')} action={t('common.seeAll')} onAction={() => push({ name: 'habits' })}>
@@ -145,9 +146,9 @@ export function Stats() {
                 {m.perHabit.map(({ h, rate, streak }) => (
                   <div key={h.id}>
                     <div className="row" style={{ gap: 10, marginBottom: 8 }}>
-                      <span style={{ fontSize: 18 }}>{h.icon}</span>
+                      <span style={{ fontSize: 18 }}><Emoji e={h.icon} /></span>
                       <span className="t-small grow clip" style={{ fontWeight: 600 }}>{h.title}</span>
-                      {streak > 1 ? <span className="pillnote orange"><Flame size={12} strokeWidth={2.6} />{streak}</span> : null}
+                      {streak > 1 ? <span className="pillnote orange"><Fire size={12} weight="bold" />{streak}</span> : null}
                       <span className="t-small num" style={{ fontWeight: 700, minWidth: 38, textAlign: 'right' }}>{pct(rate)}</span>
                     </div>
                     <Bar value={rate} color={h.color} height={6} />
@@ -162,8 +163,8 @@ export function Stats() {
       {view === 'tasks' && !nothing ? (
         <>
           <div className="tiles">
-            <StatTile icon={<span style={{ fontSize: 24 }}>🗓️</span>} value={<Num value={m.planned30} />} label={t('stats.planned')} />
-            <StatTile icon={<CheckCircle2 size={26} style={{ color: 'var(--green)' }} />} value={<Num value={m.finished30} />} label={t('stats.finished')} />
+            <StatTile icon={<span style={{ fontSize: 24 }}><Emoji e="🗓️" /></span>} value={<Num value={m.planned30} />} label={t('stats.planned')} />
+            <StatTile icon={<CheckCircle size={26} style={{ color: 'var(--green)' }} />} value={<Num value={m.finished30} />} label={t('stats.finished')} />
           </div>
           <Card>
             <div className="row between">
@@ -194,7 +195,7 @@ export function Stats() {
           </Card>
           <div className="tiles">
             <StatTile icon={<Trophy size={26} style={{ color: 'var(--gold)' }} />} value={<Num value={m.all.goalsDone} />} label={t('stats.goalsDone')} />
-            <StatTile icon={<span style={{ fontSize: 24 }}>📝</span>} value={<Num value={m.all.logs} />} label={t('stats.logs')} />
+            <StatTile icon={<span style={{ fontSize: 24 }}><Emoji e="📝" /></span>} value={<Num value={m.all.logs} />} label={t('stats.logs')} />
           </div>
           {m.areas.length ? (
             <Section title={t('stats.byArea')} action={t('common.seeAll')} onAction={() => push({ name: 'goals' })}>
@@ -202,7 +203,7 @@ export function Stats() {
                 {m.areas.map(({ f, ratio }) => (
                   <div key={f.id}>
                     <div className="row" style={{ gap: 10, marginBottom: 8 }}>
-                      <span style={{ fontSize: 18 }}>{f.icon}</span>
+                      <span style={{ fontSize: 18 }}><Emoji e={f.icon} /></span>
                       <span className="t-small grow clip" style={{ fontWeight: 600 }}>{f.name}</span>
                       <span className="t-small num" style={{ fontWeight: 700 }}>{pct(ratio)}</span>
                     </div>

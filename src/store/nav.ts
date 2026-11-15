@@ -18,9 +18,19 @@ export type Screen =
   | { name: 'notifications' }
   | { name: 'data' }
   | { name: 'about' }
+  | { name: 'faith' }
+  | { name: 'reciter' }
+  | { name: 'method' }
+  | { name: 'prayer' }
+  | { name: 'qibla' }
+  | { name: 'adhkar'; session?: 'am' | 'pm' }
+  | { name: 'khatm' }
+  | { name: 'focus'; taskId?: string }
   | { name: 'echo' }
   | { name: 'shop' }
   | { name: 'rankings' }
+  | { name: 'challenges' }
+  | { name: 'challenge'; id: string }
   | { name: 'plus' };
 
 export type Sheet =
@@ -34,7 +44,11 @@ export type Sheet =
   | { name: 'planner'; taskId: string }
   | { name: 'reminder'; taskId: string }
   | { name: 'echo' }
+  | { name: 'hadith'; n: number }
+  | { name: 'ayah'; id: string }
+  | { name: 'place' }
   | { name: 'rank' }
+  | { name: 'challengeNew' }
   | { name: 'entry'; entryId: string };
 
 export type Route = Screen & { key: string };
@@ -76,13 +90,17 @@ export const useNav = create<Nav>()((set, get) => ({
   close: () => set({ sheet: null }),
 }));
 
-/** Opens whatever a deep link points at: "goal_<id>", "habits", "tasks", "calendar", "plus", "rankings". */
+/** Opens whatever a deep link points at: "goal_<id>", "ch_<id>" (a friend challenge), or a screen's name. */
 export function openDeepLink(param: string | undefined): void {
   if (!param) return;
   const nav = useNav.getState();
   const [kind, id] = param.split('_');
   if (kind === 'goal' && id) nav.push({ name: 'goal', id });
-  else if (kind === 'habits' || kind === 'tasks' || kind === 'calendar' || kind === 'plus' || kind === 'rankings' || kind === 'goals') {
+  else if (kind === 'ch' && id) nav.push({ name: 'challenge', id });
+  else if (
+    kind === 'habits' || kind === 'tasks' || kind === 'calendar' || kind === 'plus' || kind === 'rankings' || kind === 'goals' ||
+    kind === 'prayer' || kind === 'qibla' || kind === 'adhkar' || kind === 'khatm' || kind === 'focus' || kind === 'challenges'
+  ) {
     nav.push({ name: kind });
   }
 }

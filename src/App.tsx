@@ -1,5 +1,5 @@
 // The frame: theme, language, Telegram chrome, the four tabs, pushed screens, sheets and celebrations.
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from './store/store';
 import { Route, Tab, openDeepLink, useNav } from './store/nav';
@@ -16,6 +16,7 @@ import { SheetHost } from './sheets';
 import { Onboarding } from './screens/Onboarding';
 import { useInboxDot } from './screens/Inbox';
 import { useServerSync } from './store/serverSync';
+import { useFocusClock } from './store/focus';
 
 const CHROME = { dark: '#070a13', light: '#eef2fa' } as const;
 
@@ -62,9 +63,17 @@ function Page({ route, top }: { route: Route; top: boolean }) {
       style={{ pointerEvents: top ? 'auto' : 'none' }}
       aria-hidden={!top}
     >
-      <Component route={route as never} />
+      <Suspense fallback={null}>
+        <Component route={route as never} />
+      </Suspense>
     </motion.section>
   );
+}
+
+/** Counts a focus session when it ends; mounted once the saved data has loaded. */
+function FocusClock(): null {
+  useFocusClock();
+  return null;
 }
 
 function TabView({ tab, covered }: { tab: Tab; covered: boolean }) {
@@ -149,6 +158,7 @@ export function App() {
               ))}
             </AnimatePresence>
             <TabBar inboxDot={inboxDot} />
+            <FocusClock />
           </>
         ) : (
           <Onboarding />

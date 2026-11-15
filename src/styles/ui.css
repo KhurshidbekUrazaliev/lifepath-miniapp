@@ -992,3 +992,17 @@ select.input {
 .lrow.me {
   background: var(--accent-soft);
 }
+
+/* Fluent 3D emoji (ui/Emoji.tsx): sized like the text emoji they replace */
+.emoji3d {
+  display: inline-block;
+  width: 1.22em;
+  height: 1.22em;
+  vertical-align: -0.26em;
+  object-fit: contain;
+  flex: none;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}

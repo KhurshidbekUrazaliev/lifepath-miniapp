@@ -1,6 +1,6 @@
 // Tasks: dated to-dos with filter chips, as on the design's second screen.
 import { useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus } from '@phosphor-icons/react';
 import { useStore } from '../store/store';
 import { useNav } from '../store/nav';
 import { dayKey } from '../lib/dates';
@@ -50,7 +50,7 @@ export function Tasks() {
     <Screen
       fab={
         <Tap className="btn primary" onTap={() => open({ name: 'task', day: today })}>
-          <Plus size={19} strokeWidth={2.8} />
+          <Plus size={19} weight="bold" />
           {t('tasks.add')}
         </Tap>
       }

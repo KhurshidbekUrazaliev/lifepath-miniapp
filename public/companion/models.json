@@ -1,0 +1,190 @@
+{
+  "backpack": {
+    "file": "backpack.882b468c.glb",
+    "bytes": 113836
+  },
+  "base-courtyard": {
+    "file": "base-courtyard.c28e6daf.glb",
+    "bytes": 119520
+  },
+  "base-garden": {
+    "file": "base-garden.55723aa2.glb",
+    "bytes": 153816
+  },
+  "base-night": {
+    "file": "base-night.0f4e4761.glb",
+    "bytes": 91308
+  },
+  "base-study": {
+    "file": "base-study.06edde5c.glb",
+    "bytes": 104940
+  },
+  "book": {
+    "file": "book.e1f088c0.glb",
+    "bytes": 130824
+  },
+  "boy-1": {
+    "file": "boy-1.baa7b7e0.glb",
+    "bytes": 901516,
+    "clips": [
+      "idle",
+      "wave",
+      "talk",
+      "cheer",
+      "think",
+      "nod",
+      "read",
+      "dua"
+    ]
+  },
+  "boy-2": {
+    "file": "boy-2.13f6d4e4.glb",
+    "bytes": 970352,
+    "clips": [
+      "idle",
+      "wave",
+      "talk",
+      "cheer",
+      "think",
+      "nod",
+      "read",
+      "dua"
+    ]
+  },
+  "boy-3": {
+    "file": "boy-3.57b878b6.glb",
+    "bytes": 955440,
+    "clips": [
+      "idle",
+      "wave",
+      "talk",
+      "cheer",
+      "think",
+      "nod",
+      "read",
+      "dua"
+    ]
+  },
+  "boy-4": {
+    "file": "boy-4.933d4a71.glb",
+    "bytes": 973884,
+    "clips": [
+      "idle",
+      "wave",
+      "talk",
+      "cheer",
+      "think",
+      "nod",
+      "read",
+      "dua"
+    ]
+  },
+  "camel": {
+    "file": "camel.e61377bc.glb",
+    "bytes": 128500
+  },
+  "doppi": {
+    "file": "doppi.8f8f04cc.glb",
+    "bytes": 85652
+  },
+  "dove": {
+    "file": "dove.914997dd.glb",
+    "bytes": 71924
+  },
+  "girl-1": {
+    "file": "girl-1.01639dcc.glb",
+    "bytes": 947388,
+    "clips": [
+      "idle",
+      "wave",
+      "talk",
+      "cheer",
+      "think",
+      "nod",
+      "read",
+      "dua"
+    ]
+  },
+  "girl-2": {
+    "file": "girl-2.09f40724.glb",
+    "bytes": 1001260,
+    "clips": [
+      "idle",
+      "wave",
+      "talk",
+      "cheer",
+      "think",
+      "nod",
+      "read",
+      "dua"
+    ]
+  },
+  "girl-3": {
+    "file": "girl-3.9cf2677e.glb",
+    "bytes": 956280,
+    "clips": [
+      "idle",
+      "wave",
+      "talk",
+      "cheer",
+      "think",
+      "nod",
+      "read",
+      "dua"
+    ]
+  },
+  "girl-4": {
+    "file": "girl-4.5e4aeaca.glb",
+    "bytes": 995388,
+    "clips": [
+      "idle",
+      "wave",
+      "talk",
+      "cheer",
+      "think",
+      "nod",
+      "read",
+      "dua"
+    ]
+  },
+  "glasses": {
+    "file": "glasses.b153f7ce.glb",
+    "bytes": 18196
+  },
+  "grad-cap": {
+    "file": "grad-cap.b08a632c.glb",
+    "bytes": 109680
+  },
+  "kitten": {
+    "file": "kitten.5a6a5b1a.glb",
+    "bytes": 74880
+  },
+  "kufi": {
+    "file": "kufi.41ff412c.glb",
+    "bytes": 81560
+  },
+  "lantern": {
+    "file": "lantern.6b0a7352.glb",
+    "bytes": 104920
+  },
+  "medal": {
+    "file": "medal.95dbe68a.glb",
+    "bytes": 74164
+  },
+  "piyola": {
+    "file": "piyola.ab92cb89.glb",
+    "bytes": 126228
+  },
+  "scarf": {
+    "file": "scarf.4ed16871.glb",
+    "bytes": 75500
+  },
+  "sprout-pot": {
+    "file": "sprout-pot.361225ec.glb",
+    "bytes": 66744
+  },
+  "tasbih": {
+    "file": "tasbih.fafde86c.glb",
+    "bytes": 130656
+  }
+}

@@ -47,6 +47,20 @@ export function fmtTimeStr(time?: string): string {
   return p ? fmtTime(p.hour, p.minute) : '';
 }
 export const fmtClock = (ms: number): string => df({ hour: 'numeric', minute: '2-digit' }).format(ms);
+/** A time of day at a place, in that place's time zone ("3:12 PM", "15:12"). */
+export function fmtClockIn(ms: number | Date, timeZone: string): string {
+  try {
+    return df({ hour: 'numeric', minute: '2-digit', timeZone }).format(ms);
+  } catch {
+    return fmtClock(Number(ms));
+  }
+}
+/** How long until something: "in 1 h 05 min", "in 7 min". */
+export function fmtLeft(ms: number): string {
+  const minutes = Math.max(1, Math.ceil(ms / 60_000));
+  if (minutes < 60) return t('prayer.left.m', { m: minutes });
+  return t('prayer.left.hm', { h: Math.floor(minutes / 60), m: String(minutes % 60).padStart(2, '0') });
+}
 
 /** Short weekday name for 0 = Sunday ... 6 = Saturday: "Mon". */
 export function weekdayShort(dow: number): string {

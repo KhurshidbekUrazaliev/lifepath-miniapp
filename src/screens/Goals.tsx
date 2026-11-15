@@ -1,6 +1,6 @@
 // Goals: the areas of your life as cards, and every goal with its progress bar.
 import { useMemo } from 'react';
-import { Pencil, Plus } from 'lucide-react';
+import { PencilSimple, Plus } from '@phosphor-icons/react';
 import { useData, useStore } from '../store/store';
 import { Route, useNav } from '../store/nav';
 import { usePlus } from '../store/server';
@@ -12,6 +12,7 @@ import { t, tn } from '../i18n';
 import { pct } from '../i18n/format';
 import { Bar, Bubble, Card, Empty, Header, IconBtn, Num, Ring, Screen, Section, Stagger, Tap } from '../ui/kit';
 import { GoalCard } from '../ui/parts';
+import { Emoji } from '../ui/Emoji';
 
 /** Opens the "new area" sheet, or the Plus screen when the free plan is full. */
 export function useNewArea(): () => void {
@@ -36,7 +37,7 @@ function AreaCard({ folder }: { folder: Folder }) {
           <div className="grow">
             <div className="t-body clip-2" style={{ minHeight: 40 }}>{folder.name}</div>
           </div>
-          <span style={{ fontSize: 20 }}>{folder.icon}</span>
+          <span style={{ fontSize: 20 }}><Emoji e={folder.icon} /></span>
         </div>
         <div className="t-tiny muted" style={{ margin: '10px 0 8px' }}>{tn('goals.count', mine.length)}</div>
         <div className="row" style={{ gap: 8 }}>
@@ -63,7 +64,7 @@ export function Goals() {
       <Header title={t('goals.title')} />
 
       <Card className="row" style={{ gap: 16 }}>
-        <span className="target-ic">🎯</span>
+        <span className="target-ic"><Emoji e="🎯" /></span>
         <div className="grow">
           <div className="t-display num" style={{ fontSize: 28 }}><Num value={active.length} /></div>
           <div className="t-small muted">{tn('goals.active', active.length)}</div>
@@ -91,7 +92,7 @@ export function Goals() {
         ) : (
           <Empty icon="🧭" title={t('goals.empty.title')} body={t('goals.needArea')}>
             <Tap className="btn primary sm pill" onTap={newArea}>
-              <Plus size={17} strokeWidth={2.8} />
+              <Plus size={17} weight="bold" />
               {t('goals.newArea')}
             </Tap>
           </Empty>
@@ -110,7 +111,7 @@ export function Goals() {
 
       {d.folders.length ? (
         <Tap className="btn primary" onTap={createGoal}>
-          <Plus size={19} strokeWidth={2.8} />
+          <Plus size={19} weight="bold" />
           {t('goals.create')}
         </Tap>
       ) : null}
@@ -145,7 +146,7 @@ export function Area({ route }: { route: Extract<Route, { name: 'area' }> }) {
         title={folder.name}
         right={
           <IconBtn onTap={() => open({ name: 'area', id: folder.id })} label={t('area.edit')}>
-            <Pencil size={18} />
+            <PencilSimple size={18} />
           </IconBtn>
         }
       />
@@ -166,7 +167,7 @@ export function Area({ route }: { route: Extract<Route, { name: 'area' }> }) {
         ))}
       </Stagger>
       <Tap className="btn primary" onTap={() => open({ name: 'goal', folderId: folder.id })}>
-        <Plus size={19} strokeWidth={2.8} />
+        <Plus size={19} weight="bold" />
         {t('goals.create')}
       </Tap>
       {done.length ? (

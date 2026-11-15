@@ -5,6 +5,10 @@ import { AddSheet, HabitSheet, TaskSheet } from './create';
 import { AreaSheet, GoalSheet, PlannerSheet, ReminderSheet } from './goal';
 import { EntrySheet, LogSheet, ProofSheet } from './log';
 import { EchoSheet, RankSheet } from './misc';
+import { HadithSheet } from './hadith';
+import { AyahSheet } from './ayah';
+import { PlaceSheet } from './place';
+import { ChallengeSheet } from './challenge';
 import { ConfirmHost } from './confirm';
 
 function render(sheet: SheetState, close: () => void) {
@@ -20,7 +24,11 @@ function render(sheet: SheetState, close: () => void) {
     case 'planner': return <PlannerSheet sheet={sheet} onClose={close} />;
     case 'reminder': return <ReminderSheet sheet={sheet} onClose={close} />;
     case 'echo': return <EchoSheet onClose={close} />;
+    case 'hadith': return <HadithSheet n={sheet.n} onClose={close} />;
+    case 'ayah': return <AyahSheet id={sheet.id} onClose={close} />;
+    case 'place': return <PlaceSheet onClose={close} />;
     case 'rank': return <RankSheet onClose={close} />;
+    case 'challengeNew': return <ChallengeSheet onClose={close} />;
   }
 }
 

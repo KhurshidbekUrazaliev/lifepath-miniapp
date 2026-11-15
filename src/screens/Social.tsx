@@ -1,7 +1,7 @@
 // Rankings (boards kept by the bot's server) and LifePath Plus (bought with Telegram Stars).
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { CalendarRange, Crown, Heart, Infinity as InfinityIcon, UserPen, Wand2 } from 'lucide-react';
+import { CalendarDots, Crown, FlagCheckered, Heart, Infinity as InfinityIcon, MagicWand, UserGear } from '@phosphor-icons/react';
 import { useNav } from '../store/nav';
 import { Board, api, useServer } from '../store/server';
 import { useStore } from '../store/store';
@@ -11,7 +11,8 @@ import { provenXp } from '../lib/stats';
 import { haptic, openInvoice } from '../tg/telegram';
 import { t, tn } from '../i18n';
 import { fmtLongDate, fmtNumber } from '../i18n/format';
-import { Card, Chips, Empty, Header, IconBtn, Screen, Tap, cx } from '../ui/kit';
+import { Card, Chips, Empty, Header, IconBtn, Row, Screen, Tap, cx } from '../ui/kit';
+import { Emoji } from '../ui/Emoji';
 
 type Period = 'week' | 'all';
 type Scope = 'global' | 'country';
@@ -21,6 +22,7 @@ export function Rankings() {
   const rank = useServer((s) => s.rank);
   const entries = useStore((s) => s.entries);
   const open = useNav((s) => s.open);
+  const push = useNav((s) => s.push);
   const [period, setPeriod] = useState<Period>('week');
   const [scope, setScope] = useState<Scope>('global');
   const [board, setBoard] = useState<Board | null>(null);
@@ -47,7 +49,7 @@ export function Rankings() {
         title={t('board.title')}
         right={
           <IconBtn onTap={() => open({ name: 'rank' })} label={t('board.profile')}>
-            <UserPen size={19} />
+            <UserGear size={19} />
           </IconBtn>
         }
       />
@@ -56,6 +58,14 @@ export function Rankings() {
         <Empty icon="🏆" title={t('board.off.title')} body={t('board.off.body')} />
       ) : (
         <>
+          <Card pad={false} className="list">
+            <Row
+              icon={<FlagCheckered size={21} style={{ color: 'var(--blue)' }} />}
+              title={t('ch.title')}
+              sub={t('ch.card.body')}
+              onTap={() => push({ name: 'challenges' })}
+            />
+          </Card>
           <Chips<Period> value={period} onChange={setPeriod} options={[{ id: 'week', label: t('board.week') }, { id: 'all', label: t('board.all') }]} />
           <Chips<Scope> value={scope} onChange={setScope} options={[{ id: 'global', label: `🌍 ${t('board.global')}` }, { id: 'country', label: `${flag(rank.country)} ${t('board.country')}` }]} />
 
@@ -67,7 +77,7 @@ export function Rankings() {
             </Card>
           ) : (
             <Card className="row" style={{ gap: 14 }}>
-              <span className="bubble" style={{ background: 'var(--accent-soft)' }}>🏅</span>
+              <span className="bubble" style={{ background: 'var(--accent-soft)' }}><Emoji e="🏅" /></span>
               <div className="grow">
                 <div className="t-body">{board?.me ? `#${board.me.rank}` : '–'} · {t('board.rank')}</div>
                 <div className="t-small muted">
@@ -147,7 +157,7 @@ export function Plus() {
 
   const benefits = [
     { icon: <InfinityIcon size={22} />, color: '#3d7bff', title: t('plus.b1'), body: t('plus.b1.body', { n: FREE_FOLDER_LIMIT }) },
-    { icon: <Wand2 size={22} />, color: '#9b8cff', title: t('plus.b2'), body: t('plus.b2.body') },
+    { icon: <MagicWand size={22} />, color: '#9b8cff', title: t('plus.b2'), body: t('plus.b2.body') },
     { icon: <Heart size={22} />, color: '#ff6fa8', title: t('plus.b3'), body: t('plus.b3.body') },
   ];
 
@@ -156,7 +166,7 @@ export function Plus() {
       <Header title={t('plus.title')} />
       <div className="plus-hero">
         <motion.span className="plus-crown" initial={{ scale: 0.5, rotate: -20, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 14 }}>
-          <Crown size={40} strokeWidth={2.2} />
+          <Crown size={40} />
         </motion.span>
         <div className="t-display" style={{ fontSize: 28, marginTop: 14 }}>
           LifePath <span className="grad-text">Plus</span>
@@ -167,7 +177,7 @@ export function Plus() {
       <Card pad={false} className="list">
         {benefits.map((b) => (
           <div className="lrow" key={b.title} style={{ paddingTop: 14, paddingBottom: 14 }}>
-            <span className="bubble" style={{ color: b.color, background: `${b.color}24`, borderColor: `${b.color}3a` }}>{b.icon}</span>
+            <span className="bubble" style={{ color: b.color, background: `${b.color}24`, borderColor: `${b.color}3a` }}>{typeof b.icon === 'string' ? <Emoji e={b.icon} /> : b.icon}</span>
             <span className="grow">
               <span className="t-body" style={{ display: 'block' }}>{b.title}</span>
               <span className="t-small muted" style={{ display: 'block' }}>{b.body}</span>
@@ -178,12 +188,12 @@ export function Plus() {
 
       {plus.active ? (
         <Card className="row" style={{ gap: 14 }}>
-          <span className="bubble" style={{ background: 'var(--accent-soft)' }}>✅</span>
+          <span className="bubble" style={{ background: 'var(--accent-soft)' }}><Emoji e="✅" /></span>
           <div className="grow">
             <div className="t-body">{state === 'thanks' ? t('plus.thanks') : t('plus.active')}</div>
             {plus.expiresAt ? (
               <div className="t-small muted row" style={{ gap: 6 }}>
-                <CalendarRange size={14} />
+                <CalendarDots size={14} />
                 {t('plus.until', { date: fmtLongDate(plus.expiresAt) })}
               </div>
             ) : null}
@@ -194,7 +204,7 @@ export function Plus() {
       ) : (
         <>
           <Tap className="btn primary" onTap={buy} disabled={state === 'waiting'} hap="medium">
-            ⭐ {state === 'waiting' ? t('plus.waiting') : t('plus.cta', { n: plus.priceStars })}
+            <Emoji e="⭐" /> {state === 'waiting' ? t('plus.waiting') : t('plus.cta', { n: plus.priceStars })}
           </Tap>
           {state === 'failed' || state === 'cancelled' ? (
             <div className="t-small center" style={{ color: 'var(--orange)' }}>{t(state === 'failed' ? 'plus.failed' : 'plus.cancelled')}</div>

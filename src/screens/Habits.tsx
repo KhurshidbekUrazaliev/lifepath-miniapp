@@ -1,6 +1,6 @@
 // Habits: streak and monthly trend, a week of day tiles, the day's check-offs, and a progress chart.
 import { useMemo, useState } from 'react';
-import { Flame, Plus, TrendingDown, TrendingUp } from 'lucide-react';
+import { Fire, Plus, TrendDown, TrendUp } from '@phosphor-icons/react';
 import { useStore } from '../store/store';
 import { useNav } from '../store/nav';
 import { dayKey } from '../lib/dates';
@@ -57,7 +57,7 @@ export function Habits() {
     <Screen
       fab={
         <Tap className="btn primary" onTap={() => open({ name: 'habit' })}>
-          <Plus size={19} strokeWidth={2.8} />
+          <Plus size={19} weight="bold" />
           {t('habits.add')}
         </Tap>
       }
@@ -71,7 +71,7 @@ export function Habits() {
           <Card className="row" style={{ gap: 0, padding: '14px 16px' }}>
             <div className="row grow" style={{ gap: 12 }}>
               <span className="flame-ic">
-                <Flame size={26} strokeWidth={2.2} fill="currentColor" />
+                <Fire size={26} fill="currentColor" />
               </span>
               <div>
                 <div className="t-display num" style={{ fontSize: 26 }}><Num value={stats.streak} /></div>
@@ -82,9 +82,9 @@ export function Habits() {
             <div className="grow">
               <div className="row" style={{ gap: 6 }}>
                 {stats.delta !== null && stats.delta < 0 ? (
-                  <TrendingDown size={18} style={{ color: 'var(--orange)' }} />
+                  <TrendDown size={18} style={{ color: 'var(--orange)' }} />
                 ) : (
-                  <TrendingUp size={18} style={{ color: 'var(--green)' }} />
+                  <TrendUp size={18} style={{ color: 'var(--green)' }} />
                 )}
                 <span className="t-title num">
                   {stats.delta === null ? pct(stats.thisMonth) : `${stats.delta > 0 ? '+' : ''}${stats.delta}%`}

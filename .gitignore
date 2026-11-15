@@ -11,3 +11,6 @@ dist/
 # The two reference designs the app was modelled on stay on this Mac
 design/1.jpg
 design/2.jpg
+
+# Raw Tripo downloads (big); the compressed copies the app uses live in public/
+design/companion/models/

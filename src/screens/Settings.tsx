@@ -1,21 +1,34 @@
-// Settings and its sub-pages: notifications, appearance, language, data and about.
+// Settings and its sub-pages: notifications, appearance, language, prayer & Qurʼan, data and about.
 import { useEffect, useState } from 'react';
-import {
-  Bell, Check as CheckIcon, Cloud, CloudOff, Database, Globe, Info, Moon, Pencil, RefreshCw, ShieldCheck, Target,
-} from 'lucide-react';
+import { ArrowsClockwise, Bell, BellRinging, BookOpen, BookOpenText, Calculator, ChatsCircle, Check as CheckIcon, Cloud, CloudSlash, Database, Globe, Headphones, Info, MapPin, Moon, Mosque, PencilSimple, ShieldCheck, SpeakerHigh, SpinnerGap, Sun, Target, WarningCircle, Waveform } from '@phosphor-icons/react';
 import { useStore, snapshot } from '../store/store';
 import { useNav } from '../store/nav';
 import { exportJson, syncNow, useSync } from '../store/sync';
 import { useServer } from '../store/server';
 import { buildDemo } from '../store/demo';
-import { buildReminders } from '../store/serverSync';
+import { buildReminders, enableReminders } from '../store/serverSync';
 import { addToHomeScreen, canAddToHome, canFullscreen, haptic, openLink, tgUser } from '../tg/telegram';
 import { LangSetting, ThemeSetting } from '../lib/types';
-import { t, tn } from '../i18n';
+import { getLang, t, tn } from '../i18n';
 import { fmtTime, pct } from '../i18n/format';
-import { Avatar, Bar, Card, Field, Header, Row, Screen, Section, Segmented, Tap, Toggle } from '../ui/kit';
+import { Avatar, Bar, Card, Field, Header, Row, Screen, Section, Segmented, Tap, Toggle, cx } from '../ui/kit';
 import { confirmSheet } from '../sheets/confirm';
 import { RemindersSwitch } from './Inbox';
+import { RECITERS, SAMPLE_AYAH, reciterOf } from '../content/reciters';
+import { stopRecitation, toggleRecitation, useRecitation } from '../store/recitation';
+import { AsrSchool, METHOD_MENU, PRAYERS, alertPrayers, hijriOf, isMethod, methodName, resolveMethod } from '../lib/prayer';
+import { HIJRI_MONTHS } from '../lib/hijri';
+import { dayKey } from '../lib/dates';
+import { placeName } from './Prayer';
+import { openIlmulHaq } from '../ui/IlmulHaq';
+
+const deviceZone = (): string => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+};
 
 const VERSION = '0.1.0';
 
@@ -60,7 +73,7 @@ export function Settings() {
             <div className="t-title clip">{profile.name || tgUser.firstName || t('common.guest')}</div>
             {tgUser.username ? <div className="t-small muted clip">@{tgUser.username}</div> : null}
             <Tap className="btn soft sm pill" style={{ marginTop: 10, minHeight: 34 }} onTap={() => setEditing((v) => !v)}>
-              <Pencil size={14} />
+              <PencilSimple size={14} />
               {t('settings.editProfile')}
             </Tap>
           </div>
@@ -87,7 +100,7 @@ export function Settings() {
 
       <Card className="row" style={{ gap: 14 }}>
         <span className="bubble" style={{ color: sync.status === 'offline' ? 'var(--orange)' : 'var(--blue-hi)', background: 'var(--accent-soft)' }}>
-          {sync.status === 'offline' || sync.status === 'local' ? <CloudOff size={21} /> : <Cloud size={21} />}
+          {sync.status === 'offline' || sync.status === 'local' ? <CloudSlash size={21} /> : <Cloud size={21} />}
         </span>
         <div className="grow">
           <div className="t-body">{t('settings.sync')}</div>
@@ -95,7 +108,7 @@ export function Settings() {
         </div>
         {sync.status !== 'local' ? (
           <Tap className="ibtn sm" onTap={() => void syncNow()} label={t('common.retry')} scale={0.88}>
-            <RefreshCw size={16} className={sync.status === 'syncing' ? 'spin' : undefined} />
+            <ArrowsClockwise size={16} className={sync.status === 'syncing' ? 'spin' : undefined} />
           </Tap>
         ) : null}
       </Card>
@@ -104,6 +117,7 @@ export function Settings() {
         <Row icon={<Bell size={21} />} title={t('settings.notifications')} value={settings.reminders ? t('inbox.reminders.on') : undefined} onTap={() => push({ name: 'notifications' })} />
         <Row icon={<Moon size={21} />} title={t('settings.appearance')} value={themeName} onTap={() => push({ name: 'appearance' })} />
         <Row icon={<Globe size={21} />} title={t('settings.language')} value={langName} onTap={() => push({ name: 'language' })} />
+        <Row icon={<Mosque size={21} />} title={t('settings.faith')} onTap={() => push({ name: 'faith' })} />
         <Row icon={<ShieldCheck size={21} />} title={t('settings.data')} onTap={() => push({ name: 'data' })} />
         <Row icon={<Info size={21} />} title={t('settings.about')} onTap={() => push({ name: 'about' })} />
       </Card>
@@ -150,7 +164,6 @@ export function Appearance() {
         {canFullscreen ? (
           <Row title={t('appearance.fullscreen')} sub={t('appearance.fullscreen.hint')} right={<Toggle on={settings.fullscreen} onChange={(fullscreen) => setSettings({ fullscreen })} label={t('appearance.fullscreen')} />} />
         ) : null}
-        <Row title={t('appearance.verse')} sub={t('appearance.verse.hint')} right={<Toggle on={settings.verse} onChange={(verse) => setSettings({ verse })} label={t('appearance.verse')} />} />
         <Row title={t('appearance.haptics')} sub={t('appearance.haptics.hint')} right={<Toggle on={haptics} onChange={toggleHaptics} label={t('appearance.haptics')} />} />
       </Card>
     </Screen>
@@ -173,10 +186,234 @@ export function Language() {
         {options.map((o) => (
           <Tap key={o.id} className="lrow" onTap={() => setSettings({ lang: o.id })} hap="select" scale={0.985}>
             <span className="grow t-body">{o.label}</span>
-            {lang === o.id ? <CheckIcon size={20} strokeWidth={2.8} style={{ color: 'var(--blue-hi)' }} /> : null}
+            {lang === o.id ? <CheckIcon size={20} weight="bold" style={{ color: 'var(--blue-hi)' }} /> : null}
           </Tap>
         ))}
       </Card>
+    </Screen>
+  );
+}
+
+export function Faith() {
+  const settings = useStore((s) => s.settings);
+  const setSettings = useStore((s) => s.setSettings);
+  const push = useNav((s) => s.push);
+  const open = useNav((s) => s.open);
+  const lang = getLang();
+  const place = settings.place;
+  const resolved = resolveMethod(settings, place?.tz ?? deviceZone());
+  const asrName = (school: AsrSchool) => t(school === 'hanafi' ? 'asr.hanafi' : 'asr.standard');
+  const offset = settings.hijriOffset ?? 0;
+  const hijri = hijriOf(dayKey(), offset);
+  return (
+    <Screen>
+      <Header title={t('settings.faith')} noGear />
+      <Section title={t('prayer.title')}>
+        <Card pad={false} className="list">
+          <Row icon={<MapPin size={21} />} title={t('place.title')} value={place ? placeName(place) : t('place.unset')} onTap={() => open({ name: 'place' })} />
+          <Row icon={<Calculator size={21} />} title={t('method.title')} value={methodName(resolved.method, lang)} onTap={() => push({ name: 'method' })} />
+          <Row title={t('prayer.onHome')} sub={t('prayer.onHome.hint')} right={<Toggle on={settings.prayerCard !== false} onChange={(prayerCard) => setSettings({ prayerCard })} label={t('prayer.onHome')} />} />
+        </Card>
+      </Section>
+      <Card>
+        <div className="t-body" style={{ marginBottom: 4 }}>{t('asr.title')}</div>
+        <div className="t-small muted" style={{ marginBottom: 12 }}>{t('asr.hint')}</div>
+        <Segmented
+          value={settings.asr ?? 'auto'}
+          onChange={(v) => setSettings({ asr: v === 'auto' ? undefined : (v as AsrSchool) })}
+          options={[
+            { id: 'auto', label: t('asr.auto', { school: asrName(resolved.autoAsr) }) },
+            { id: 'standard', label: t('asr.standard') },
+            { id: 'hanafi', label: t('asr.hanafi') },
+          ]}
+        />
+      </Card>
+      <Card>
+        <div className="t-body" style={{ marginBottom: 4 }}>{t('hijri.title')}</div>
+        <div className="t-small muted" style={{ marginBottom: 12 }}>
+          {hijri ? t('hijri.today', { date: `${hijri.day} ${HIJRI_MONTHS[lang][hijri.month - 1]} ${hijri.year}` }) : t('hijri.none')}
+        </div>
+        <Segmented
+          value={String(offset)}
+          onChange={(v) => setSettings({ hijriOffset: Number(v) || undefined })}
+          options={[-2, -1, 0, 1, 2].map((n) => ({ id: String(n), label: n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0' }))}
+        />
+      </Card>
+      <PrayerAlerts />
+      <Section title={t('adhkar.title')}>
+        <Card pad={false} className="list">
+          <Row icon={<Sun size={21} />} title={t('faith.adhkar')} sub={t('faith.adhkar.hint')} onTap={() => push({ name: 'adhkar' })} />
+          <Row title={t('adhkar.translit')} sub={t('adhkar.translit.hint')} right={<Toggle on={settings.adhkarTr !== false} onChange={(adhkarTr) => setSettings({ adhkarTr })} label={t('adhkar.translit')} />} />
+        </Card>
+      </Section>
+      <Section title={t('faith.quran')}>
+        <Card pad={false} className="list">
+          <Row icon={<BookOpen size={21} />} title={t('khatm.title')} sub={t('khatm.card')} onTap={() => push({ name: 'khatm' })} />
+          <Row title={t('faith.verse')} sub={t('faith.verse.hint')} right={<Toggle on={settings.verse} onChange={(verse) => setSettings({ verse })} label={t('faith.verse')} />} />
+          <Row icon={<Headphones size={21} />} title={t('verse.reciter')} value={reciterOf(settings.reciter).name[lang]} onTap={() => push({ name: 'reciter' })} />
+        </Card>
+      </Section>
+      <Section title={t('ilmulhaq.section')}>
+        <Card pad={false} className="list">
+          <Row icon={<ChatsCircle size={21} />} title={t('ilmulhaq.title')} sub={t('ilmulhaq.body')} onTap={openIlmulHaq} />
+        </Card>
+      </Section>
+    </Screen>
+  );
+}
+
+const BEFORE = [0, 10, 15, 30];
+
+/** Messages from the bot at prayer times and on Friday mornings. They need bot reminders, so turning one on asks for them. */
+function PrayerAlerts() {
+  const settings = useStore((s) => s.settings);
+  const setSettings = useStore((s) => s.setSettings);
+  const open = useNav((s) => s.open);
+  const [problem, setProblem] = useState('');
+  const [busy, setBusy] = useState(false);
+  const prayers = alertPrayers(settings);
+  const prayerOn = settings.reminders && !!settings.prayerAlerts && !!settings.place;
+
+  /** Turns on bot reminders when they are off; false (and why) when that is not possible. */
+  const withBot = async (then: () => void) => {
+    if (busy) return;
+    if (settings.reminders) return then();
+    setBusy(true);
+    const result = await enableReminders();
+    setBusy(false);
+    setProblem(result === 'denied' ? t('notif.denied') : result === 'off' ? t('notif.off') : '');
+    if (result === 'ok') then();
+  };
+  const togglePrayers = (on: boolean) => {
+    setProblem('');
+    if (!on) return setSettings({ prayerAlerts: false });
+    if (!settings.place) {
+      setProblem(t('faith.alerts.needPlace'));
+      return open({ name: 'place' });
+    }
+    void withBot(() => setSettings({ prayerAlerts: true }));
+  };
+  const toggleJumuah = (on: boolean) => {
+    setProblem('');
+    if (!on) return setSettings({ jumuah: false });
+    void withBot(() => setSettings({ jumuah: true }));
+  };
+  const flip = (p: (typeof PRAYERS)[number]) => {
+    const has = prayers.includes(p);
+    if (has && prayers.length === 1) return haptic('error'); // at least one stays on
+    const next = PRAYERS.filter((x) => (x === p ? !has : prayers.includes(x)));
+    setSettings({ prayerAlertList: next.length === PRAYERS.length ? undefined : next });
+  };
+
+  return (
+    <Section title={t('faith.alerts')}>
+      <Card pad={false} className="list">
+        <Row
+          icon={<BellRinging size={21} />}
+          title={t('faith.alerts.prayer')}
+          sub={t('faith.alerts.prayer.hint')}
+          right={<Toggle on={prayerOn} onChange={togglePrayers} label={t('faith.alerts.prayer')} />}
+        />
+        {prayerOn ? (
+          <div className="lrow alerts-more">
+            <div className="t-small muted">{t('faith.alerts.which')}</div>
+            <div className="chips wrap">
+              {PRAYERS.map((p) => (
+                <Tap key={p} className={cx('chip', prayers.includes(p) && 'on solid')} onTap={() => flip(p)} hap="select" scale={0.95}>
+                  <span>{t(`prayer.${p}`)}</span>
+                </Tap>
+              ))}
+            </div>
+            <div className="t-small muted">{t('faith.alerts.when')}</div>
+            <Segmented
+              value={String(settings.prayerBefore ?? 0)}
+              onChange={(v) => setSettings({ prayerBefore: Number(v) || undefined })}
+              options={BEFORE.map((n) => ({ id: String(n), label: n ? t('faith.alerts.min', { n }) : t('faith.alerts.atTime') }))}
+            />
+          </div>
+        ) : null}
+        <Row
+          icon={<BookOpenText size={21} />}
+          title={t('faith.alerts.jumuah')}
+          sub={t('faith.alerts.jumuah.hint')}
+          right={<Toggle on={settings.reminders && !!settings.jumuah} onChange={toggleJumuah} label={t('faith.alerts.jumuah')} />}
+        />
+      </Card>
+      {problem ? <div className="t-small" style={{ color: 'var(--orange)', padding: '8px 4px 0' }}>{problem}</div> : null}
+    </Section>
+  );
+}
+
+/** The calculation methods: automatic (what is usual at the place) or one chosen by hand. */
+export function Methods() {
+  const settings = useStore((s) => s.settings);
+  const setSettings = useStore((s) => s.setSettings);
+  const lang = getLang();
+  const { autoMethod } = resolveMethod(settings, settings.place?.tz ?? deviceZone());
+  const chosen = isMethod(settings.prayerMethod) ? settings.prayerMethod : 'auto';
+  const options: { id: string; label: string; sub?: string }[] = [
+    { id: 'auto', label: t('method.auto'), sub: methodName(autoMethod, lang) },
+    ...METHOD_MENU.map((m) => ({ id: m, label: methodName(m, lang) })),
+  ];
+  return (
+    <Screen>
+      <Header title={t('method.title')} noGear />
+      <Card pad={false} className="list">
+        {options.map((o) => (
+          <Tap key={o.id} className="lrow" onTap={() => setSettings({ prayerMethod: o.id === 'auto' ? undefined : o.id })} hap="select" scale={0.985}>
+            <span className="grow">
+              <span className="t-body" style={{ display: 'block' }}>{o.label}</span>
+              {o.sub ? <span className="t-small muted">{o.sub}</span> : null}
+            </span>
+            {chosen === o.id ? <CheckIcon size={20} weight="bold" style={{ color: 'var(--blue-hi)' }} /> : null}
+          </Tap>
+        ))}
+      </Card>
+      <div className="t-small muted" style={{ padding: '0 4px' }}>{t('method.hint')}</div>
+    </Screen>
+  );
+}
+
+/** The reciters: a tap chooses one and plays a short sample. */
+export function Reciters() {
+  const chosen = reciterOf(useStore((s) => s.settings.reciter)).id;
+  const setSettings = useStore((s) => s.setSettings);
+  const rec = useRecitation();
+  const lang = getLang();
+  const failed = !!rec.id?.startsWith('sample:') && rec.status === 'error';
+
+  // A sample stops when you leave; the ayah of the day keeps playing.
+  useEffect(() => () => {
+    if (useRecitation.getState().id?.startsWith('sample:')) stopRecitation();
+  }, []);
+
+  return (
+    <Screen>
+      <Header title={t('verse.reciter')} noGear />
+      <Card pad={false} className="list">
+        {RECITERS.map((r) => {
+          const status = rec.id === `sample:${r.id}` ? rec.status : null;
+          return (
+            <Tap
+              key={r.id}
+              className="lrow"
+              hap="select"
+              scale={0.985}
+              onTap={() => {
+                setSettings({ reciter: r.id });
+                toggleRecitation(`sample:${r.id}`, [SAMPLE_AYAH], r.id);
+              }}
+            >
+              <span className={status ? 'lrow-ic on' : 'lrow-ic'}>
+                {status === 'loading' ? <SpinnerGap size={20} weight="bold" className="spin" /> : status === 'playing' ? <Waveform size={21} /> : status === 'error' ? <WarningCircle size={21} /> : <SpeakerHigh size={21} />}
+              </span>
+              <span className="grow t-body">{r.name[lang]}</span>
+              {chosen === r.id ? <CheckIcon size={20} weight="bold" style={{ color: 'var(--blue-hi)' }} /> : null}
+            </Tap>
+          );
+        })}
+      </Card>
+      <div className="t-small" style={{ padding: '0 4px', color: failed ? 'var(--orange)' : 'var(--text-3)' }}>{failed ? t('verse.audioError') : t('reciter.hint')}</div>
     </Screen>
   );
 }

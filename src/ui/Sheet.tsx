@@ -1,7 +1,7 @@
 // The bottom sheet: slides up, can be dragged down by its handle, and stays above the keyboard.
 import { ReactNode, useEffect, useRef } from 'react';
 import { motion, useDragControls } from 'motion/react';
-import { X } from 'lucide-react';
+import { X } from '@phosphor-icons/react';
 import { IconBtn, spring } from './kit';
 import { t } from '../i18n';
 import { hideKeyboard } from '../tg/telegram';
@@ -91,7 +91,7 @@ export function Sheet({ title, onClose, children, foot }: SheetProps) {
           <h2 className="t-title clip">{title}</h2>
           <span onPointerDown={(e) => e.stopPropagation()}>
             <IconBtn small onTap={close} label={t('common.close')}>
-              <X size={18} />
+              <X size={18} weight="bold" />
             </IconBtn>
           </span>
         </div>

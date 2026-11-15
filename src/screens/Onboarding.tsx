@@ -1,7 +1,7 @@
 // First run: a welcome, then pick a few areas and habits so the app never starts empty.
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Check as CheckIcon } from 'lucide-react';
+import { Check as CheckIcon } from '@phosphor-icons/react';
 import { snapshot, useStore } from '../store/store';
 import { buildDemo } from '../store/demo';
 import { TEMPLATES, templateById } from '../lib/templates';
@@ -10,7 +10,8 @@ import { EVERY_DAY } from '../lib/habits';
 import { haptic, tgUser } from '../tg/telegram';
 import { Key, t } from '../i18n';
 import { Tap, cx } from '../ui/kit';
-import { HABIT_IDEAS } from '../sheets/create';
+import { HABIT_IDEAS, IDEA_GROUPS } from '../sheets/create';
+import { Emoji } from '../ui/Emoji';
 
 const AREAS = TEMPLATES.filter((x) => x.id !== 'custom');
 
@@ -70,8 +71,8 @@ export function Onboarding() {
                   const on = areas.includes(x.id);
                   return (
                     <Tap key={x.id} className={cx('pick card', on && 'on')} onTap={() => toggle(areas, setAreas, x.id, FREE_FOLDER_LIMIT)} hap={false} scale={0.95}>
-                      {on ? <span className="pick-tick"><CheckIcon size={13} strokeWidth={3.4} /></span> : null}
-                      <span style={{ fontSize: 30 }}>{x.icon}</span>
+                      {on ? <span className="pick-tick"><CheckIcon size={13} weight="bold" /></span> : null}
+                      <span style={{ fontSize: 30 }}><Emoji e={x.icon} /></span>
                       <span className="t-small" style={{ fontWeight: 700 }}>{t(`tpl.${x.id}.name` as Key)}</span>
                       <span className="t-tiny muted clip-2">{t(`tpl.${x.id}.tagline` as Key)}</span>
                     </Tap>
@@ -85,18 +86,23 @@ export function Onboarding() {
             <>
               <h1 className="t-display" style={{ fontSize: 27 }}>{t('onb.habits.title')}</h1>
               <p className="t-body muted" style={{ marginTop: 8, marginBottom: 20, fontWeight: 500 }}>{t('onb.habits.body')}</p>
-              <div className="col tight">
-                {HABIT_IDEAS.map((idea) => {
-                  const on = habits.includes(idea.key);
-                  return (
-                    <Tap key={idea.key} className={cx('card item pick-row', on && 'on')} onTap={() => toggle(habits, setHabits, idea.key, 10)} hap={false} scale={0.98}>
-                      <span className="bubble sm" style={{ background: `${idea.color}26`, borderColor: `${idea.color}40` }}>{idea.icon}</span>
-                      <span className="grow t-body">{t(`habit.s.${idea.key}` as Key)}</span>
-                      <span className={cx('check', on && 'on')} style={{ width: 24, height: 24 }}>{on ? <CheckIcon size={14} strokeWidth={3.2} /> : null}</span>
-                    </Tap>
-                  );
-                })}
-              </div>
+              {IDEA_GROUPS.map((group) => (
+                <div key={group} className="onb-group">
+                  <div className="t-tiny muted onb-group-title">{t(`habit.g.${group}`)}</div>
+                  <div className="onb-chips">
+                    {HABIT_IDEAS.filter((idea) => idea.group === group).map((idea) => {
+                      const on = habits.includes(idea.key);
+                      return (
+                        <Tap key={idea.key} className={cx('onb-chip', on && 'on')} onTap={() => toggle(habits, setHabits, idea.key, 10)} hap={false} scale={0.95}>
+                          <Emoji e={idea.icon} />
+                          <span>{t(`habit.s.${idea.key}` as Key)}</span>
+                          {on ? <CheckIcon size={13} weight="bold" className="onb-chip-tick" /> : null}
+                        </Tap>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </>
           ) : null}
         </motion.div>

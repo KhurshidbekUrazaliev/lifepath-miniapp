@@ -1,6 +1,6 @@
 // The create menu and the sheets for a task and a habit.
 import { useMemo, useState } from 'react';
-import { CalendarCheck, FolderPlus, PencilLine, Repeat, Target, Trash2 } from 'lucide-react';
+import { CalendarCheck, FolderPlus, PencilSimpleLine, Repeat, Target, Trash } from '@phosphor-icons/react';
 import { useStore } from '../store/store';
 import { Sheet as SheetState, useNav } from '../store/nav';
 import { dayKey } from '../lib/dates';
@@ -14,6 +14,7 @@ import { Bubble, DayStrip, EmojiPick, Field, Segmented, Swatches, Tap, cx } from
 import { Sheet } from '../ui/Sheet';
 import { confirmSheet } from './confirm';
 import { useNewArea } from '../screens/Goals';
+import { Emoji } from '../ui/Emoji';
 
 // ---------- shared bits ----------
 
@@ -70,7 +71,7 @@ export function AddSheet({ onClose }: { onClose: () => void }) {
     { icon: <CalendarCheck size={22} />, color: '#3d7bff', title: t('add.task'), hint: t('add.task.hint'), go: () => open({ name: 'task', day: dayKey() }) },
     { icon: <Repeat size={22} />, color: '#34d399', title: t('add.habit'), hint: t('add.habit.hint'), go: () => open({ name: 'habit' }) },
     { icon: <Target size={22} />, color: '#ff9f43', title: t('add.goal'), hint: t('add.goal.hint'), go: () => (folders.length ? open({ name: 'goal' }) : newArea()) },
-    { icon: <PencilLine size={22} />, color: '#9b8cff', title: t('add.log'), hint: t('add.log.hint'), go: () => setPicking(true) },
+    { icon: <PencilSimpleLine size={22} />, color: '#9b8cff', title: t('add.log'), hint: t('add.log.hint'), go: () => setPicking(true) },
     { icon: <FolderPlus size={22} />, color: '#3dd6f5', title: t('add.area'), hint: t('add.area.hint'), go: newArea },
   ];
 
@@ -177,7 +178,7 @@ export function TaskSheet({ sheet, onClose }: { sheet: Extract<SheetState, { nam
             </button>
             {goals.map((g) => (
               <button key={g.id} type="button" className={cx('chip', goal?.id === g.id && 'on solid')} onClick={() => { haptic('select'); setGoalId(g.id); }}>
-                <span>{folders.find((f) => f.id === g.folderId)?.icon} {g.title}</span>
+                <span><Emoji e={folders.find((f) => f.id === g.folderId)?.icon ?? '🎯'} /> {g.title}</span>
               </button>
             ))}
           </div>
@@ -211,7 +212,7 @@ export function TaskSheet({ sheet, onClose }: { sheet: Extract<SheetState, { nam
             onClose();
           }}
         >
-          <Trash2 size={18} />
+          <Trash size={18} />
           {t('task.delete')}
         </Tap>
       ) : null}
@@ -222,19 +223,31 @@ export function TaskSheet({ sheet, onClose }: { sheet: Extract<SheetState, { nam
 // ---------- habit ----------
 
 const HABIT_ICONS = ['📖', '💪', '💧', '📿', '🗣️', '💻', '🌙', '🏃', '🧘', '✍️', '🥗', '🚶', '🛏️', '🧠', '🎧', '🌱'];
-const IDEAS: { key: string; icon: string; color: string }[] = [
-  { key: 'quran', icon: '📖', color: '#10B981' },
-  { key: 'workout', icon: '💪', color: '#FF6B5B' },
-  { key: 'water', icon: '💧', color: '#0EA5E9' },
-  { key: 'dhikr', icon: '📿', color: '#A855F7' },
-  { key: 'language', icon: '🗣️', color: '#14B8A6' },
-  { key: 'code', icon: '💻', color: '#3B82F6' },
-  { key: 'sleep', icon: '🌙', color: '#6C63FF' },
-  { key: 'read', icon: '📚', color: '#F59E0B' },
-  { key: 'walk', icon: '🚶', color: '#22C55E' },
-  { key: 'journal', icon: '✍️', color: '#EC4899' },
+export type IdeaGroup = 'faith' | 'health' | 'mind' | 'life';
+/** Habit ideas for anyone, grouped for the first-run picker (habit.s.<key>, habit.g.<group>). */
+const IDEAS: { key: string; icon: string; color: string; group: IdeaGroup }[] = [
+  { key: 'quran', icon: '📖', color: '#10B981', group: 'faith' },
+  { key: 'dhikr', icon: '📿', color: '#A855F7', group: 'faith' },
+  { key: 'hadith', icon: '📗', color: '#14B8A6', group: 'faith' },
+  { key: 'workout', icon: '💪', color: '#FF6B5B', group: 'health' },
+  { key: 'walk', icon: '🚶', color: '#22C55E', group: 'health' },
+  { key: 'water', icon: '💧', color: '#0EA5E9', group: 'health' },
+  { key: 'stretch', icon: '🧘', color: '#A855F7', group: 'health' },
+  { key: 'veggies', icon: '🥗', color: '#22C55E', group: 'health' },
+  { key: 'sleep', icon: '🌙', color: '#6C63FF', group: 'health' },
+  { key: 'read', icon: '📚', color: '#F59E0B', group: 'mind' },
+  { key: 'study', icon: '🎓', color: '#3B82F6', group: 'mind' },
+  { key: 'language', icon: '🗣️', color: '#14B8A6', group: 'mind' },
+  { key: 'skill', icon: '🎯', color: '#F97316', group: 'mind' },
+  { key: 'journal', icon: '✍️', color: '#EC4899', group: 'mind' },
+  { key: 'screens', icon: '⏳', color: '#64748B', group: 'mind' },
+  { key: 'family', icon: '📞', color: '#E11D48', group: 'life' },
+  { key: 'kind', icon: '🕊️', color: '#F97316', group: 'life' },
+  { key: 'tidy', icon: '🧹', color: '#0EA5E9', group: 'life' },
+  { key: 'plan', icon: '🗓️', color: '#6C63FF', group: 'life' },
 ];
 export const HABIT_IDEAS = IDEAS;
+export const IDEA_GROUPS: IdeaGroup[] = ['faith', 'health', 'mind', 'life'];
 
 export function HabitSheet({ sheet, onClose }: { sheet: Extract<SheetState, { name: 'habit' }>; onClose: () => void }) {
   const existing = useStore((s) => s.habits.find((h) => h.id === sheet.id));
@@ -289,7 +302,7 @@ export function HabitSheet({ sheet, onClose }: { sheet: Extract<SheetState, { na
                   setColor(idea.color);
                 }}
               >
-                <span>{idea.icon} {t(`habit.s.${idea.key}` as Key)}</span>
+                <span><Emoji e={idea.icon} /> {t(`habit.s.${idea.key}` as Key)}</span>
               </button>
             ))}
           </div>
@@ -331,7 +344,7 @@ export function HabitSheet({ sheet, onClose }: { sheet: Extract<SheetState, { na
             })
           }
         >
-          <Trash2 size={18} />
+          <Trash size={18} />
           {t('habit.delete')}
         </Tap>
       ) : null}

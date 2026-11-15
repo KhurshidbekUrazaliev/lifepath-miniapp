@@ -3,6 +3,7 @@ import { Checks, Entry, Folder, Habit, Plan, Profile, Settings, Task } from './t
 import { dayKey } from './dates';
 import { activeHabits, checksOn, dayTally, HABIT_XP, shiftDay, topHabitStreak } from './habits';
 import { computeProgress } from './progress';
+import { worshipXpOn } from './prayer';
 
 export interface Data {
   folders: Folder[];
@@ -11,6 +12,7 @@ export interface Data {
   plans: Plan[];
   habits: Habit[];
   checks: Checks;
+  worship: Checks; // prayers, fasts and adhkar ticked: month -> what -> days (lib/prayer.ts)
   profile: Profile;
   settings: Settings;
 }
@@ -23,9 +25,9 @@ export function lastDays(n: number, today: string = dayKey()): string[] {
 }
 
 /** XP earned on each of the given days: logs, habit ticks and stand-alone to-dos. */
-export function xpSeries(d: Pick<Data, 'entries' | 'plans' | 'checks'>, days: string[]): number[] {
+export function xpSeries(d: Pick<Data, 'entries' | 'plans' | 'checks'> & { worship?: Checks }, days: string[]): number[] {
   const index = new Map(days.map((day, i) => [day, i]));
-  const out = days.map((day) => checksOn(d.checks, day) * HABIT_XP);
+  const out = days.map((day) => checksOn(d.checks, day) * HABIT_XP + (d.worship ? worshipXpOn(d.worship, day) : 0));
   for (const e of d.entries) {
     const i = index.get(dayKey(e.at));
     if (i !== undefined) out[i] += e.xp;
@@ -38,7 +40,7 @@ export function xpSeries(d: Pick<Data, 'entries' | 'plans' | 'checks'>, days: st
   return out;
 }
 
-export const xpOnDay = (d: Pick<Data, 'entries' | 'plans' | 'checks'>, day: string): number => xpSeries(d, [day])[0];
+export const xpOnDay = (d: Pick<Data, 'entries' | 'plans' | 'checks'> & { worship?: Checks }, day: string): number => xpSeries(d, [day])[0];
 
 export interface Tally {
   done: number;

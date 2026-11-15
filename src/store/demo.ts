@@ -1,5 +1,6 @@
-// Example data: a few weeks of a believable life, built with the same rules real logs use.
-import { Checks, Entry, Folder, Habit, Plan, Profile, Task } from '../lib/types';
+// Example data: a few weeks of a believable, made-up life, built with the same rules real logs use.
+// It belongs to nobody in particular: everyday goals, habits and times that suit most people.
+import { Checks, Entry, Folder, Habit, Khatm, Plan, Profile, Task } from '../lib/types';
 import { Data } from '../lib/stats';
 import { dayKey } from '../lib/dates';
 import { dayKeyToMs } from '../lib/calendar';
@@ -8,8 +9,10 @@ import { XP, levelInfo, sparksFor, xpForLog } from '../lib/gamify';
 import { evidenceBonus } from '../lib/evidence';
 import { HABIT_XP, isDue, shiftDay, withCheck } from '../lib/habits';
 import { earnedBadges } from '../lib/achievements';
-import { t } from '../i18n';
+import { Key, t } from '../i18n';
+import { PAGE_XP } from '../lib/khatm';
 import { initialProfile, uid } from './store';
+import { PRAYERS, WORSHIP_XP } from '../lib/prayer';
 
 /** Small seeded generator so the example looks the same every time. */
 function rng(seed: number) {
@@ -26,36 +29,35 @@ export function buildDemo(current: Data): Data {
   const now = Date.now();
   const at = (day: string, hour: number, minute = 0) => dayKeyToMs(day, hour, minute);
 
-  const area = (templateId: string, name: string, daysAgo: number): Folder => {
+  // A made-up person with everyday goals (nobody's real plans or schedule).
+  const area = (templateId: string, daysAgo: number): Folder => {
     const tpl = templateById(templateId);
     return {
-      id: uid(), name, icon: tpl.icon, color: tpl.color, templateId, progressType: tpl.progressType,
-      unit: tpl.unit, createdAt: at(shiftDay(today, -daysAgo), 9),
+      id: uid(), name: t(`tpl.${templateId}.name` as Key), icon: tpl.icon, color: tpl.color, templateId, progressType: tpl.progressType,
+      unit: t(`tpl.${templateId}.unit` as Key), createdAt: at(shiftDay(today, -daysAgo), 9),
     };
   };
-  const quran = area('quran', t('tpl.quran.name'), 30);
-  const study = area('study', t('tpl.study.name'), 28);
-  const fitness = area('gym', t('tpl.gym.name'), 28);
-  const languages = area('languages', t('tpl.languages.name'), 20);
+  const reading = area('reading', 30);
+  const study = area('study', 28);
+  const fitness = area('gym', 28);
+  const languages = area('languages', 20);
 
   const goal = (folder: Folder, title: string, patch: Partial<Task>): Task => ({
     id: uid(), folderId: folder.id, title, progressType: folder.progressType, target: 10, unit: folder.unit,
     milestones: [], resources: [], createdAt: folder.createdAt + 3600_000, ...patch,
   });
-  const hafiz = goal(quran, t('demo.hafiz'), { target: 30, unit: t('demo.hafiz.unit'), deadline: at(shiftDay(today, 200), 12) });
-  const tafsir = goal(quran, t('demo.tafsir'), { target: 300, unit: t('tpl.quran.unit') });
-  const python = goal(study, t('demo.python'), {
-    target: 1200, deadline: at(shiftDay(today, 40), 12), reminder: { hour: 21, minute: 0, days: [2, 3, 4, 5, 6] },
+  const books = goal(reading, t('demo.read'), { target: 1000 });
+  const course = goal(study, t('demo.course'), {
+    target: 1200, deadline: at(shiftDay(today, 40), 12), reminder: { hour: 19, minute: 30, days: [2, 3, 4, 5, 6] },
   });
   const shape = goal(fitness, t('demo.shape'), { target: 12 });
-  const korean = goal(languages, t('demo.korean'), {
+  const language = goal(languages, t('demo.lang'), {
     target: 0,
-    milestones: ['demo.korean.s1', 'demo.korean.s2', 'demo.korean.s3', 'demo.korean.s4', 'demo.korean.s5'].map((k, i) => ({
-      id: uid(), title: t(k as 'demo.korean.s1'), done: i === 0, doneAt: i === 0 ? at(shiftDay(today, -6), 20) : undefined,
+    milestones: ['demo.lang.s1', 'demo.lang.s2', 'demo.lang.s3', 'demo.lang.s4', 'demo.lang.s5'].map((k, i) => ({
+      id: uid(), title: t(k as Key), done: i === 0, doneAt: i === 0 ? at(shiftDay(today, -6), 20) : undefined,
     })),
-    resources: [{ id: uid(), title: 'Talk To Me In Korean', url: 'https://talktomeinkorean.com' }],
   });
-  const tasks = [hafiz, tafsir, python, shape, korean];
+  const tasks = [books, course, shape, language];
 
   // Logs over the last three weeks, with a streak that is still alive today.
   const entries: Entry[] = [];
@@ -75,37 +77,34 @@ export function buildDemo(current: Data): Data {
     xp += earned;
     entries.push(entry);
   };
-  // Seven juz were memorized before the app, entered as one starting log.
-  log(hafiz, shiftDay(today, -24), 8, 16, 0, true);
   for (let back = 23; back >= 0; back--) {
     const day = shiftDay(today, -back);
     const streak = back < streakDays ? streakDays - back : 0;
     const active = back < streakDays || rand() > 0.35;
     if (!active) continue;
-    if (back % 5 === 2) log(hafiz, day, 6, 1, streak, rand() > 0.4);
-    if (rand() > 0.3 && back > 0) log(python, day, 21, [30, 45, 60, 25][Math.floor(rand() * 4)], streak, rand() > 0.6);
-    if (rand() > 0.45) log(tafsir, day, 22, 4 + Math.floor(rand() * 8), streak, false);
-    if (back % 4 === 1) log(shape, day, 19, 1, streak, rand() > 0.5);
+    if (rand() > 0.3) log(books, day, 22, 10 + Math.floor(rand() * 20), streak, rand() > 0.6);
+    if (rand() > 0.35 && back > 0) log(course, day, 20, [25, 30, 45, 60][Math.floor(rand() * 4)], streak, rand() > 0.5);
+    if (back % 3 === 1) log(shape, day, 7, 1, streak, rand() > 0.5);
   }
   xp += XP.milestone;
-  entries.push({ id: uid(), taskId: korean.id, at: korean.milestones[0].doneAt!, amount: 0, note: `✓ ${korean.milestones[0].title}`, xp: XP.milestone, trust: 'quick' });
+  entries.push({ id: uid(), taskId: language.id, at: language.milestones[0].doneAt!, amount: 0, note: `✓ ${language.milestones[0].title}`, xp: XP.milestone, trust: 'quick' });
   entries.sort((a, b) => a.at - b.at);
 
   // Habits, ticked most days.
   const habit = (key: string, icon: string, color: string, time?: string): Habit => ({
-    id: uid(), title: t(key as 'habit.s.quran'), icon, color, days: [1, 2, 3, 4, 5, 6, 7], time, createdAt: at(shiftDay(today, -30), 8),
+    id: uid(), title: t(key as Key), icon, color, days: [1, 2, 3, 4, 5, 6, 7], time, createdAt: at(shiftDay(today, -30), 8),
   });
   const habits: Habit[] = [
-    habit('habit.s.quran', '📖', '#10B981', '06:00'),
-    habit('habit.s.workout', '💪', '#FF6B5B'),
     habit('habit.s.water', '💧', '#0EA5E9'),
-    habit('habit.s.dhikr', '📿', '#A855F7'),
-    habit('habit.s.language', '🗣️', '#14B8A6'),
-    habit('habit.s.code', '💻', '#3B82F6', '21:00'),
-    habit('habit.s.sleep', '🌙', '#6C63FF'),
+    habit('habit.s.stretch', '🧘', '#A855F7', '07:00'),
+    habit('habit.s.read', '📚', '#F59E0B'),
+    habit('habit.s.walk', '🚶', '#22C55E'),
+    habit('habit.s.dhikr', '📿', '#14B8A6'),
+    habit('habit.s.family', '📞', '#E11D48'),
+    habit('habit.s.plan', '🗓️', '#6C63FF', '21:30'),
   ];
   let checks: Checks = {};
-  const doneToday = new Set([0, 1, 2, 5]);
+  const doneToday = new Set([0, 1, 4]);
   habits.forEach((h, i) => {
     for (let back = 29; back >= 0; back--) {
       const day = shiftDay(today, -back);
@@ -118,6 +117,23 @@ export function buildDemo(current: Data): Data {
     }
   });
 
+  // A Qurʼan khatm on day ten of a 30-day plan, right on schedule (60 pages of XP a day at most).
+  const khatm: Khatm = { start: shiftDay(today, -9), days: 30, page: 182, best: 182 };
+  xp += khatm.best * PAGE_XP;
+
+  // Prayers: nearly all of the last two weeks, today up to Dhuhr.
+  let worship: Checks = {};
+  for (let back = 13; back >= 0; back--) {
+    const day = shiftDay(today, -back);
+    for (const p of PRAYERS) {
+      const on = back === 0 ? p === 'fajr' || p === 'dhuhr' : back < 6 || rand() > 0.15;
+      if (on) {
+        worship = withCheck(worship, p, day, true);
+        xp += WORSHIP_XP[p];
+      }
+    }
+  }
+
   // To-dos: some finished, some waiting for tonight and tomorrow.
   const plans: Plan[] = [];
   const todo = (title: string, icon: string, day: string, time: string | undefined, task?: Task, done?: number): Plan => {
@@ -127,16 +143,16 @@ export function buildDemo(current: Data): Data {
   };
   for (let back = 9; back >= 1; back--) {
     const day = shiftDay(today, -back);
-    if (back % 2 === 0) todo(t('demo.task.python'), '💻', day, '21:00', python, at(day, 21, 40));
-    if (back % 3 === 0) todo(t('demo.task.gym'), '🏋️', day, '19:00', shape, at(day, 20, 10));
-    if (back % 4 === 0) todo(t('demo.task.memorize'), '📖', day, '06:00', hafiz, back === 4 ? undefined : at(day, 6, 30));
+    if (back % 2 === 0) todo(t('demo.task.course'), '💻', day, '19:30', course, at(day, 20, 15));
+    if (back % 3 === 0) todo(t('demo.task.gym'), '🏋️', day, '07:00', shape, at(day, 7, 50));
+    if (back % 4 === 0) todo(t('demo.task.read'), '📚', day, '22:00', books, back === 4 ? undefined : at(day, 22, 30));
   }
-  todo(t('demo.task.gym'), '🏋️', today, '07:30', shape, at(today, 8, 20));
-  todo(t('demo.task.memorize'), '📖', today, '20:00', hafiz);
-  todo(t('demo.task.python'), '💻', today, '21:00', python);
-  todo(t('demo.tafsir'), '📚', today, '22:00', tafsir);
-  todo(t('demo.task.vocab'), '🇰🇷', shiftDay(today, 1), '09:00', korean);
-  todo(t('demo.task.water'), '🧴', shiftDay(today, 2), undefined);
+  todo(t('demo.task.gym'), '🏋️', today, '07:00', shape, at(today, 7, 55));
+  todo(t('demo.task.call'), '📞', today, '18:00', undefined);
+  todo(t('demo.task.course'), '💻', today, '19:30', course);
+  todo(t('demo.task.read'), '📚', today, '22:00', books);
+  todo(t('demo.task.vocab'), '🗣️', shiftDay(today, 1), '09:00', language);
+  todo(t('demo.task.shop'), '🛒', shiftDay(today, 2), undefined);
 
   const base: Profile = {
     ...initialProfile,
@@ -147,9 +163,11 @@ export function buildDemo(current: Data): Data {
     streak: { current: streakDays, best: 14, lastDay: today },
     freezes: 1,
     questDay: today,
+    khatm,
+    quranPages: khatm.best,
     echo: { name: t('demo.echo'), skin: 1, hair: 0, bornAt: at(shiftDay(today, -24), 9) },
   };
-  const data = { folders: [quran, study, fitness, languages], tasks, entries, plans, habits, checks, profile: base };
+  const data = { folders: [reading, study, fitness, languages], tasks, entries, plans, habits, checks, worship, profile: base };
   const achievements: Record<string, number> = {};
   for (const id of earnedBadges(data)) achievements[id] = now - Math.floor(rand() * 20) * 86400_000;
   void levelInfo;

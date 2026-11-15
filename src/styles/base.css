@@ -2,6 +2,7 @@
 
 :root {
   --font: 'Manrope Variable', 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-ar: 'Amiri Quran', 'Amiri', 'Noto Naskh Arabic', 'Geeza Pro', 'Scheherazade New', 'Traditional Arabic', serif;
   --r-xl: 28px;
   --r-lg: 22px;
   --r-md: 16px;
@@ -24,6 +25,7 @@
   --cyan: #3dd6f5;
   --pink: #ff6fa8;
   --gold: #ffcf5c;
+  --gold-ink: #ffcf5c; /* gold for text and thin lines; darker on light backgrounds */
   --accent: var(--blue);
   --accent-grad: linear-gradient(180deg, #5f9bff 0%, #2f66f6 100%);
   --on-accent: #ffffff;
@@ -90,6 +92,7 @@
   --cyan: #12b4d8;
   --pink: #ee4f90;
   --gold: #e9a920;
+  --gold-ink: #a36800;
 }
 
 *,

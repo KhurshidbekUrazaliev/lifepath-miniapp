@@ -13,6 +13,7 @@ import { fmtNumber, fmtShortDate } from '../i18n/format';
 import { Bar, Card, Chips, Header, Num, Ring, Screen, Section, Tap } from '../ui/kit';
 import { Hex } from '../ui/charts';
 import { StatTile } from '../ui/parts';
+import { Emoji } from '../ui/Emoji';
 
 type Range = 'month' | 'year' | 'all';
 
@@ -60,7 +61,7 @@ export function Progress() {
       <div style={{ display: 'grid', justifyItems: 'center', gap: 12, padding: '6px 0 2px' }}>
         <Ring value={lvl.ratio} size={196} stroke={14}>
           <motion.div initial={{ scale: 0.4, rotate: -40, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.25 }} style={{ fontSize: 30, lineHeight: 1 }}>
-            ⭐
+            <Emoji e="⭐" />
           </motion.div>
           <div className="t-display num" style={{ fontSize: 34, marginTop: 6 }}>{t('common.lv', { n: lvl.level })}</div>
           <div className="t-small muted" style={{ marginTop: 2 }}>{rankTitle(lvl.level)}</div>
@@ -107,7 +108,7 @@ export function Progress() {
       </Section>
 
       <Card className="row" style={{ gap: 14 }}>
-        <span style={{ fontSize: 38, lineHeight: 1 }}>🚀</span>
+        <span style={{ fontSize: 38, lineHeight: 1 }}><Emoji e="🚀" /></span>
         <div>
           <div className="t-body">{t('progress.keepGoing')}</div>
           <div className="t-small muted">{t('progress.keepGoing.body')}</div>
@@ -115,10 +116,10 @@ export function Progress() {
       </Card>
 
       <div className="tiles">
-        <StatTile icon={<span style={{ fontSize: 24 }}>⚡</span>} value={<Num value={period.gained} format={(n) => fmtNumber(Math.round(n))} />} label={t('progress.stat.xp')} />
-        <StatTile icon={<span style={{ fontSize: 24 }}>📝</span>} value={<Num value={period.logs} />} label={t('progress.stat.logs')} />
-        <StatTile icon={<span style={{ fontSize: 24 }}>🔥</span>} value={<Num value={d.profile.streak.best} />} label={t('progress.stat.best')} />
-        <StatTile icon={<span style={{ fontSize: 24 }}>🏁</span>} value={<Num value={period.goalsDone} />} label={t('progress.stat.finished')} />
+        <StatTile icon={<span style={{ fontSize: 24 }}><Emoji e="⚡" /></span>} value={<Num value={period.gained} format={(n) => fmtNumber(Math.round(n))} />} label={t('progress.stat.xp')} />
+        <StatTile icon={<span style={{ fontSize: 24 }}><Emoji e="📝" /></span>} value={<Num value={period.logs} />} label={t('progress.stat.logs')} />
+        <StatTile icon={<span style={{ fontSize: 24 }}><Emoji e="🔥" /></span>} value={<Num value={d.profile.streak.best} />} label={t('progress.stat.best')} />
+        <StatTile icon={<span style={{ fontSize: 24 }}><Emoji e="🏁" /></span>} value={<Num value={period.goalsDone} />} label={t('progress.stat.finished')} />
       </div>
     </Screen>
   );

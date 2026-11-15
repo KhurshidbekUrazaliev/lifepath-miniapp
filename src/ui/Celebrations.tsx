@@ -7,6 +7,8 @@ import { badgeById } from '../lib/achievements';
 import { t, tk, tn } from '../i18n';
 import { Hex } from './charts';
 import { Tap, spring } from './kit';
+import { Emoji } from './Emoji';
+import { StoryButton, storyCards } from './StoryButton';
 
 const COLORS = ['#5f9bff', '#9b8cff', '#34d399', '#ffcf5c', '#ff6fa8', '#3dd6f5'];
 
@@ -71,6 +73,8 @@ function describe(c: Celebration): { icon: React.ReactNode; title: string; sub?:
     }
     case 'item':
       return { icon: '🛍️', title: tk(`item.${c.item}`, c.item), sub: t('cel.item') };
+    case 'khatm':
+      return { icon: '📖', title: t('khatm.done.title'), sub: tn('khatm.count', c.n) };
     case 'streak':
       return {
         icon: '🔥',
@@ -98,7 +102,7 @@ function Toast({ c, onDone }: { c: Celebration; onDone: () => void }) {
       exit={{ opacity: 0, y: -14, scale: 0.94 }}
       transition={spring}
     >
-      <span className="toast-ic">{d.icon}</span>
+      <span className="toast-ic">{typeof d.icon === 'string' ? <Emoji e={d.icon} /> : d.icon}</span>
       <span style={{ minWidth: 0 }}>
         <span className="t-body clip" style={{ display: 'block' }}>{d.title}</span>
         {d.sub ? <span className="t-small muted clip" style={{ display: 'block' }}>{d.sub}</span> : null}
@@ -121,7 +125,7 @@ export function Celebrations() {
     for (const c of list) {
       if (seen.current.has(c.id)) continue;
       seen.current.add(c.id);
-      if (c.kind === 'levelup' || c.kind === 'complete') {
+      if (c.kind === 'levelup' || c.kind === 'complete' || c.kind === 'khatm') {
         haptic('success');
         if (canvas.current) fireConfetti(canvas.current);
       } else if (c.kind === 'achievement') haptic('success');
@@ -157,18 +161,21 @@ export function Celebrations() {
               onClick={(e) => e.stopPropagation()}
             >
               <motion.div
-                style={{ fontSize: 64, lineHeight: 1 }}
+                style={{ lineHeight: 0 }}
                 initial={{ rotate: -30, scale: 0.4 }}
                 animate={{ rotate: 0, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 12, delay: 0.1 }}
               >
-                ⭐
+                <Emoji e="⭐" size={76} />
               </motion.div>
               <div className="t-display" style={{ marginTop: 12 }}>{t('cel.levelup', { n: levelUp.level })}</div>
               <div className="t-body muted" style={{ marginTop: 6, marginBottom: 20 }}>{t('cel.levelup.sub')}</div>
-              <Tap className="btn primary" onTap={() => dismiss(levelUp.id)}>
-                {t('cel.continue')}
-              </Tap>
+              <div className="modal-actions">
+                <Tap className="btn primary" onTap={() => dismiss(levelUp.id)}>
+                  {t('cel.continue')}
+                </Tap>
+                <StoryButton make={(p) => storyCards.level(p, levelUp.level)} className="btn ghost" />
+              </div>
             </motion.div>
           </motion.div>
         ) : null}

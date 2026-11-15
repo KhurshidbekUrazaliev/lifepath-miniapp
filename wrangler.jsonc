@@ -12,7 +12,7 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/tg/*", "/admin/*"]
+    "run_worker_first": ["/api/*", "/tg/*", "/admin/*", "/s/*"]
   },
 
   // Created with `wrangler d1 create lifepath`. Apply new migrations with

@@ -1,13 +1,14 @@
 // Small building blocks shared by every screen.
 import { CSSProperties, ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { animate, motion, useReducedMotion } from 'motion/react';
-import { Check as CheckIcon, ChevronLeft, ChevronRight, Settings as Gear } from 'lucide-react';
+import { CaretLeft, CaretRight, Check as CheckIcon, GearSix as Gear } from '@phosphor-icons/react';
 import { Haptic, haptic, lowPerf, tgUser } from '../tg/telegram';
 import { useNav } from '../store/nav';
 import { useStore } from '../store/store';
 import { t } from '../i18n';
 import { weekdayShort } from '../i18n/format';
 import { dayKeyToMs } from '../lib/calendar';
+import { Emoji } from './Emoji';
 
 export const cx = (...parts: (string | false | null | undefined)[]): string => parts.filter(Boolean).join(' ');
 
@@ -64,7 +65,7 @@ export function Section({ title, action, onAction, children }: { title: string; 
         {action && onAction ? (
           <Tap className="sec-act" onTap={onAction} scale={0.94}>
             {action}
-            <ChevronRight size={15} />
+            <CaretRight size={15} weight="bold" />
           </Tap>
         ) : null}
       </div>
@@ -105,7 +106,7 @@ export function Header({ title, right, noGear }: { title: string; right?: ReactN
     <header className="hdr">
       {depth > 0 ? (
         <IconBtn onTap={pop} label={t('common.back')}>
-          <ChevronLeft size={22} />
+          <CaretLeft size={22} weight="bold" />
         </IconBtn>
       ) : (
         <span />
@@ -189,7 +190,7 @@ export function Check({ on, green, size = 28 }: { on: boolean; green?: boolean; 
     <span className={cx('check', on && 'on', green && 'green')} style={{ width: size, height: size }}>
       {on ? (
         <motion.span initial={{ scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 520, damping: 22 }}>
-          <CheckIcon size={size * 0.56} strokeWidth={3.2} />
+          <CheckIcon size={size * 0.56} weight="bold" />
         </motion.span>
       ) : null}
     </span>
@@ -321,7 +322,7 @@ export function Num({ value, format }: { value: number; format?: (n: number) => 
 export function Bubble({ icon, color, size }: { icon: ReactNode; color?: string; size?: 'sm' | 'lg' }) {
   return (
     <span className={cx('bubble', size)} style={color ? { background: `${color}26`, borderColor: `${color}40` } : undefined}>
-      {icon}
+      {typeof icon === 'string' ? <Emoji e={icon} /> : icon}
     </span>
   );
 }
@@ -349,7 +350,7 @@ export function Row({ icon, title, sub, value, right, onTap, danger }: RowProps)
       </span>
       {value ? <span className="lrow-val">{value}</span> : null}
       {right}
-      {onTap && !right ? <ChevronRight size={18} className="chev" /> : null}
+      {onTap && !right ? <CaretRight size={18} className="chev" weight="bold" /> : null}
     </>
   );
   return onTap ? (
@@ -364,7 +365,7 @@ export function Row({ icon, title, sub, value, right, onTap, danger }: RowProps)
 export function Empty({ icon, title, body, children }: { icon: string; title: string; body?: string; children?: ReactNode }) {
   return (
     <Card className="empty" pad={false}>
-      <div className="empty-ic">{icon}</div>
+      <div className="empty-ic"><Emoji e={icon} /></div>
       <div className="t-h">{title}</div>
       {body ? <div className="t-small muted">{body}</div> : null}
       {children}
@@ -448,7 +449,7 @@ export function EmojiPick({ emojis, value, onChange }: { emojis: string[]; value
             onChange(e);
           }}
         >
-          {e}
+          <Emoji e={e} />
         </button>
       ))}
     </div>

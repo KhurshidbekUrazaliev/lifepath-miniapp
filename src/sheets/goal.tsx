@@ -1,6 +1,6 @@
 // Sheets for a goal, an area, a goal's reminder and the smart planner.
 import { useMemo, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash } from '@phosphor-icons/react';
 import { useStore } from '../store/store';
 import { Sheet as SheetState, useNav } from '../store/nav';
 import { ICONS, PALETTE, TEMPLATES, templateById } from '../lib/templates';
@@ -15,6 +15,7 @@ import { Card, EmojiPick, Field, Segmented, Swatches, Tap, Toggle, cx } from '..
 import { Sheet } from '../ui/Sheet';
 import { confirmSheet } from './confirm';
 import { TimeField, Weekdays } from './create';
+import { Emoji } from '../ui/Emoji';
 
 // ---------- area ----------
 
@@ -26,7 +27,7 @@ export function AreaSheet({ sheet, onClose }: { sheet: Extract<SheetState, { nam
   const push = useNav((s) => s.push);
   const pop = useNav((s) => s.pop);
 
-  const [templateId, setTemplateId] = useState(existing?.templateId ?? 'quran');
+  const [templateId, setTemplateId] = useState(existing?.templateId ?? TEMPLATES[0].id);
   const tpl = templateById(templateId);
   const [name, setName] = useState(existing?.name ?? t(`tpl.${templateId}.name` as Key));
   const [icon, setIcon] = useState(existing?.icon ?? tpl.icon);
@@ -70,7 +71,7 @@ export function AreaSheet({ sheet, onClose }: { sheet: Extract<SheetState, { nam
           <div className="tpl-grid">
             {TEMPLATES.map((x) => (
               <button key={x.id} type="button" className={cx('tpl', templateId === x.id && 'on')} onClick={() => pick(x.id)}>
-                <span style={{ fontSize: 24 }}>{x.icon}</span>
+                <span style={{ fontSize: 24 }}><Emoji e={x.icon} /></span>
                 <span className="t-tiny clip" style={{ maxWidth: '100%' }}>{t(`tpl.${x.id}.name` as Key)}</span>
               </button>
             ))}
@@ -100,7 +101,7 @@ export function AreaSheet({ sheet, onClose }: { sheet: Extract<SheetState, { nam
             })
           }
         >
-          <Trash2 size={18} />
+          <Trash size={18} />
           {t('area.delete')}
         </Tap>
       ) : null}
@@ -183,7 +184,7 @@ export function GoalSheet({ sheet, onClose }: { sheet: Extract<SheetState, { nam
         <div className="chips" style={{ paddingTop: 0, paddingBottom: 2 }}>
           {folders.map((f) => (
             <button key={f.id} type="button" className={cx('chip', f.id === folderId && 'on solid')} onClick={() => pickFolder(f.id)}>
-              <span>{f.icon} {f.name}</span>
+              <span><Emoji e={f.icon} /> {f.name}</span>
             </button>
           ))}
         </div>

@@ -1,6 +1,6 @@
 // Inbox: what needs you now. Proof to add, tasks that slipped, what is coming up, and recent wins.
 import { useMemo, useState } from 'react';
-import { BellRing, Sparkles } from 'lucide-react';
+import { BellRinging, Sparkle } from '@phosphor-icons/react';
 import { useData, useStore } from '../store/store';
 import { useNav } from '../store/nav';
 import { useServer } from '../store/server';
@@ -15,6 +15,7 @@ import { fmtAmount, fmtRelative } from '../i18n/format';
 import { Card, Empty, Header, Screen, Section, Tap, Toggle } from '../ui/kit';
 import { Hex } from '../ui/charts';
 import { PlanItem } from '../ui/parts';
+import { Emoji } from '../ui/Emoji';
 
 const DAY = 86400_000;
 
@@ -88,7 +89,7 @@ export function Inbox() {
 
       <Card>
         <div className="row" style={{ gap: 14 }}>
-          <span className="bubble" style={{ background: 'var(--accent-soft)', color: 'var(--blue-hi)' }}><BellRing size={21} /></span>
+          <span className="bubble" style={{ background: 'var(--accent-soft)', color: 'var(--blue-hi)' }}><BellRinging size={21} /></span>
           <div className="grow">
             <div className="t-body">{t('inbox.reminders')}</div>
             <div className="t-small muted">{d.settings.reminders ? t('inbox.reminders.on') : t('inbox.reminders.off')}</div>
@@ -124,7 +125,7 @@ export function Inbox() {
                   </div>
                 </div>
                 <Tap className="btn primary sm pill" onTap={() => open({ name: 'proof', entryId: e.id })}>
-                  <Sparkles size={15} />
+                  <Sparkle size={15} />
                   {sparksFor(e.xp)}
                 </Tap>
               </Card>
@@ -154,7 +155,7 @@ export function Inbox() {
           <Card pad={false} className="list">
             {m.feed.map((f) => (
               <div className="lrow" key={f.key}>
-                {f.badge ? <Hex tone={f.badge.tone} icon={f.badge.icon} size={34} /> : <span className="lrow-ic" style={{ fontSize: 22, width: 34 }}>🏁</span>}
+                {f.badge ? <Hex tone={f.badge.tone} icon={f.badge.icon} size={34} /> : <span className="lrow-ic" style={{ fontSize: 22, width: 34 }}><Emoji e="🏁" /></span>}
                 <span className="grow t-small" style={{ fontWeight: 600 }}>{f.text}</span>
                 <span className="t-tiny faint">{fmtRelative(f.at)}</span>
               </div>

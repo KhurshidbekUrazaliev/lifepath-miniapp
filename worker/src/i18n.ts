@@ -25,7 +25,28 @@ export interface BotText {
   description: string;
   /** Shown on the bot's profile and in shared links (at most 120 characters). */
   shortDescription: string;
+  /** Friend challenges: what each kind counts. */
+  challengeKinds: Record<ChallengeKind, string>;
+  /** A score with its unit: "1,240 XP", "34 prayers". */
+  challengeScore(kind: ChallengeKind, n: number): string;
+  /** To the person who started a challenge, when a friend joins it. */
+  challengeJoined(name: string, kind: string): string;
+  /** To each member when a challenge ends. `place` is 1-based; `total` counts the members. */
+  challengeOver(kind: string, place: number, total: number, winner: string, score: string): string;
 }
+
+export type ChallengeKind = 'xp' | 'prayer' | 'quran' | 'focus';
+
+/** 1 страница, 2 страницы, 5 страниц. */
+function ru(n: number, one: string, few: string, many: string): string {
+  const d = n % 10;
+  const h = n % 100;
+  const word = d === 1 && h !== 11 ? one : d >= 2 && d <= 4 && (h < 12 || h > 14) ? few : many;
+  return `${n} ${word}`;
+}
+
+/** 1240 -> "1,240" (en) or "1 240" (uz, ru). */
+const num = (n: number, sep: string): string => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
 
 export const TEXT: Record<Lang, BotText> = {
   en: {
@@ -48,7 +69,7 @@ export const TEXT: Record<Lang, BotText> = {
       '1. LifePath is free. LifePath Plus is an optional subscription paid for with Telegram Stars.\n' +
       '2. Plus renews every 30 days until you cancel it in Telegram (Settings → My Stars). After you cancel, Plus stays active until the end of the paid period.\n' +
       '3. For payment questions and refunds, send /paysupport.\n' +
-      '4. We store only what the app needs: your Telegram ID, name, language and time zone, the reminders you set, your score and, if you join the rankings, the name and country you choose.\n' +
+      '4. We store only what the app needs: your Telegram ID, name, language and time zone, the reminders you set, your score, the friend challenges you join (their members see your first name and score) and, if you join the rankings, the name and country you choose. Pictures you share to Telegram Stories are kept for one day.\n' +
       '5. LifePath is provided as is, without warranties.',
     thanks: (date) => `Thank you! LifePath Plus is active until ${date}.`,
     invoiceInvalid: 'This invoice is no longer valid. Open LifePath and try again.',
@@ -58,6 +79,16 @@ export const TEXT: Record<Lang, BotText> = {
     description:
       'LifePath helps you plan your goals, build habits, track your progress and grow, one small step at a time.',
     shortDescription: 'Plan goals, build habits, track progress and grow.',
+    challengeKinds: { xp: 'Most XP', prayer: 'Prayers', quran: "Qur'an pages", focus: 'Focus minutes' },
+    challengeScore: (kind, n) =>
+      kind === 'xp' ? `${num(n, ',')} XP` : kind === 'focus' ? `${num(n, ',')} min` : `${num(n, ',')} ${kind === 'prayer' ? (n === 1 ? 'prayer' : 'prayers') : n === 1 ? 'page' : 'pages'}`,
+    challengeJoined: (name, kind) => `🤝 ${name} joined your challenge “${kind}”.`,
+    challengeOver: (kind, place, total, winner, score) =>
+      total === 1
+        ? `🏁 Your challenge “${kind}” is over: ${score}. Invite a friend to the next one!`
+        : place === 1
+          ? `🏆 The challenge “${kind}” is over, and you won with ${score}! MashaAllah.`
+          : `🏁 The challenge “${kind}” is over. You placed ${place} of ${total} with ${score}. The winner is ${winner}.`,
   },
 
   uz: {
@@ -80,7 +111,7 @@ export const TEXT: Record<Lang, BotText> = {
       '1. LifePath bepul. LifePath Plus – Telegram Stars orqali toʻlanadigan ixtiyoriy obuna.\n' +
       '2. Plus obunasi Telegram sozlamalarining yulduzlar (Stars) boʻlimida bekor qilinmaguncha har 30 kunda yangilanadi. Bekor qilganingizdan keyin Plus toʻlangan muddat oxirigacha ishlaydi.\n' +
       '3. Toʻlov va uni qaytarish boʻyicha savollar uchun /paysupport buyrugʻini yuboring.\n' +
-      '4. Biz faqat ilova ishlashi uchun zarur maʼlumotlarni saqlaymiz: Telegram ID, ism, til va vaqt mintaqangiz, siz belgilagan eslatmalar, ballaringiz hamda reytingga qoʻshilsangiz, oʻzingiz tanlagan ism va davlat.\n' +
+      '4. Biz faqat ilova ishlashi uchun zarur maʼlumotlarni saqlaymiz: Telegram ID, ism, til va vaqt mintaqangiz, siz belgilagan eslatmalar, ballaringiz, qoʻshilgan doʻstlar musobaqalari (ularning ishtirokchilari ismingiz va natijangizni koʻradi) hamda reytingga qoʻshilsangiz, oʻzingiz tanlagan ism va davlat. Telegram hikoyalariga (Stories) ulashgan rasmlaringiz bir kun saqlanadi.\n' +
       '5. LifePath «qanday boʻlsa, shunday» holatda, kafolatlarsiz taqdim etiladi.',
     thanks: (date) => `Rahmat! LifePath Plus ${date}gacha faol.`,
     invoiceInvalid: 'Bu toʻlov havolasi yaroqsiz. LifePath ilovasini ochib, qaytadan urinib koʻring.',
@@ -96,6 +127,16 @@ export const TEXT: Record<Lang, BotText> = {
     description:
       'LifePath bilan maqsadlaringizni rejalashtiring, foydali odatlar shakllantiring, natijalaringizni kuzating va har kuni bir qadam oʻsing.',
     shortDescription: 'Maqsadlarni rejalashtiring, odatlar shakllantiring, natijalarni kuzating va oʻsing.',
+    challengeKinds: { xp: 'Eng koʻp XP', prayer: 'Namozlar', quran: 'Qurʼon sahifalari', focus: 'Fokus daqiqalari' },
+    challengeScore: (kind, n) =>
+      kind === 'xp' ? `${num(n, ' ')} XP` : kind === 'focus' ? `${num(n, ' ')} daqiqa` : kind === 'prayer' ? `${num(n, ' ')} ta namoz` : `${num(n, ' ')} bet`,
+    challengeJoined: (name, kind) => `🤝 ${name} «${kind}» musobaqangizga qoʻshildi.`,
+    challengeOver: (kind, place, total, winner, score) =>
+      total === 1
+        ? `🏁 «${kind}» musobaqangiz tugadi: ${score}. Keyingisiga doʻstingizni ham chaqiring!`
+        : place === 1
+          ? `🏆 «${kind}» musobaqasi tugadi — ${score} bilan gʻolib boʻldingiz! Mashaalloh.`
+          : `🏁 «${kind}» musobaqasi tugadi. ${total} kishi ichida ${place}-oʻrin (${score}). Gʻolib: ${winner}.`,
   },
 
   ru: {
@@ -118,7 +159,7 @@ export const TEXT: Record<Lang, BotText> = {
       '1. LifePath бесплатен. LifePath Plus — необязательная подписка, которая оплачивается звёздами Telegram.\n' +
       '2. Подписка Plus продлевается каждые 30 дней, пока вы не отмените её в Telegram (Настройки → Мои звёзды). После отмены Plus действует до конца оплаченного периода.\n' +
       '3. По вопросам оплаты и возврата отправьте команду /paysupport.\n' +
-      '4. Мы храним только то, что нужно для работы приложения: ваш Telegram ID, имя, язык и часовой пояс, созданные вами напоминания, ваши очки, а если вы участвуете в рейтинге — выбранные вами имя и страну.\n' +
+      '4. Мы храним только то, что нужно для работы приложения: ваш Telegram ID, имя, язык и часовой пояс, созданные вами напоминания, ваши очки, соревнования с друзьями, в которых вы участвуете (их участники видят ваше имя и результат), а если вы участвуете в рейтинге — выбранные вами имя и страну. Картинки, которыми вы делитесь в историях Telegram, хранятся один день.\n' +
       '5. LifePath предоставляется «как есть», без гарантий.',
     thanks: (date) => `Спасибо! LifePath Plus активен до ${date}.`,
     invoiceInvalid: 'Этот счёт недействителен. Откройте LifePath и попробуйте ещё раз.',
@@ -133,6 +174,22 @@ export const TEXT: Record<Lang, BotText> = {
     description:
       'LifePath помогает планировать цели, формировать привычки, следить за прогрессом и расти — шаг за шагом.',
     shortDescription: 'Планируйте цели, формируйте привычки, следите за прогрессом и растите.',
+    challengeKinds: { xp: 'Больше всех XP', prayer: 'Намазы', quran: 'Страницы Корана', focus: 'Минуты фокуса' },
+    challengeScore: (kind, n) =>
+      kind === 'xp'
+        ? `${num(n, ' ')} XP`
+        : kind === 'focus'
+          ? `${num(n, ' ')} мин`
+          : kind === 'prayer'
+            ? ru(n, 'намаз', 'намаза', 'намазов')
+            : ru(n, 'страница', 'страницы', 'страниц'),
+    challengeJoined: (name, kind) => `🤝 В вашем соревновании «${kind}» новый участник: ${name}.`,
+    challengeOver: (kind, place, total, winner, score) =>
+      total === 1
+        ? `🏁 Ваше соревнование «${kind}» завершилось: ${score}. Позовите друга в следующее!`
+        : place === 1
+          ? `🏆 Соревнование «${kind}» завершилось — вы победили, ${score}! МашаАллах.`
+          : `🏁 Соревнование «${kind}» завершилось. Ваше место: ${place} из ${total} (${score}). Победитель: ${winner}.`,
   },
 };
 

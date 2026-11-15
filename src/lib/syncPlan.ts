@@ -6,6 +6,8 @@
 //  - remote row arrives       → apply it, unless this device also changed that record
 //  - both changed             → keep the local version (it gets pushed); profiles are merged
 import { Entry, Folder, Plan, Profile, Task } from './types';
+import { mergeKhatm } from './khatm';
+import { mergeFocus } from './focus';
 
 export type RecordKind = 'folder' | 'task' | 'entry' | 'plan' | 'profile';
 
@@ -114,6 +116,11 @@ export function mergeProfiles(local: Profile, remote: Profile): Profile {
     owned: Array.from(new Set([...(remote.owned ?? []), ...(local.owned ?? [])])),
     // Echo: keep the one that was named; if both were, this device wins.
     echo: local.echo?.name ? local.echo : (remote.echo ?? local.echo),
+    // The khatm: the newer plan, or the furthest page of the same one.
+    khatm: mergeKhatm(local.khatm, remote.khatm),
+    khatms: Math.max(local.khatms ?? 0, remote.khatms ?? 0) || undefined,
+    quranPages: Math.max(local.quranPages ?? 0, remote.quranPages ?? 0) || undefined,
+    focus: mergeFocus(local.focus, remote.focus),
   };
 }
 

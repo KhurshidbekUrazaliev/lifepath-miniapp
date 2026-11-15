@@ -37,6 +37,8 @@ export const tgUser: TgUser = rawUser
   : { id: 0, firstName: '', lang: typeof navigator !== 'undefined' ? navigator.language : 'en' };
 
 export const initData: string = inTelegram ? wa.initData : '';
+/** Telegram Premium: stories with a link need it. */
+export const isPremium: boolean = rawUser?.is_premium === true;
 export const platform: string = inTelegram ? String(wa.platform ?? 'unknown') : 'browser';
 export const isMobile: boolean = platform === 'ios' || platform === 'android' || platform === 'android_x';
 
@@ -182,6 +184,23 @@ export function shareText(text: string, url: string): void {
   openLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
 }
 
+/** Telegram Stories, from a Mini App: phones only, Bot API 7.8 and later. */
+export const canStory: boolean = atLeast('7.8') && isMobile;
+
+/**
+ * Opens Telegram's story editor with the picture at `mediaUrl` (a public https address). The caption
+ * may be 200 characters (2048 with Premium); the link under the story is a Premium feature.
+ */
+export function shareStory(mediaUrl: string, text: string, link?: { url: string; name: string }): boolean {
+  if (!canStory) return false;
+  try {
+    wa.shareToStory(mediaUrl, { text: text.slice(0, 200), ...(link && isPremium ? { widget_link: link } : {}) });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const canAddToHome: boolean = atLeast('8.0') && isMobile;
 export function addToHomeScreen(): void {
   if (!canAddToHome) return;
@@ -270,3 +289,102 @@ export const cloud = {
   removeItems: (keys: string[]) => cloudCall<boolean>((cb) => wa.CloudStorage.removeItems(keys, cb)),
   getKeys: () => cloudCall<string[]>((cb) => wa.CloudStorage.getKeys(cb)),
 };
+
+// ---------- Location and compass ----------
+
+export type LocationResult = { lat: number; lon: number } | 'denied' | 'unavailable';
+
+/** Where the phone is: Telegram's location manager (8.0+, it asks once for this bot), else the browser's. */
+export function getLocation(): Promise<LocationResult> {
+  return new Promise((resolve) => {
+    const browser = () => {
+      if (!navigator.geolocation) return resolve('unavailable');
+      navigator.geolocation.getCurrentPosition(
+        (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+        (e) => resolve(e.code === 1 ? 'denied' : 'unavailable'),
+        { enableHighAccuracy: false, timeout: 15_000, maximumAge: 10 * 60_000 },
+      );
+    };
+    const lm = atLeast('8.0') ? wa.LocationManager : null;
+    if (!lm) return browser();
+    try {
+      const ask = () => {
+        if (!lm.isLocationAvailable) return browser();
+        lm.getLocation((data: any) => {
+          if (data && typeof data.latitude === 'number') resolve({ lat: data.latitude, lon: data.longitude });
+          else resolve(lm.isAccessRequested && !lm.isAccessGranted ? 'denied' : 'unavailable');
+        });
+      };
+      if (lm.isInited) ask();
+      else lm.init(ask);
+    } catch {
+      browser();
+    }
+  });
+}
+
+/** After a "no", Telegram can open this bot's location permission; false where it cannot. */
+export function openLocationSettings(): boolean {
+  const lm = atLeast('8.0') ? wa.LocationManager : null;
+  if (!lm?.isInited || !lm.isAccessRequested || lm.isAccessGranted) return false;
+  try {
+    lm.openSettings();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Calls `onHeading` with where the top of the phone points, in degrees clockwise from north, for as
+ * long as the phone reports it. Telegram's own orientation API first (8.0+), then the browser's:
+ * absolute orientation on Android, webkitCompassHeading on iOS. Returns the function that stops it.
+ */
+export function watchHeading(onHeading: (deg: number) => void): () => void {
+  const norm = (d: number) => ((d % 360) + 360) % 360;
+  const DO = atLeast('8.0') ? wa.DeviceOrientation : null;
+  if (DO) {
+    const handler = () => {
+      if (DO.absolute && typeof DO.alpha === 'number') onHeading(norm(360 - (DO.alpha * 180) / Math.PI));
+    };
+    try {
+      wa.onEvent('deviceOrientationChanged', handler);
+      DO.start({ refresh_rate: 50, need_absolute: true });
+      return () => {
+        wa.offEvent('deviceOrientationChanged', handler);
+        try {
+          DO.stop();
+        } catch {
+          // already stopped
+        }
+      };
+    } catch {
+      wa.offEvent?.('deviceOrientationChanged', handler);
+    }
+  }
+  const absolute = (e: DeviceOrientationEvent) => {
+    if (e.absolute && typeof e.alpha === 'number') onHeading(norm(360 - e.alpha));
+  };
+  const ios = (e: DeviceOrientationEvent) => {
+    const h = (e as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
+    if (typeof h === 'number') onHeading(norm(h));
+  };
+  window.addEventListener('deviceorientationabsolute', absolute as EventListener);
+  window.addEventListener('deviceorientation', ios);
+  return () => {
+    window.removeEventListener('deviceorientationabsolute', absolute as EventListener);
+    window.removeEventListener('deviceorientation', ios);
+  };
+}
+
+/** Safari asks before sharing motion data, and only from a tap. True when nothing needs asking. */
+export const compassNeedsPermission = (): boolean =>
+  !(atLeast('8.0') && wa.DeviceOrientation) && typeof (window as any).DeviceOrientationEvent?.requestPermission === 'function';
+
+export async function askCompassPermission(): Promise<boolean> {
+  try {
+    return (await (window as any).DeviceOrientationEvent.requestPermission()) === 'granted';
+  } catch {
+    return false;
+  }
+}

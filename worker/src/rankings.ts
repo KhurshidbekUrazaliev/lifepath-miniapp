@@ -2,6 +2,7 @@
 import { DAY_MS } from './env';
 import { badRequest, json, readJson } from './http';
 import { weekStart } from './time';
+import { ACTIVE_MEMBERSHIPS, readCounters, scoreUpdates, type Membership } from './challenges';
 import { loadUser, rows, type Ctx } from './users';
 import { bool, day, int, oneOf, str } from './validate';
 
@@ -37,10 +38,16 @@ export async function postActivity(c: Ctx): Promise<Response> {
   const level = int(body.level, 'level', 0, 100_000);
   const streak = int(body.streak, 'streak', 0, 100_000);
   if (weekXp > totalXp) throw badRequest('weekXp: cannot exceed totalXp');
+  // The counters friend challenges are scored on (sent by app versions that have challenges).
+  const counters = body.counters === undefined ? null : readCounters(body.counters);
 
   const db = c.env.DB;
   const id = c.auth.id;
-  const { user, writes, results } = await loadUser(c, {}, [db.prepare(SCORE).bind(id)]);
+  const { user, writes, results } = await loadUser(c, {}, [
+    db.prepare(SCORE).bind(id),
+    ...(counters ? [db.prepare(ACTIVE_MEMBERSHIPS).bind(id, c.now)] : []),
+  ]);
+  if (counters) writes.push(...scoreUpdates(db, rows<Membership>(results[1]), counters, id, c.now));
   const old = rows<ScoreRow>(results[0])[0];
 
   // The weekly score counts only when the app agrees with the server on which week it is.

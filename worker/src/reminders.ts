@@ -2,6 +2,7 @@
 import { OPEN_RE } from './env';
 import { badRequest, json, readJson } from './http';
 import { TEXT } from './i18n';
+import { clockAt, nextPrayerFire, parsePrayer, prayerId, prayerKeyOf, samePrefs, type PrayerPrefs } from './prayer';
 import { ALL_DAYS, nextFire, type Schedule } from './time';
 import { loadUser, rows, type Ctx } from './users';
 import { bool, day, int, lang, match, obj, str, timeZone } from './validate';
@@ -13,10 +14,10 @@ const MAX_LABEL = 40;
 const ID_RE = /^[A-Za-z0-9_.:-]{1,64}$/;
 const NUDGE_ID = '~nudge';
 
-/** A reminder as stored, without its fire time. */
+/** A reminder as stored, without its fire time. A prayer's time comes from prayer_prefs instead of the schedule. */
 export interface Reminder extends Schedule {
   id: string;
-  kind: 'item' | 'nudge';
+  kind: 'item' | 'nudge' | 'prayer';
   text: string;
   open: string | null;
 }
@@ -64,8 +65,8 @@ function parseItem(raw: unknown, index: number): Reminder {
 const same = (a: Reminder, b: Reminder): boolean =>
   a.kind === b.kind &&
   a.text === b.text &&
-  a.hour === b.hour &&
-  a.minute === b.minute &&
+  // A prayer row's hour and minute only record the last time worked out.
+  (a.kind === 'prayer' || (a.hour === b.hour && a.minute === b.minute)) &&
   a.days === b.days &&
   a.date === b.date &&
   a.open === b.open;
@@ -82,6 +83,7 @@ export async function putReminders(c: Ctx): Promise<Response> {
   }
   const wanted = body.items.map(parseItem);
   if (new Set(wanted.map((w) => w.id)).size !== wanted.length) throw badRequest('items: every id must be unique');
+  const prayer = parsePrayer(body.prayer, MAX_TEXT);
 
   const nudge = given(body.nudge) ? obj(body.nudge, 'nudge') : { enabled: false };
   if (bool(nudge.enabled, 'nudge.enabled')) {
@@ -101,8 +103,32 @@ export async function putReminders(c: Ctx): Promise<Response> {
   const id = c.auth.id;
   const { user, previousTz, writes, results } = await loadUser(c, { tz, lang: language }, [
     db.prepare(`SELECT ${COLUMNS} FROM reminders WHERE user_id = ?1`).bind(id),
+    db.prepare('SELECT lat, lon, tz, method, asr, before FROM prayer_prefs WHERE user_id = ?1').bind(id),
   ]);
   const stored = new Map(rows<ReminderRow>(results[0]).map((row) => [row.id, row]));
+
+  // Prayer reminders: where and how to work out the times, then one row per prayer.
+  const storedPrefs = rows<PrayerPrefs>(results[1])[0] ?? null;
+  const prefs = enabled && prayer ? prayer.prefs : null;
+  const prefsKept = samePrefs(storedPrefs, prefs);
+  if (prefs && !prefsKept) {
+    writes.push(
+      db
+        .prepare(
+          `INSERT INTO prayer_prefs (user_id, lat, lon, tz, method, asr, before) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+           ON CONFLICT (user_id) DO UPDATE SET lat = excluded.lat, lon = excluded.lon, tz = excluded.tz,
+             method = excluded.method, asr = excluded.asr, before = excluded.before`,
+        )
+        .bind(id, prefs.lat, prefs.lon, prefs.tz, prefs.method, prefs.asr, prefs.before),
+    );
+  } else if (!prefs && storedPrefs) {
+    writes.push(db.prepare('DELETE FROM prayer_prefs WHERE user_id = ?1').bind(id));
+  }
+  if (prefs && prayer) {
+    for (const item of prayer.items) {
+      wanted.push({ id: prayerId(item.key), kind: 'prayer', text: item.text, hour: 0, minute: 0, days: ALL_DAYS, date: null, open: 'prayer' });
+    }
+  }
 
   // Write only what changed. An unchanged reminder keeps its fire time, so syncing the same set
   // again costs no writes and can neither skip nor repeat a slot.
@@ -111,10 +137,13 @@ export async function putReminders(c: Ctx): Promise<Response> {
   let count = 0;
   for (const w of enabled ? wanted : []) {
     const old = stored.get(w.id);
-    if (!(old && sameZone && same(old, w))) {
-      const next = nextFire(w, tz, c.now);
+    // A prayer's time does not depend on the phone's time zone, only on its place.
+    if (!(old && (w.kind === 'prayer' ? prefsKept : sameZone) && same(old, w))) {
+      const key = w.kind === 'prayer' ? prayerKeyOf(w.id) : null;
+      const next = prefs && key ? nextPrayerFire(prefs, key, c.now) : nextFire(w, tz, c.now);
       if (next === null) continue; // a one-off whose time has passed
-      writes.push(db.prepare(UPSERT).bind(id, w.id, w.kind, w.text, w.hour, w.minute, w.days, w.date, w.open, next));
+      const { hour, minute } = prefs && key ? clockAt(prefs.tz, next) : w;
+      writes.push(db.prepare(UPSERT).bind(id, w.id, w.kind, w.text, hour, minute, w.days, w.date, w.open, next));
     }
     kept.add(w.id);
     if (w.kind === 'item') count++;
@@ -139,9 +168,12 @@ export async function putReminders(c: Ctx): Promise<Response> {
   return json({ ok: true, count, canMessage: user.can_message === 1 });
 }
 
-/** Statements that move every reminder of a user to its next time in a new time zone. */
+/** Statements that move every reminder of a user to its next time in a new time zone. Prayers keep their place's time. */
 export async function reschedule(db: D1Database, userId: number, tz: string, now: number): Promise<D1PreparedStatement[]> {
-  const { results } = await db.prepare(`SELECT ${COLUMNS} FROM reminders WHERE user_id = ?1`).bind(userId).all<ReminderRow>();
+  const { results } = await db
+    .prepare(`SELECT ${COLUMNS} FROM reminders WHERE user_id = ?1 AND kind != 'prayer'`)
+    .bind(userId)
+    .all<ReminderRow>();
   return results.map((row) => {
     const next = nextFire(row, tz, now);
     return next === null

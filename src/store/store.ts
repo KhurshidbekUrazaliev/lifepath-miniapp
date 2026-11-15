@@ -8,12 +8,15 @@ import {
 import { dayKey } from '../lib/dates';
 import { computeProgress, loggedToday } from '../lib/progress';
 import { XP, applyActivity, levelInfo, sparksFor, streakMultiplier, visibleStreak, xpForLog } from '../lib/gamify';
-import { computeAttributes, stageFor, totalPoints } from '../lib/echo';
+import { growthFor } from '../lib/companion';
 import { BuyCheck, Slot, canBuy, isOwned, itemById } from '../lib/wardrobe';
 import { cleanEvidence, evidenceBonus, evidenceState, sparksForAward, sparksGranted } from '../lib/evidence';
 import { HABIT_XP, TODO_XP, isChecked, withCheck, withoutHabit } from '../lib/habits';
-import { earnedBadges } from '../lib/achievements';
+import { EventBadge, earnedBadges } from '../lib/achievements';
 import { Data } from '../lib/stats';
+import { WORSHIP_XP, WorshipKey } from '../lib/prayer';
+import { newKhatm, readTo } from '../lib/khatm';
+import { addSession, focusToday, focusXp } from '../lib/focus';
 
 export function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -21,11 +24,12 @@ export function uid(): string {
 
 /** Something worth celebrating. The UI turns these into toasts, confetti and haptics. */
 export type Celebration = { id: string } & (
-  | { kind: 'xp'; xp: number; from: 'log' | 'proof' | 'habit' | 'todo' | 'milestone'; sparks?: number }
+  | { kind: 'xp'; xp: number; from: 'log' | 'proof' | 'habit' | 'todo' | 'milestone' | 'prayer' | 'fast' | 'adhkar' | 'quran' | 'focus'; sparks?: number }
   | { kind: 'complete'; title: string; xp: number }
   | { kind: 'levelup'; level: number }
   | { kind: 'achievement'; badge: string }
   | { kind: 'item'; item: string }
+  | { kind: 'khatm'; n: number }
   | { kind: 'streak'; days: number; freezeUsed?: boolean; freezeEarned?: boolean }
 );
 
@@ -101,7 +105,7 @@ export const defaultSettings: Settings = {
 };
 
 export const emptyData = (): Data => ({
-  folders: [], tasks: [], entries: [], plans: [], habits: [], checks: {}, profile: initialProfile, settings: defaultSettings,
+  folders: [], tasks: [], entries: [], plans: [], habits: [], checks: {}, worship: {}, profile: initialProfile, settings: defaultSettings,
 });
 
 interface State extends Data {
@@ -138,9 +142,22 @@ interface State extends Data {
   archiveHabit: (id: string) => void;
   deleteHabit: (id: string) => void;
   toggleHabit: (habitId: string, day?: string) => void;
+  /** Ticks or clears a prayer, a fast or the adhkar for a day; pays (or takes back) its XP. */
+  toggleWorship: (key: WorshipKey, day?: string) => void;
+  /** Starts a khatm plan (replacing the one under way), counting `page` pages as already read. */
+  startKhatm: (days: number, page?: number) => void;
+  /** Changes how many days the khatm plan takes; the pages read stay. */
+  setKhatmDays: (days: number) => void;
+  /** Moves the khatm bookmark. New pages pay XP (capped per day); the last page finishes the khatm. */
+  readQuran: (page: number) => void;
+  /**
+   * Counts a finished focus session: its minutes are logged on the timed goal it was for (with that
+   * log's XP), or else earn focus XP. Returns the XP it brought.
+   */
+  finishFocus: (minutes: number, taskId?: string, note?: string) => number;
 
   setNudge: (patch: Partial<NudgeSettings>) => void;
-  saveEcho: (input: { name: string; skin: number; hair: number }) => void;
+  saveEcho: (input: { name: string; skin: number; hair: number; gender: 'boy' | 'girl' }) => void;
   buyItem: (itemId: string) => BuyCheck;
   wearItem: (slot: Slot, itemId: string) => void;
   setName: (name: string) => void;
@@ -149,12 +166,14 @@ interface State extends Data {
   setSettings: (patch: Partial<Settings>) => void;
 
   dismissCelebration: (id: string) => void;
+  /** For the badges the data cannot show (friend challenges). */
+  unlockBadge: (id: EventBadge) => void;
   /** Replaces all data at once (cloud sync, demo data, restore). */
   replaceData: (data: Data) => void;
   resetAll: () => void;
 }
 
-type Core = Pick<State, 'profile' | 'tasks' | 'entries' | 'folders' | 'habits' | 'checks'>;
+type Core = Pick<State, 'profile' | 'tasks' | 'entries' | 'folders' | 'habits' | 'checks' | 'worship'>;
 
 /** Adds XP (and Sparks) to the profile and finds the level-ups and badges that follow. */
 function award(s: Core, xp: number, patch: Partial<Profile> = {}, sparks: number = sparksFor(xp)) {
@@ -521,20 +540,91 @@ export const useStore = create<State>()((set, get) => ({
     });
   },
 
+  toggleWorship: (key, day = dayKey()) => {
+    const s = get();
+    const xp = WORSHIP_XP[key];
+    const on = !isChecked(s.worship, key, day);
+    const worship = withCheck(s.worship, key, day, on);
+    if (!on) {
+      set({ worship, profile: { ...s.profile, xp: Math.max(0, s.profile.xp - xp) } });
+      return;
+    }
+    const today = dayKey();
+    const act = day === today ? activity(s.profile, today) : { patch: {}, toast: [] as Celebration[] };
+    const { profile, celebrations } = award({ ...s, worship }, xp, act.patch, 0);
+    set({
+      worship,
+      profile,
+      celebrations: [...s.celebrations, { id: uid(), kind: 'xp', xp, from: key === 'fast' ? 'fast' : key === 'am' || key === 'pm' ? 'adhkar' : 'prayer' }, ...act.toast, ...celebrations],
+    });
+  },
+
+  startKhatm: (days, page = 0) => set((s) => ({ profile: { ...s.profile, khatm: newKhatm(days, dayKey(), page) } })),
+
+  setKhatmDays: (days) =>
+    set((s) => (s.profile.khatm ? { profile: { ...s.profile, khatm: { ...s.profile.khatm, days } } } : {})),
+
+  readQuran: (page) => {
+    const s = get();
+    const k = s.profile.khatm;
+    if (!k) return;
+    const today = dayKey();
+    const r = readTo(k, page, today);
+    if (r.khatm.page === k.page) return;
+    const fresh = r.khatm.best - k.best;
+    const quranPages = fresh > 0 ? (s.profile.quranPages ?? 0) + fresh : s.profile.quranPages;
+    if (r.xp <= 0) {
+      set({ profile: { ...s.profile, khatm: r.khatm, quranPages } });
+      return;
+    }
+    const act = activity(s.profile, today);
+    const khatms = (s.profile.khatms ?? 0) + (r.finished ? 1 : 0);
+    const { profile, celebrations } = award(s, r.xp, { ...act.patch, khatm: r.khatm, khatms, quranPages }, 0);
+    const done: Celebration[] = r.finished ? [{ id: uid(), kind: 'khatm', n: khatms }] : [];
+    set({
+      profile,
+      celebrations: [...s.celebrations, ...done, { id: uid(), kind: 'xp', xp: r.xp, from: 'quran' }, ...act.toast, ...celebrations],
+    });
+  },
+
+  finishFocus: (minutes, taskId, note) => {
+    const s = get();
+    const today = dayKey();
+    const task = taskId ? s.tasks.find((x) => x.id === taskId && x.progressType === 'time' && !x.completedAt) : undefined;
+    const focus = addSession(s.profile.focus, minutes, today, !!task);
+    if (task) {
+      set({ profile: { ...s.profile, focus } });
+      return get().logProgress(task.id, minutes, note)?.xp ?? 0;
+    }
+    const xp = focusXp(minutes, focusToday(s.profile.focus, today).min);
+    const act = activity(s.profile, today);
+    const { profile, celebrations } = award(s, xp, { ...act.patch, focus });
+    const sparks = profile.sparks - s.profile.sparks;
+    set({
+      profile,
+      celebrations: [
+        ...s.celebrations,
+        ...(xp > 0 ? [{ id: uid(), kind: 'xp', xp, from: 'focus', sparks: sparks || undefined } as Celebration] : []),
+        ...act.toast,
+        ...celebrations,
+      ],
+    });
+    return xp;
+  },
+
   setNudge: (patch) => set((s) => ({ profile: { ...s.profile, nudge: { ...s.profile.nudge, ...patch } } })),
 
-  saveEcho: ({ name, skin, hair }) =>
+  saveEcho: ({ name, skin, hair, gender }) =>
     set((s) => {
       const clean = name.trim().slice(0, 20);
       if (!clean) return {};
-      const echo: EchoProfile = { name: clean, skin, hair, bornAt: s.profile.echo?.bornAt ?? Date.now() };
+      const echo: EchoProfile = { name: clean, skin, hair, gender, bornAt: s.profile.echo?.bornAt ?? Date.now() };
       return { profile: { ...s.profile, echo } };
     }),
 
   buyItem: (itemId) => {
     const s = get();
-    const stage = stageFor(totalPoints(computeAttributes(s.entries, s.tasks, s.folders))).index;
-    const check = canBuy(s.profile, itemId, stage);
+    const check = canBuy(s.profile, itemId, growthFor(s.profile.xp).index, s.profile.echo?.gender ?? 'boy');
     if (!check.ok) return check;
     const item = itemById(itemId)!;
     set({
@@ -552,6 +642,7 @@ export const useStore = create<State>()((set, get) => ({
     set((s) => {
       const item = itemById(itemId);
       if (!item || item.slot !== slot || !isOwned(s.profile, item)) return {};
+      if (item.gender && item.gender !== (s.profile.echo?.gender ?? 'boy')) return {};
       return { profile: { ...s.profile, outfit: { ...(s.profile.outfit ?? {}), [slot]: itemId } } };
     }),
 
@@ -562,10 +653,20 @@ export const useStore = create<State>()((set, get) => ({
 
   dismissCelebration: (id) => set((s) => ({ celebrations: s.celebrations.filter((c) => c.id !== id) })),
 
+  unlockBadge: (id) =>
+    set((s) =>
+      s.profile.achievements[id]
+        ? {}
+        : {
+            profile: { ...s.profile, achievements: { ...s.profile.achievements, [id]: Date.now() } },
+            celebrations: [...s.celebrations, { id: uid(), kind: 'achievement', badge: id }],
+          },
+    ),
+
   replaceData: (data) =>
     set({
       folders: data.folders, tasks: data.tasks, entries: data.entries, plans: data.plans,
-      habits: data.habits, checks: data.checks, profile: data.profile, settings: data.settings,
+      habits: data.habits, checks: data.checks, worship: data.worship ?? {}, profile: data.profile, settings: data.settings,
     }),
 
   resetAll: () => set((s) => ({ ...emptyData(), settings: { ...s.settings }, celebrations: [] })),
@@ -575,13 +676,13 @@ export const useStore = create<State>()((set, get) => ({
 export function snapshot(s: State = useStore.getState()): Data {
   return {
     folders: s.folders, tasks: s.tasks, entries: s.entries, plans: s.plans,
-    habits: s.habits, checks: s.checks, profile: s.profile, settings: s.settings,
+    habits: s.habits, checks: s.checks, worship: s.worship, profile: s.profile, settings: s.settings,
   };
 }
 
 export const dataChanged = (a: Data, b: Data): boolean =>
   a.folders !== b.folders || a.tasks !== b.tasks || a.entries !== b.entries || a.plans !== b.plans ||
-  a.habits !== b.habits || a.checks !== b.checks || a.profile !== b.profile || a.settings !== b.settings;
+  a.habits !== b.habits || a.checks !== b.checks || a.worship !== b.worship || a.profile !== b.profile || a.settings !== b.settings;
 
 /** The day streak to show right now (it lapses after a missed day no freeze can cover). */
 export function useVisibleStreak(): number {

@@ -3,6 +3,7 @@ import { useId } from 'react';
 import { motion } from 'motion/react';
 import { lowPerf } from '../tg/telegram';
 import { cx } from './kit';
+import { Emoji } from './Emoji';
 
 /** Smooth path through points (Catmull-Rom converted to cubic Béziers). */
 function smooth(points: [number, number][]): string {
@@ -136,7 +137,7 @@ export function Hex({ tone, icon, locked, size = 62 }: { tone: string; icon: str
           style={locked ? undefined : { filter: `drop-shadow(0 6px 12px ${b}66)` }}
         />
       </svg>
-      <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: size * 0.42, lineHeight: 1 }}>{icon}</span>
+      <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: size * 0.42, lineHeight: 1 }}><Emoji e={icon} /></span>
     </div>
   );
 }

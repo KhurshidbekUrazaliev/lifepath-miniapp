@@ -1,7 +1,7 @@
 // Calendar: a month of activity dots and, below it, the chosen day as a timeline with a "now" line.
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { CaretLeft, CaretRight, Plus } from '@phosphor-icons/react';
 import { useData } from '../store/store';
 import { useNav } from '../store/nav';
 import { dayKey } from '../lib/dates';
@@ -127,7 +127,7 @@ export function Calendar({ route }: { route: Extract<Route, { name: 'calendar' }
       <Card style={{ padding: '14px 12px 12px' }}>
         <div className="row between" style={{ padding: '0 2px 12px' }}>
           <IconBtn small onTap={() => move(-1)} label="‹">
-            <ChevronLeft size={18} />
+            <CaretLeft size={18} weight="bold" />
           </IconBtn>
           <Tap
             className="t-body"
@@ -141,7 +141,7 @@ export function Calendar({ route }: { route: Extract<Route, { name: 'calendar' }
             {fmtMonth(cursor.year, cursor.month)}
           </Tap>
           <IconBtn small onTap={() => move(1)} label="›">
-            <ChevronRight size={18} />
+            <CaretRight size={18} weight="bold" />
           </IconBtn>
         </div>
         <div className="cal-grid">

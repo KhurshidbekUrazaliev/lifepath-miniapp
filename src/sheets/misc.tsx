@@ -1,13 +1,14 @@
-// Sheets for naming Echo and for the ranking profile.
+// Sheets for naming the companion (and choosing boy or girl) and for the ranking profile.
 import { useState } from 'react';
 import { useStore } from '../store/store';
 import { useNav } from '../store/nav';
 import { useEcho } from '../store/echo';
 import { useServer } from '../store/server';
-import { HAIR_COLORS, SKIN_TONES } from '../lib/echo';
+import type { Gender } from '../lib/companion';
+import { matchIdea, nameIdeas } from '../lib/names';
 import { COUNTRIES, cleanDisplayName, flag } from '../lib/rankings';
 import { haptic, tgUser } from '../tg/telegram';
-import { t } from '../i18n';
+import { getLang, t } from '../i18n';
 import { countryName } from '../i18n/format';
 import { Card, Field, Tap, Toggle, cx } from '../ui/kit';
 import { Sheet } from '../ui/Sheet';
@@ -18,26 +19,19 @@ export function EchoSheet({ onClose }: { onClose: () => void }) {
   const push = useNav((s) => s.push);
   const e = useEcho();
   const [name, setName] = useState(e.echo?.name ?? '');
-  const [skin, setSkin] = useState(e.echo?.skin ?? 1);
-  const [hair, setHair] = useState(e.echo?.hair ?? 0);
+  const [gender, setGender] = useState<Gender>(e.echo?.gender ?? 'boy');
   const valid = name.trim().length > 0;
+  const ideas = nameIdeas(getLang(), gender);
+  const picked = matchIdea(ideas, name);
 
   const save = () => {
     if (!valid) return;
     const first = !e.echo;
-    saveEcho({ name, skin, hair });
+    saveEcho({ name, skin: e.echo?.skin ?? 1, hair: e.echo?.hair ?? 0, gender });
     haptic('success');
     onClose();
     if (first) push({ name: 'echo' });
   };
-
-  const dots = (colors: string[], value: number, set: (i: number) => void) => (
-    <div className="swatches">
-      {colors.map((c, i) => (
-        <button key={c} type="button" aria-label={c} className={cx('swatch', i === value && 'on')} style={{ background: c }} onClick={() => { haptic('select'); set(i); }} />
-      ))}
-    </div>
-  );
 
   return (
     <Sheet
@@ -45,15 +39,27 @@ export function EchoSheet({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       foot={<Tap className="btn primary" onTap={save} disabled={!valid} hap={false}>{e.echo ? t('echo.save') : t('echo.wake')}</Tap>}
     >
-      <div className="echo-stage" style={{ minHeight: 0 }}>
-        <EchoAvatar size={130} skin={skin} hair={hair} stage={e.stage.index} mood="radiant" outfit={e.outfit} accent={e.accent} />
-      </div>
       {!e.echo ? <div className="t-small muted center" style={{ lineHeight: 1.5 }}>{t('echo.create.body')}</div> : null}
-      <Field label={t('echo.name')}>
+      <div className="gender-pick">
+        {(['boy', 'girl'] as const).map((g) => (
+          <Tap key={g} className={cx('gender-opt', gender === g && 'on')} onTap={() => setGender(g)} hap="select" scale={0.96}>
+            <EchoAvatar size={104} skin={e.echo?.skin ?? 1} hair={e.echo?.hair ?? 0} stage={e.growth.index} mood="radiant" accent={e.accent} gender={g} />
+            <span className="t-small" style={{ fontWeight: 700 }}>{t(`echo.${g}`)}</span>
+          </Tap>
+        ))}
+      </div>
+      <Field label={t('echo.name')} hint={picked ? `${picked.name}: ${picked.meaning}` : undefined}>
         <input className="input" value={name} maxLength={20} placeholder={t('echo.name.ph')} onChange={(ev) => setName(ev.target.value)} enterKeyHint="done" />
       </Field>
-      <Field label={t('echo.skin')}>{dots(SKIN_TONES, skin, setSkin)}</Field>
-      <Field label={t('echo.hair')}>{dots(HAIR_COLORS, hair, setHair)}</Field>
+      <Field label={t('echo.names')}>
+        <div className="chips">
+          {ideas.map((idea) => (
+            <Tap key={idea.name} className={cx('chip', picked?.name === idea.name && 'on solid')} onTap={() => setName(idea.name)} hap="select" scale={0.95}>
+              <span>{idea.name}</span>
+            </Tap>
+          ))}
+        </div>
+      </Field>
     </Sheet>
   );
 }

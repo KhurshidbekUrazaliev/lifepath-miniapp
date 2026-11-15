@@ -1,6 +1,7 @@
 // The cron (every minute): sends the reminders and nudges that are due.
-import { baseUrl, type Env } from './env';
+import { baseUrl, LANGS, type Env, type Lang } from './env';
 import { TEXT } from './i18n';
+import { nextPrayerFire, prayerKeyOf, prayerText, prefsFromRow } from './prayer';
 import type { ReminderRow } from './reminders';
 import { openButton, tg } from './telegram';
 import { localDay, nextFire } from './time';
@@ -10,6 +11,8 @@ import { blockedStatement, rows } from './users';
 const BATCH = 30;
 /** A slot this late is dropped instead of delivered. */
 const STALE_MS = 2 * 60 * 60 * 1000;
+/** A prayer reminder is no use much after its time. */
+const PRAYER_STALE_MS = 30 * 60 * 1000;
 /** The longest pause a 429 from Telegram can cause. */
 const MAX_PAUSE_MS = 60 * 60 * 1000;
 /** The pause after any other failure that stops a run (Telegram down, bad token). */
@@ -18,19 +21,49 @@ const OUTAGE_PAUSE_MS = 5 * 60 * 1000;
 interface Due extends ReminderRow {
   user_id: number;
   tz: string;
+  lang: string;
   can_message: number;
   reminders_enabled: number;
   open_label: string;
   last_active_day: string | null;
+  // From prayer_prefs, for prayer reminders (null otherwise).
+  lat: number | null;
+  lon: number | null;
+  place_tz: string | null;
+  method: string | null;
+  asr: string | null;
+  before: number | null;
 }
 
 const DUE = `
   SELECT r.user_id, r.id, r.kind, r.text, r.hour, r.minute, r.days, r.date, r.open, r.next_at,
-         u.tz, u.can_message, u.reminders_enabled, u.open_label, u.last_active_day
+         u.tz, u.lang, u.can_message, u.reminders_enabled, u.open_label, u.last_active_day,
+         p.lat, p.lon, p.tz AS place_tz, p.method, p.asr, p.before
   FROM reminders r CROSS JOIN users u ON u.id = r.user_id
+  LEFT JOIN prayer_prefs p ON p.user_id = r.user_id AND r.kind = 'prayer'
   WHERE r.next_at <= ?1
   ORDER BY r.next_at
   LIMIT ?2`;
+
+const prefsOf = (r: Due) => (r.kind === 'prayer' ? prefsFromRow({ ...r, tz: r.place_tz }) : null);
+
+/** The slot after this one: a prayer's next time, the schedule's next time, or null for a one-off. */
+function following(r: Due, after: number): number | null {
+  if (r.kind === 'prayer') {
+    const prefs = prefsOf(r);
+    const key = prayerKeyOf(r.id);
+    return prefs && key ? nextPrayerFire(prefs, key, after) : null;
+  }
+  return r.date ? null : nextFire(r, r.tz, after);
+}
+
+/** The message to send. A prayer reminder shows the prayer's time on the place's clock. */
+function messageText(r: Due): string {
+  const prefs = prefsOf(r);
+  if (!prefs) return r.text;
+  const lang: Lang = (LANGS as readonly string[]).includes(r.lang) ? (r.lang as Lang) : 'en';
+  return prayerText(r.text, r.next_at + prefs.before * 60_000, prefs.tz, lang);
+}
 
 // Undoes a claim when the message could not be sent, unless the row changed in the meantime.
 const PUT_BACK = `
@@ -47,7 +80,7 @@ function putBack(db: D1Database, r: Due, claimedNext: number | null): D1Prepared
 /** Whether a claimed slot should become a message. The slot is used up either way. */
 function wanted(r: Due, now: number, blocked: Set<number>): boolean {
   if (r.can_message !== 1 || r.reminders_enabled !== 1 || blocked.has(r.user_id)) return false;
-  if (now - r.next_at > STALE_MS) return false;
+  if (now - r.next_at > (r.kind === 'prayer' ? PRAYER_STALE_MS : STALE_MS)) return false;
   // The nudge is only for a day on which the user has not been active yet.
   if (r.kind === 'nudge' && r.last_active_day !== null && r.last_active_day >= localDay(r.tz, now)) return false;
   return true;
@@ -73,7 +106,7 @@ export async function runReminders(env: Env, now: number): Promise<void> {
   // Claim every slot before sending: move the row to its next time, or delete a one-off. Only the
   // run whose claim changes the row sends the message, so a slot is never sent twice, not even
   // when two runs overlap. A run that dies after claiming loses those slots rather than repeat them.
-  const next = due.map((r) => (r.date ? null : nextFire(r, r.tz, Math.max(now, r.next_at))));
+  const next = due.map((r) => following(r, Math.max(now, r.next_at)));
   const claims = await db.batch(
     due.map((r, i) => {
       const at = next[i] ?? null;
@@ -96,7 +129,7 @@ export async function runReminders(env: Env, now: number): Promise<void> {
 
     const res = await tg(env, 'sendMessage', {
       chat_id: r.user_id,
-      text: r.text,
+      text: messageText(r),
       reply_markup: openButton(r.open_label || TEXT.en.open, appUrl, r.open),
     });
     if (res.ok) continue;

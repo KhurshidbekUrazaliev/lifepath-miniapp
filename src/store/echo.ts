@@ -1,7 +1,8 @@
-// Everything the Echo screens need, derived from the logs (LifePath's echoState.ts, for the web).
+// Everything the companion screens need, derived from the logs and the level.
 import { useMemo } from 'react';
 import { useStore } from './store';
-import { archetypeFor, computeAttributes, dominantAttr, echoMood, stageFor, totalPoints } from '../lib/echo';
+import { archetypeFor, computeAttributes, dominantAttr, echoMood, totalPoints } from '../lib/echo';
+import { GROWTH_IDS, Gender, growthFor } from '../lib/companion';
 import { visibleStreak } from '../lib/gamify';
 import { checksOn } from '../lib/habits';
 import { dayKey } from '../lib/dates';
@@ -24,9 +25,10 @@ export function useEcho() {
     for (const ch of today) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
     return {
       echo: profile.echo,
+      gender: profile.echo?.gender ?? 'boy',
       attrs,
       total,
-      stage: stageFor(total),
+      growth: growthFor(profile.xp),
       mood,
       line: t(`mood.${mood}.${h % 4}` as Key),
       outfit: profile.outfit,
@@ -35,3 +37,7 @@ export function useEcho() {
     };
   }, [profile, entries, tasks, folders, checks]);
 }
+
+/** A growth stage's name (Russian needs the feminine form for a girl). */
+export const growthName = (stage: number, gender: Gender): string =>
+  t((gender === 'girl' && GROWTH_IDS[stage] === 'grown' ? 'growth.grown.girl' : `growth.${GROWTH_IDS[stage]}`) as Key);

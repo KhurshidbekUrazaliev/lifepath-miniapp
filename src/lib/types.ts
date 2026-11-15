@@ -89,14 +89,33 @@ export type Checks = Record<string, Record<string, number>>;
 export type LangSetting = 'auto' | 'en' | 'uz' | 'ru';
 export type ThemeSetting = 'auto' | 'dark' | 'light';
 
+/** Where prayer times are for. Coordinates are rounded to about a kilometre before they are saved. */
+export interface Place {
+  lat: number;
+  lon: number;
+  tz: string; // IANA time zone of the place
+  city?: string; // id in content/cities.ts when picked from the list
+}
+
 /** App settings that travel with the account. */
 export interface Settings {
   lang: LangSetting;
   theme: ThemeSetting;
-  verse: boolean; // daily verse card on Home
+  verse: boolean; // the ayah of the day on Home
+  reciter?: string; // whose recitation plays (content/reciters.ts); the first one when unset
   fullscreen: boolean;
   reminders: boolean; // let the bot send reminders
   onboarded: boolean;
+  hijriOffset?: number; // days added to the Umm al-Qura date where the local moon sighting differs (-2..2)
+  place?: Place; // where prayer times are for
+  prayerMethod?: string; // a calculation method (lib/prayer.ts); unset = what is usual at the place
+  asr?: 'standard' | 'hanafi'; // unset = what is usual at the place
+  prayerCard?: boolean; // the next prayer on Home (on unless turned off)
+  prayerAlerts?: boolean; // the bot writes at prayer times (needs `reminders` and a place)
+  prayerAlertList?: string[]; // which prayers; all five when unset
+  prayerBefore?: number; // minutes ahead of the prayer: 0, 10, 15 or 30
+  jumuah?: boolean; // a Friday-morning reminder to read Surah Al-Kahf
+  adhkarTr?: boolean; // transliteration under the Arabic of the adhkar (on unless turned off)
 }
 
 export interface NudgeSettings {
@@ -145,12 +164,13 @@ export interface Streak {
   lastDay?: string; // YYYY-MM-DD (local)
 }
 
-/** The companion. Name is free; looks are indexes into the palettes in lib/echo.ts. */
+/** The companion. Name is free; skin and hair are indexes into the palettes in lib/echo.ts (2D picture). */
 export interface EchoProfile {
   name: string;
   skin: number;
   hair: number;
   bornAt: number;
+  gender?: 'boy' | 'girl'; // the 3D model; companions from before the 3D update are boys until changed
 }
 
 export interface Profile {
@@ -166,5 +186,29 @@ export interface Profile {
   achievements: Record<string, number>; // id -> unlockedAt
   echo?: EchoProfile; // set once the person names their Echo
   owned?: string[]; // wardrobe item ids bought with Sparks (free items are always available)
-  outfit?: Partial<Record<'top' | 'hat' | 'accessory' | 'backdrop', string>>; // worn items
+  outfit?: Partial<Record<'head' | 'face' | 'hold' | 'pet' | 'place' | 'sky', string>>; // worn items
+  khatm?: Khatm; // the Qurʼan reading plan under way (lib/khatm.ts)
+  khatms?: number; // khatms completed
+  quranPages?: number; // khatm pages read for the first time, all plans together (friend challenges count them)
+  focus?: FocusStats; // focus timer sessions (lib/focus.ts)
+}
+
+/** Focus timer sessions: today's, and minutes over all time. */
+export interface FocusStats {
+  day: string; // the day `min` and `n` are for
+  min: number; // minutes focused that day
+  n: number; // sessions finished that day
+  total: number; // minutes over all time
+  free?: number; // of those, minutes that were not logged on a goal
+}
+
+/** Reading the whole Qurʼan in a set number of days. */
+export interface Khatm {
+  start: string; // the plan's first day
+  days: number; // how many days it is meant to take
+  page: number; // pages read so far, 0–604
+  best: number; // the furthest page XP was given for
+  xpDay?: string; // the last day pages earned XP…
+  xpPages?: number; // …and how many did that day (capped)
+  doneAt?: string; // the day the last page was read
 }

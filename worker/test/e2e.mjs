@@ -6,8 +6,11 @@ import { execFileSync, spawn } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { startMock, tgError } from './mock-telegram.mjs';
+
+const adhan = createRequire(import.meta.url)('adhan');
 
 const TOKEN = '123456:e2e-test-token';
 const WEBHOOK_SECRET = 'e2e-webhook-secret';
@@ -276,6 +279,86 @@ try {
   check(sentTo(from, 111).length === 0, 'turning reminders off removes them');
   check(sentTo(from, 222).length === 0, 'a slot missed by hours is dropped, not sent late');
 
+  // ---------- prayer reminders ----------
+  console.log('\nprayer reminders');
+  // The Worker works the times out with the app's calculation (adhan); the test does the same here.
+  const placeDay = (ms) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent', year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms);
+  const clock = (ms) => new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Tashkent' }).format(ms);
+  function dhuhrAfter(after) {
+    const params = adhan.CalculationMethod.MuslimWorldLeague();
+    params.madhab = adhan.Madhab.Shafi;
+    params.highLatitudeRule = adhan.HighLatitudeRule.TwilightAngle;
+    for (let i = 0; i < 3; i++) {
+      const [y, m, d] = placeDay(after + i * DAY).split('-').map(Number);
+      const at = new adhan.PrayerTimes(new adhan.Coordinates(41.31, 69.28), new Date(y, m - 1, d, 12), params).dhuhr.getTime();
+      if (at > after) return at;
+    }
+    throw new Error('no Dhuhr found');
+  }
+  const prayerOn = {
+    enabled: true, lat: 41.31, lon: 69.28, tz: 'Asia/Tashkent', method: 'mwl', asr: 'standard', before: 0,
+    items: [
+      { key: 'dhuhr', text: "☀️ It's time for Dhuhr ({time})." },
+      { key: 'asr', text: "🌤️ It's time for Asr ({time})." },
+    ],
+  };
+  const withPrayer = (prayer) => ({ user: alice, body: { enabled: true, tz: 'UTC', lang: 'en', openLabel: 'Open LifePath', items: [], prayer } });
+  check((await call('PUT', '/api/reminders', withPrayer({ ...prayerOn, method: 'nope' }))).status === 400, 'an unknown calculation method is refused');
+  check((await call('PUT', '/api/reminders', withPrayer({ ...prayerOn, lat: 123 }))).status === 400, 'a latitude out of range is refused');
+  check(
+    (await call('PUT', '/api/reminders', withPrayer({ ...prayerOn, items: [{ key: 'asr', text: 'a' }, { key: 'asr', text: 'b' }] }))).status === 400,
+    'the same prayer twice is refused',
+  );
+  const savedPrayer = await call('PUT', '/api/reminders', withPrayer(prayerOn));
+  check(savedPrayer.status === 200 && savedPrayer.json.count === 0, 'prayer reminders saved', savedPrayer.json);
+
+  const dhuhr1 = dhuhrAfter(Date.now());
+  from = mock.calls.length;
+  await cron(dhuhr1 - 60_000);
+  check(sentTo(from, 111).length === 0, 'nothing before the prayer');
+  await cron(dhuhr1 + 1000);
+  let toAlicePrayer = sentTo(from, 111);
+  check(
+    toAlicePrayer.length === 1 && toAlicePrayer[0].params.text === `☀️ It's time for Dhuhr (${clock(dhuhr1)}).`,
+    "Dhuhr arrives on time, with the time on the place's clock",
+    toAlicePrayer.map((c) => c.params.text),
+  );
+  check(button(toAlicePrayer[0])?.web_app?.url === `${APP_URL}/?open=prayer`, 'its button opens the prayer screen', button(toAlicePrayer[0]));
+  from = mock.calls.length;
+  await cron(dhuhr1 + 1000);
+  check(sentTo(from, 111).length === 0, 'the same prayer is not sent twice');
+
+  // The next day: worked out afresh. Asr of the day before is long past by then, so it is dropped.
+  const dhuhr2 = dhuhrAfter(dhuhr1 + 60_000);
+  from = mock.calls.length;
+  await cron(dhuhr2 + 1000);
+  toAlicePrayer = sentTo(from, 111);
+  check(
+    toAlicePrayer.length === 1 && toAlicePrayer[0].params.text === `☀️ It's time for Dhuhr (${clock(dhuhr2)}).`,
+    'the next day brings the next Dhuhr, and a missed Asr is not sent late',
+    toAlicePrayer.map((c) => c.params.text),
+  );
+
+  // Ahead of time: the message still shows the prayer's own time. A change is scheduled from the
+  // real clock, so the first slot is the first Dhuhr at least 15 minutes from now.
+  await call('PUT', '/api/reminders', withPrayer({ ...prayerOn, before: 15, items: [{ key: 'dhuhr', text: '☀️ Dhuhr is in 15 min, at {time}.' }] }));
+  const dhuhr3 = dhuhrAfter(Date.now() + 15 * 60_000);
+  from = mock.calls.length;
+  await cron(dhuhr3 - 15 * 60_000 + 1000);
+  toAlicePrayer = sentTo(from, 111);
+  check(
+    toAlicePrayer.length === 1 && toAlicePrayer[0].params.text === `☀️ Dhuhr is in 15 min, at ${clock(dhuhr3)}.`,
+    'a reminder 15 minutes ahead names the prayer time',
+    toAlicePrayer.map((c) => c.params.text),
+  );
+
+  await call('PUT', '/api/reminders', withPrayer({ enabled: false }));
+  from = mock.calls.length;
+  await cron(dhuhrAfter(dhuhr3 + 60_000) + 1000);
+  check(sentTo(from, 111).length === 0, 'turning prayer reminders off removes them');
+  await call('PUT', '/api/reminders', { user: alice, body: { enabled: false, tz: 'UTC', lang: 'en', items: [] } });
+  mock.reset();
+
   // ---------- activity and rankings ----------
   console.log('\nrankings');
   const week = (() => {
@@ -309,6 +392,111 @@ try {
   board = await call('GET', '/api/rankings?scope=global&period=week', { user: alice });
   check(board.json?.rows[0].xp === 5_000, 'a report for another week leaves this week alone', board.json?.rows[0]);
   check((await call('GET', '/api/rankings?scope=moon', { user: alice })).status === 400, 'unknown scope: 400');
+
+  // ---------- friend challenges ----------
+  console.log('\nchallenges');
+  const counters = (xp, prayer = 0, quran = 0, focus = 0) => ({ xp, prayer, quran, focus });
+  const progress = (user, c) =>
+    call('POST', '/api/activity', { user, body: { lastActiveDay: now, totalXp: 0, weekXp: 0, weekStart: week, level: 7, streak: 12, counters: c } });
+  check((await call('POST', '/api/challenges', { user: alice, body: { kind: 'steps', days: 7, counters: counters(0) } })).status === 400, 'unknown challenge kind: 400');
+  check((await call('POST', '/api/challenges', { user: alice, body: { kind: 'xp', days: 31, counters: counters(0) } })).status === 400, 'more than 30 days: 400');
+  check((await call('POST', '/api/challenges', { user: alice, body: { kind: 'xp', days: 7 } })).status === 400, 'no counters: 400');
+  const made = await call('POST', '/api/challenges', { user: alice, body: { kind: 'xp', days: 7, counters: counters(1_000, 10) } });
+  const cid = made.json?.challenge?.id;
+  check(
+    made.status === 200 && /^[a-z0-9]{8}$/.test(cid ?? '') && made.json.challenge.isOwner && made.json.challenge.joined &&
+      made.json.challenge.members.length === 1 && made.json.challenge.endsAt - made.json.challenge.startsAt === 7 * DAY,
+    'Alice starts a 7-day XP challenge',
+    made.json,
+  );
+  const preview = await call('GET', `/api/challenges/one?id=${cid}`, { user: bob });
+  check(preview.json?.challenge.joined === false && preview.json.challenge.owner === 'Alice' && preview.json.challenge.members.length === 1, 'Bob sees the invite before joining', preview.json);
+  check((await call('GET', '/api/challenges/one?id=zzzzzzzz', { user: bob })).status === 404, 'unknown challenge: 404');
+  check((await call('GET', '/api/challenges/one?id=../x', { user: bob })).status === 400, 'malformed challenge id: 400');
+  from = mock.calls.length;
+  const bobJoins = await call('POST', '/api/challenges/join', { user: bob, body: { id: cid, counters: counters(500) } });
+  check(bobJoins.json?.challenge.joined === true && bobJoins.json.challenge.members.length === 2, 'Bob joins', bobJoins.json);
+  const told = sentTo(from, 111);
+  check(
+    told.length === 1 && told[0].params.text.includes('Bobur') && button(told[0])?.web_app.url.includes(`open=ch_${cid}`),
+    'Alice hears that Bob joined, with a button to the challenge',
+    told.map((c) => c.params),
+  );
+  from = mock.calls.length;
+  check((await call('POST', '/api/challenges/join', { user: bob, body: { id: cid, counters: counters(9_999) } })).json?.challenge.members.length === 2, 'joining twice changes nothing');
+  check(sentTo(from, 111).length === 0, 'and sends nothing');
+  await progress(alice, counters(1_300, 12));
+  await progress(bob, counters(900));
+  let mine = await call('GET', '/api/challenges', { user: alice });
+  let board1 = mine.json?.challenges.find((x) => x.id === cid);
+  check(
+    board1?.members.map((m) => `${m.name}:${m.score}:${m.isMe}`).join() === 'Bobur:400:false,Alice:300:true',
+    'scores are what each counter moved since joining',
+    board1?.members,
+  );
+  await progress(bob, counters(500_000));
+  mine = await call('GET', '/api/challenges', { user: bob });
+  board1 = mine.json?.challenges.find((x) => x.id === cid);
+  check(board1?.members[0].score === 5_000 && board1.members[0].isMe, 'an XP score grows by at most 5000 a day', board1?.members);
+  check((await progress(carol, { xp: -1, prayer: 0, quran: 0, focus: 0 })).status === 400, 'negative counters: 400');
+
+  // A one-day prayer challenge, and its results the day after.
+  const pray = (await call('POST', '/api/challenges', { user: alice, body: { kind: 'prayer', days: 1, counters: counters(1_300, 12) } })).json?.challenge;
+  await call('POST', '/api/challenges/join', { user: bob, body: { id: pray.id, counters: counters(500_000, 40) } });
+  await progress(alice, counters(1_300, 15));
+  await progress(bob, counters(500_000, 99));
+  mine = await call('GET', '/api/challenges', { user: alice });
+  const prayBoard = mine.json?.challenges.find((x) => x.id === pray.id);
+  check(prayBoard?.members.map((m) => m.score).join() === '5,3', 'prayers count at most five a day', prayBoard?.members);
+  from = mock.calls.length;
+  await cron(Date.now() + 2 * DAY);
+  const results = mock.since(from, 'sendMessage').filter((c) => c.params.text.includes('🏆') || c.params.text.includes('🏁'));
+  const bobResult = results.find((c) => c.params.chat_id === 222);
+  const aliceResult = results.find((c) => c.params.chat_id === 111);
+  check(
+    results.length === 2 && bobResult?.params.text.startsWith('🏆') && bobResult.params.text.includes('namoz') &&
+      aliceResult?.params.text.includes('2 of 2') && aliceResult.params.text.includes('Bobur') && button(aliceResult)?.web_app.url.includes(`open=ch_${pray.id}`),
+    'when it ends, each member hears their place (in their language)',
+    results.map((c) => c.params.text),
+  );
+  from = mock.calls.length;
+  await cron(Date.now() + 2 * DAY + 60_000);
+  check(mock.since(from, 'sendMessage').filter((c) => c.params.text.includes('🏁') || c.params.text.includes('🏆')).length === 0, 'results are sent once');
+
+  check((await call('POST', '/api/challenges/leave', { user: bob, body: { id: cid } })).json?.ok === true, 'Bob leaves');
+  mine = await call('GET', '/api/challenges', { user: bob });
+  check(!mine.json?.challenges.some((x) => x.id === cid), 'a challenge you left is off your list');
+  await call('POST', '/api/challenges/leave', { user: alice, body: { id: cid } });
+  check((await call('GET', `/api/challenges/one?id=${cid}`, { user: alice })).status === 404, 'the last one out deletes the challenge');
+  let made2 = 0;
+  let refused = null;
+  for (let i = 0; i < 7 && !refused; i++) {
+    const r = await call('POST', '/api/challenges', { user: carol, body: { kind: 'focus', days: 3, counters: counters(0) } });
+    if (r.status === 200) made2++;
+    else refused = r;
+  }
+  check(made2 === 5 && refused?.status === 409 && refused.json?.error === 'limit', 'at most five running challenges of your own', { made2, refused: refused?.json });
+
+  // ---------- story pictures ----------
+  console.log('\nstories');
+  const picture = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70, 0, 1, 2, 3, 0xff, 0xd9]);
+  const postPicture = (user, body, type = 'image/jpeg') =>
+    fetch(`${BASE}/api/story`, { method: 'POST', headers: { Authorization: `tma ${initData(user)}`, 'content-type': type }, body });
+  check((await fetch(`${BASE}/api/story`, { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: picture })).status === 401, 'story upload needs Telegram auth');
+  check((await postPicture(alice, picture, 'image/png')).status === 400, 'only JPEG pictures: 400');
+  check((await postPicture(alice, new Uint8Array([1, 2, 3, 4]))).status === 400, 'a body that is not a JPEG: 400');
+  const stored = await (await postPicture(alice, picture)).json();
+  const storyPath = stored.url?.replace(APP_URL, '');
+  check(/^\/s\/[A-Za-z0-9]{22}\.jpg$/.test(storyPath ?? ''), 'the upload returns a public address on the app', stored);
+  const served = await fetch(`${BASE}${storyPath}`);
+  const servedBytes = new Uint8Array(await served.arrayBuffer());
+  check(
+    served.status === 200 && served.headers.get('content-type') === 'image/jpeg' && servedBytes.length === picture.length && servedBytes.every((b, i) => b === picture[i]),
+    'the picture is served as it was uploaded',
+    { status: served.status, type: served.headers.get('content-type'), length: servedBytes.length },
+  );
+  check((await fetch(`${BASE}/s/AAAAAAAAAAAAAAAAAAAAAA.jpg`)).status === 404, 'unknown pictures: 404');
+  check((await fetch(`${BASE}/s/${storyPath.slice(3, 10)}.png`)).status === 404, 'only the exact picture address answers');
 
   // ---------- Plus ----------
   console.log('\nplus');

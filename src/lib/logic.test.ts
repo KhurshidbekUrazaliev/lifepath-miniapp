@@ -7,7 +7,14 @@ import { Entry, Folder, Plan, Profile, Task } from './types';
 import { daysLabel, monthGrid, parseTime } from './calendar';
 import { buildSchedule } from './schedule';
 import { fromRecordMap, mergeProfiles, planSync, RemoteRecord, stableStringify, toRecordMap } from './syncPlan';
-import { canBuy, sparkBalance } from './wardrobe';
+import { DEFAULT_OUTFIT, ITEMS, Outfit, canBuy, hijabTint, sparkBalance, wornOutfit } from './wardrobe';
+import { growthFor, modelKey, nearestModel } from './companion';
+import { hadithAdvice, momentTags, pickAdvice } from './advisor';
+import { hijriDate, isRamadan } from './hijri';
+import { PASSAGES, ayahEnd, dayIndex, passageLink, passageOfDay, passageRef, translationParts } from './ayah';
+import { RECITERS, ayahAudioUrl, reciterOf } from '../content/reciters';
+import { HADITHS } from '../content/hadith';
+import { HIKMAH, MOTIVATION } from '../content/wisdom';
 import { MAX_SUGGESTIONS, sanitizePlan, suggestPlan } from './planner';
 import { FREE_FOLDER_LIMIT, canCreateFolder, isPlusActive } from './plus';
 import { cleanDisplayName, daysLeftInWeek, flag, rankMedal, weekEndMs, weekStartMs } from './rankings';
@@ -378,31 +385,170 @@ test('sync: echo naming survives profile merge', () => {
   assert.equal(m2.echo?.name, 'Kai');
 });
 
-// ---------- Wardrobe (v0.6) ----------
+// ---------- Wardrobe (v0.6, 3D catalog in v0.10) ----------
 
 test('wardrobe: balance = earned Sparks minus the price of owned items', () => {
   assert.equal(sparkBalance({ sparks: 100 }), 100);
-  assert.equal(sparkBalance({ sparks: 100, owned: ['top-hoodie'] }), 60);
-  assert.equal(sparkBalance({ sparks: 10, owned: ['top-kimono'] }), 0); // never negative
+  assert.equal(sparkBalance({ sparks: 100, owned: ['book'] }), 60);
+  assert.equal(sparkBalance({ sparks: 10, owned: ['kitten'] }), 0); // never negative
+  // Items that left the catalog (the 2D clothes) cost nothing, so their Sparks come back.
+  assert.equal(sparkBalance({ sparks: 100, owned: ['top-hoodie', 'hat-cap', 'bg-dawn'] }), 80);
 });
 
 test('wardrobe: buying rules', () => {
-  const p = { sparks: 100, owned: ['hat-cap'] };
-  assert.deepEqual(canBuy(p, 'hat-cap', 0), { ok: false, reason: 'owned' });
-  assert.deepEqual(canBuy(p, 'top-tee', 0), { ok: false, reason: 'owned' }); // free items are always owned
-  assert.deepEqual(canBuy(p, 'top-kimono', 0), { ok: false, reason: 'poor' });
-  assert.deepEqual(canBuy({ sparks: 999 }, 'hat-crown', 1), { ok: false, reason: 'stage' });
-  assert.deepEqual(canBuy({ sparks: 999 }, 'hat-crown', 4), { ok: true });
+  const p = { sparks: 100, owned: ['glasses'] };
+  assert.deepEqual(canBuy(p, 'glasses', 0), { ok: false, reason: 'owned' });
+  assert.deepEqual(canBuy(p, 'head-none', 0), { ok: false, reason: 'owned' }); // free items are always owned
+  assert.deepEqual(canBuy(p, 'kitten', 0), { ok: false, reason: 'poor' });
+  assert.deepEqual(canBuy({ sparks: 999 }, 'grad-cap', 1), { ok: false, reason: 'stage' });
+  assert.deepEqual(canBuy({ sparks: 999 }, 'grad-cap', 2), { ok: true });
+  assert.deepEqual(canBuy({ sparks: 999 }, 'kufi', 0, 'girl'), { ok: false, reason: 'gender' });
+  assert.deepEqual(canBuy({ sparks: 999 }, 'kufi', 0, 'boy'), { ok: true });
   assert.deepEqual(canBuy(p, 'nope', 0), { ok: false, reason: 'unknown' });
 });
 
 test('wardrobe: purchases from two devices merge without double-spending', () => {
   const base: Profile = { name: '', xp: 0, sparks: 120, streak: { current: 0, best: 0 }, freezes: 0, dailyGoalXp: 30, haptics: true, achievements: {}, nudge: { enabled: false, hour: 21, minute: 0 } };
-  const a = { ...base, owned: ['top-hoodie'] }; // 40
-  const b = { ...base, owned: ['hat-cap'] }; // 30
+  const a = { ...base, owned: ['book'] }; // 40
+  const b = { ...base, owned: ['sprout-pot'] }; // 30
   const m = mergeProfiles(a, b);
-  assert.deepEqual([...(m.owned ?? [])].sort(), ['hat-cap', 'top-hoodie']);
+  assert.deepEqual([...(m.owned ?? [])].sort(), ['book', 'sprout-pot']);
   assert.equal(sparkBalance(m), 50);
+});
+
+test('wardrobe: worn outfit keeps the old sky, drops retired and other-gender items', () => {
+  const old = { backdrop: 'bg-night', top: 'top-hoodie', hat: 'hat-cap' } as unknown as Outfit;
+  assert.deepEqual(wornOutfit(old, 'boy'), { ...DEFAULT_OUTFIT, sky: 'bg-night' });
+  assert.equal(wornOutfit({ head: 'kufi' }, 'boy').head, 'kufi');
+  assert.equal(wornOutfit({ head: 'kufi' }, 'girl').head, 'head-none');
+  assert.equal(wornOutfit({ head: 'book' }, 'boy').head, 'head-none'); // an item in the wrong slot
+  for (const item of ITEMS) {
+    if (item.model) assert.ok(item.place, `${item.id} has a placement`);
+    if (item.price === 0) assert.equal(DEFAULT_OUTFIT[item.slot], item.id, `${item.id} is the default`);
+  }
+});
+
+test('wardrobe: hijab colours are for the girl, the scarf for the boy, and ivory is no tint', () => {
+  const girl = wornOutfit({ color: 'color-navy', neck: 'scarf', back: 'backpack' }, 'girl');
+  assert.equal(girl.color, 'color-navy');
+  assert.equal(girl.neck, 'neck-none', "the hijab covers the girl's neck");
+  assert.equal(girl.back, 'backpack');
+  assert.equal(hijabTint(girl, 'girl'), '#2F3B63');
+  assert.equal(hijabTint(wornOutfit({}, 'girl'), 'girl'), null, 'ivory is the model as it is');
+  const boy = wornOutfit({ color: 'color-navy', neck: 'scarf' }, 'boy');
+  assert.equal(boy.color, 'color-ivory');
+  assert.equal(boy.neck, 'scarf');
+  assert.equal(hijabTint(boy, 'boy'), null);
+  assert.deepEqual(canBuy({ sparks: 999 }, 'color-navy', 0, 'girl'), { ok: false, reason: 'stage' });
+  assert.deepEqual(canBuy({ sparks: 999 }, 'color-rose', 0, 'boy'), { ok: false, reason: 'gender' });
+  assert.deepEqual(canBuy({ sparks: 999 }, 'color-rose', 0, 'girl'), { ok: true });
+});
+
+// ---------- Companion growth (v0.10) ----------
+
+test('companion: grows up at levels 1, 5, 10 and 20', () => {
+  assert.equal(growthFor(0).id, 'little');
+  assert.equal(growthFor(xpForLevel(5) - 1).id, 'little');
+  assert.equal(growthFor(xpForLevel(5)).id, 'kid');
+  assert.equal(growthFor(xpForLevel(10)).id, 'teen');
+  assert.equal(growthFor(xpForLevel(20)).id, 'grown');
+  assert.equal(growthFor(xpForLevel(20)).ratio, 1);
+  assert.equal(growthFor(xpForLevel(20)).nextLevel, undefined);
+  const half = Math.round((xpForLevel(5) + xpForLevel(10)) / 2);
+  const g = growthFor(half);
+  assert.equal(g.nextLevel, 10);
+  assert.equal(g.xpToNext, xpForLevel(10) - half);
+  assert.ok(g.ratio > 0.4 && g.ratio < 0.6);
+});
+
+test('companion: shows the nearest model of the same gender, younger first', () => {
+  const have = new Set(['boy-2', 'boy-4', 'girl-3']);
+  assert.deepEqual(nearestModel(have, 'boy', 1), { key: 'boy-2', stage: 1 });
+  assert.deepEqual(nearestModel(have, 'boy', 2), { key: 'boy-2', stage: 1 }); // not the older boy-4
+  assert.deepEqual(nearestModel(have, 'boy', 0), { key: 'boy-2', stage: 1 });
+  assert.deepEqual(nearestModel(have, 'girl', 0), { key: 'girl-3', stage: 2 });
+  assert.equal(nearestModel(new Set(['boy-1']), 'girl', 1), null);
+  assert.equal(modelKey('girl', 3), 'girl-4');
+});
+
+// ---------- Advisor (v0.10) ----------
+
+test('advisor: every quote has all three languages and a source', () => {
+  for (const h of HADITHS) for (const l of ['en', 'ru', 'uz'] as const) assert.ok(h[l].trim(), `hadith ${h.n} ${l}`);
+  assert.equal(new Set(HADITHS.map((h) => h.n)).size, HADITHS.length, 'no hadith twice');
+  for (const w of HIKMAH) for (const l of ['en', 'ru', 'uz'] as const) assert.ok(w[l].trim(), `hikmah ${w.id} ${l}`);
+  for (const w of HIKMAH) if (w.from === 'ar') assert.ok(w.ar, `${w.id} has the Arabic`);
+  for (const m of MOTIVATION) for (const l of ['en', 'ru', 'uz'] as const) assert.ok(m[l].trim());
+  const h = hadithAdvice(HADITHS[0], 'uz');
+  assert.equal(h.ai, true); // the Uzbek hadith is labelled as an AI translation
+  assert.equal(hadithAdvice(HADITHS[0], 'en').ai, false);
+  assert.match(h.link ?? '', /^https:\/\/sunnah\.com\/bukhari:\d+$/);
+});
+
+test('advisor: the moment picks the topic, taps move on, days rotate', () => {
+  assert.deepEqual(momentTags({ hour: 10, weekday: 2, ramadan: true }), ['ramadan']);
+  assert.deepEqual(momentTags({ hour: 3, weekday: 2, ramadan: false }), ['night']);
+  assert.deepEqual(momentTags({ hour: 14, weekday: 5, ramadan: false }), ['dhikr', 'quran']);
+  const ctx = { lang: 'en' as const, hour: 14, weekday: 2, ramadan: false };
+  const a = pickAdvice('hadith', ctx, 100, 0);
+  assert.deepEqual(pickAdvice('hadith', ctx, 100, 0), a); // same day, same first quote
+  assert.notEqual(pickAdvice('hadith', ctx, 100, 1).key, a.key); // a tap moves on
+  assert.notEqual(pickAdvice('hadith', ctx, 101, 0).key, a.key); // the next day starts elsewhere
+  const ramadan = pickAdvice('hadith', { ...ctx, ramadan: true }, 100, 0);
+  assert.ok(HADITHS.find((x) => `hadith:${x.n}` === ramadan.key)?.tags.includes('ramadan'));
+  const keys = new Set(Array.from({ length: HIKMAH.length }, (_, i) => pickAdvice('hikmah', ctx, 7, i).key));
+  assert.equal(keys.size, HIKMAH.length); // a full round before anything repeats
+});
+
+test('hijri: Umm al-Qura dates from the device calendar', () => {
+  const r = hijriDate(new Date(2026, 1, 25, 12)); // 25 Feb 2026
+  if (r) {
+    assert.equal(r.year, 1447);
+    assert.equal(r.month, 9);
+    assert.ok(isRamadan(r));
+    assert.equal(hijriDate(new Date(2026, 1, 25, 12), 1)!.day, r.day + 1);
+  }
+});
+
+test('ayah: passages are whole, every one comes once before any repeats', () => {
+  assert.ok(PASSAGES.length > 40);
+  for (const p of PASSAGES) {
+    assert.equal(p.ayat.length, p.to - p.from + 1, p.key);
+    for (const a of p.ayat) assert.ok(a.ar && a.en && a.ru && a.uz, a.k);
+  }
+  const asr = PASSAGES.find((p) => p.key === '103:1-3')!;
+  assert.equal(passageRef(asr), "Al-'Asr 103:1–3");
+  assert.equal(passageLink(asr), 'https://quran.com/103/1-3');
+  assert.equal(dayIndex('1970-01-02'), 1);
+  const seen = new Set<string>();
+  for (let d = 0; d < PASSAGES.length; d++) seen.add(passageOfDay(dayKey(Date.UTC(2026, 10, 15 + d, 12))).key);
+  assert.equal(seen.size, PASSAGES.length);
+  assert.equal(ayahEnd(118), '\u06DD\u0661\u0661\u0668');
+});
+
+test('ayah: translations end a sentence, pair their quotes, and drop notes when brief', () => {
+  const byKey = (k: string) => PASSAGES.find((p) => p.key === k)!;
+  for (const p of PASSAGES) {
+    for (const lang of ['en', 'ru', 'uz'] as const) {
+      const text = translationParts(p, lang, true).map((x) => x.text).join(' ');
+      assert.match(text, /[.!?…»"”'’]\)?$/, `${p.key} ${lang}`);
+      if (lang === 'en') assert.equal((text.match(/"/g) ?? []).length % 2, 0, p.key);
+      else assert.equal((text.match(/«/g) ?? []).length, (text.match(/»/g) ?? []).length, `${p.key} ${lang}`);
+    }
+  }
+  // "[i.e., relief]" goes, "[will be]" stays; Abu Adel's commentary goes, even when nested.
+  assert.equal(translationParts(byKey('94:5-6'), 'en', true)[0].text, 'For indeed, with hardship [will be] ease.');
+  assert.ok(!translationParts(byKey('7:23'), 'ru', true)[0].text.includes('['));
+  assert.ok(translationParts(byKey('7:23'), 'ru')[0].text.includes('[['));
+  // An ayah that continues the one before starts with a capital letter.
+  assert.match(translationParts(byKey('65:3'), 'ru')[0].text, /^И /);
+});
+
+test('reciters: every one has a folder and three names; unknown ids fall back', () => {
+  for (const r of RECITERS) assert.ok(r.folder && r.name.en && r.name.ru && r.name.uz, r.id);
+  assert.equal(new Set(RECITERS.map((r) => r.id)).size, RECITERS.length);
+  assert.equal(reciterOf('nobody').id, RECITERS[0].id);
+  assert.equal(ayahAudioUrl(reciterOf('husary'), '2:255'), 'https://everyayah.com/data/Husary_128kbps/002255.mp3');
 });
 
 // ---------- Rankings (v0.7) ----------

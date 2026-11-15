@@ -2,10 +2,12 @@
 // Everything else is the built front end, served as static assets.
 import { handlePhoto, handleSetup } from './admin';
 import { handleApi } from './api';
+import { cleanUp, runChallengeResults } from './challenges';
 import { devAuthEnabled } from './auth';
 import { runReminders } from './cron';
 import type { Env } from './env';
-import { errorResponse, json, notFound } from './http';
+import { describe, errorResponse, json, notFound } from './http';
+import { serveStory } from './stories';
 import { handleWebhook } from './webhook';
 
 export default {
@@ -17,13 +19,16 @@ export default {
       if (path === '/tg/webhook') return await handleWebhook(request, env, url);
       if (path === '/admin/setup') return await handleSetup(request, env, url);
       if (path === '/admin/photo') return await handlePhoto(request, env);
+      if (path.startsWith('/s/') && request.method === 'GET') return await serveStory(env, path, Date.now());
       // Local development only (DEV_AUTH=1 on a local host): `wrangler dev` cannot deliver cron
       // events to a Worker that also serves static assets, so tests run the reminders through here.
       if (path === '/admin/dev-cron' && request.method === 'POST' && devAuthEnabled(env, url)) {
-        await runReminders(env, Number(url.searchParams.get('time')) || Date.now());
+        const time = Number(url.searchParams.get('time')) || Date.now();
+        await runReminders(env, time);
+        await runChallengeResults(env, time);
         return json({ ok: true });
       }
-      if (path.startsWith('/tg/') || path.startsWith('/admin/')) throw notFound();
+      if (path.startsWith('/tg/') || path.startsWith('/admin/') || path.startsWith('/s/')) throw notFound();
       // Other paths belong to the front end. The asset layer normally answers them before this code runs.
       if (env.ASSETS) return await env.ASSETS.fetch(request);
       throw notFound();
@@ -33,6 +38,13 @@ export default {
   },
 
   async scheduled(controller, env): Promise<void> {
-    await runReminders(env, controller.scheduledTime);
+    const now = controller.scheduledTime;
+    await runReminders(env, now);
+    try {
+      await runChallengeResults(env, now);
+    } catch (e) {
+      console.error('challenges:', describe(e));
+    }
+    if (new Date(now).getUTCMinutes() === 0) await cleanUp(env, now);
   },
 } satisfies ExportedHandler<Env>;

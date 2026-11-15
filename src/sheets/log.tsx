@@ -1,6 +1,6 @@
 // Logging progress, adding proof to a log, and a log's details.
 import { useMemo, useState } from 'react';
-import { Check as CheckIcon, ExternalLink, Minus, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowSquareOut, Check as CheckIcon, Minus, Plus, Sparkle, Trash } from '@phosphor-icons/react';
 import { useStore, useVisibleStreak } from '../store/store';
 import { Sheet as SheetState, useNav } from '../store/nav';
 import { computeProgress } from '../lib/progress';
@@ -13,6 +13,7 @@ import { fmtAmount, fmtNumber, fmtRelative } from '../i18n/format';
 import { Bar, Card, CheckTap, Field, Tap, Toggle, cx } from '../ui/kit';
 import { Sheet } from '../ui/Sheet';
 import { confirmSheet } from './confirm';
+import { Emoji } from '../ui/Emoji';
 
 /** Summary and link fields, with a live "counts as proof" hint. */
 function ProofFields({ summary, url, onSummary, onUrl }: { summary: string; url: string; onSummary: (v: string) => void; onUrl: (v: string) => void }) {
@@ -105,7 +106,7 @@ export function LogSheet({ sheet, onClose }: { sheet: Extract<SheetState, { name
       }
     >
       <div className="row" style={{ gap: 12 }}>
-        <span className="bubble" style={folder ? { background: `${folder.color}26`, borderColor: `${folder.color}40` } : undefined}>{folder?.icon ?? '🎯'}</span>
+        <span className="bubble" style={folder ? { background: `${folder.color}26`, borderColor: `${folder.color}40` } : undefined}><Emoji e={folder?.icon ?? '🎯'} /></span>
         <div className="grow">
           <div className="t-body clip">{task.title}</div>
           <div className="t-small muted">{t('goal.left', { amount: fmtAmount(p.remaining, task.unit, task.progressType) })}</div>
@@ -115,7 +116,7 @@ export function LogSheet({ sheet, onClose }: { sheet: Extract<SheetState, { name
 
       {task.progressType === 'sessions' ? (
         <Card className="row" style={{ gap: 12 }}>
-          <span className="check on green" style={{ width: 30, height: 30 }}><CheckIcon size={17} strokeWidth={3.2} /></span>
+          <span className="check on green" style={{ width: 30, height: 30 }}><CheckIcon size={17} weight="bold" /></span>
           <span className="t-body">{t('log.session')}</span>
         </Card>
       ) : (
@@ -144,7 +145,7 @@ export function LogSheet({ sheet, onClose }: { sheet: Extract<SheetState, { name
 
       <Card className="col tight" style={{ padding: 14 }}>
         <div className="row" style={{ gap: 12 }}>
-          <Sparkles size={20} style={{ color: 'var(--gold)' }} />
+          <Sparkle size={20} style={{ color: 'var(--gold)' }} />
           <div className="grow">
             <div className="t-body">{t('log.proof')}</div>
             <div className="t-small muted">{t('log.proof.hint')}</div>
@@ -184,7 +185,7 @@ export function ProofSheet({ sheet, onClose }: { sheet: Extract<SheetState, { na
       onClose={onClose}
       foot={
         <Tap className="btn primary" onTap={save} hap={false}>
-          <Sparkles size={18} />
+          <Sparkle size={18} />
           {t('proof.save', { n: sparks })}
         </Tap>
       }
@@ -223,7 +224,7 @@ export function EntrySheet({ sheet, onClose }: { sheet: Extract<SheetState, { na
           {entry.evidence.summary ? <div className="t-small" style={{ lineHeight: 1.5, userSelect: 'text' }}>{entry.evidence.summary}</div> : null}
           {entry.evidence.url ? (
             <Tap className="row accent" style={{ gap: 8, marginTop: 8 }} onTap={() => openLink(entry.evidence!.url!)}>
-              <ExternalLink size={15} />
+              <ArrowSquareOut size={15} />
               <span className="t-small clip">{entry.evidence.url}</span>
             </Tap>
           ) : null}
@@ -232,7 +233,7 @@ export function EntrySheet({ sheet, onClose }: { sheet: Extract<SheetState, { na
 
       {state === 'pending' ? (
         <Tap className="btn primary" onTap={() => open({ name: 'proof', entryId: entry.id })}>
-          <Sparkles size={18} />
+          <Sparkle size={18} />
           {t('goal.proof.add')}
         </Tap>
       ) : null}
@@ -245,7 +246,7 @@ export function EntrySheet({ sheet, onClose }: { sheet: Extract<SheetState, { na
           })
         }
       >
-        <Trash2 size={18} />
+        <Trash size={18} />
         {t('entry.delete')}
       </Tap>
     </Sheet>

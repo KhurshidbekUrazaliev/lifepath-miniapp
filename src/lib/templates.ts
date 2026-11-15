@@ -1,4 +1,5 @@
-// Ported from LifePath v0.8; the Qur'an template is new in the Mini App.
+// Ported from LifePath v0.8; the Qur'an, career, family and good-deeds templates are new in the Mini App.
+// What people see comes from the translations (tpl.<id>.*); the English here is only a fallback.
 import { ProgressType } from './types';
 
 export interface FolderTemplate {
@@ -67,7 +68,7 @@ export const TEMPLATES: FolderTemplate[] = [
     targetLabel: 'Total minutes', showResources: true,
   },
   {
-    id: 'money', name: 'Money', icon: '💰', color: '#F59E0B', progressType: 'units', unit: '₩',
+    id: 'money', name: 'Money', icon: '💰', color: '#F59E0B', progressType: 'units', unit: '$',
     tagline: 'Savings goals', taskPlaceholder: 'Emergency fund', defaultTarget: 1000000,
     targetLabel: 'Target amount', showResources: false,
   },
@@ -78,8 +79,23 @@ export const TEMPLATES: FolderTemplate[] = [
   },
   {
     id: 'quran', name: "Qur'an", icon: '📖', color: '#10B981', progressType: 'units', unit: 'pages',
-    tagline: 'Reading and memorizing', taskPlaceholder: 'Become a Hafiz', defaultTarget: 604,
+    tagline: 'Reading and memorizing', taskPlaceholder: "Memorize Juz 'Amma", defaultTarget: 604,
     targetLabel: 'Total pages', showResources: false,
+  },
+  {
+    id: 'career', name: 'Career', icon: '💼', color: '#64748B', progressType: 'milestones', unit: 'steps',
+    tagline: 'Skills, projects and promotions', taskPlaceholder: 'Get a promotion', defaultTarget: 0,
+    targetLabel: 'Milestones', showResources: true,
+  },
+  {
+    id: 'family', name: 'Family', icon: '❤️', color: '#E11D48', progressType: 'sessions', unit: 'times',
+    tagline: 'Time with the people you love', taskPlaceholder: 'Weekly family dinner', defaultTarget: 12,
+    targetLabel: 'Times', showResources: false,
+  },
+  {
+    id: 'kindness', name: 'Good deeds', icon: '🕊️', color: '#F97316', progressType: 'sessions', unit: 'deeds',
+    tagline: 'Charity, help and kindness', taskPlaceholder: 'Help someone every week', defaultTarget: 30,
+    targetLabel: 'Deeds', showResources: false,
   },
   {
     id: 'custom', name: 'Custom', icon: '✨', color: '#0EA5E9', progressType: 'units', unit: 'units',
