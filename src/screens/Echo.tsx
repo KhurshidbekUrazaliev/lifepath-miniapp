@@ -15,10 +15,10 @@ import { haptic, shareText } from '../tg/telegram';
 import { Key, t, tn } from '../i18n';
 import { fmtNumber } from '../i18n/format';
 import { Bar, Card, Chips, Empty, Header, IconBtn, Num, Screen, Section, Tap, cx } from '../ui/kit';
-import { CompanionHandle, CompanionStage, itemAvailable } from '../companion/CompanionStage';
+import { CompanionHandle, CompanionStage } from '../companion/CompanionStage';
 import { Hearts, Speech, SpeechCard } from '../companion/Speech';
 import { ItemPicture } from '../companion/ItemPicture';
-import { loadManifest, manifestNow, Manifest } from '../companion/models';
+import { itemAvailable } from '../companion/models';
 import type { TapPart } from '../companion/types';
 import { Emoji } from '../ui/Emoji';
 
@@ -205,11 +205,6 @@ export function Shop() {
   const stage = useRef<CompanionHandle>(null);
   const [picked, setSlot] = useState<Slot | null>(null);
   const [trying, setTrying] = useState<string | null>(null);
-  const [manifest, setManifest] = useState<Manifest | null>(manifestNow());
-
-  useEffect(() => {
-    void loadManifest().then(setManifest);
-  }, []);
 
   const worn = wornOutfit(profile.outfit, e.gender);
   const tryItem = itemById(trying ?? undefined);
@@ -221,11 +216,11 @@ export function Shop() {
 
   // Only slots with something to offer (3D items appear once their file exists).
   const offered = useMemo(
-    () => ITEMS.filter((i) => (!i.gender || i.gender === e.gender) && itemAvailable(i.id, manifest)),
-    [manifest, e.gender],
+    () => ITEMS.filter((i) => (!i.gender || i.gender === e.gender) && itemAvailable(i.id)),
+    [e.gender],
   );
   const slots = SLOTS.filter((s) => offered.some((i) => i.slot === s.id && i.price > 0));
-  // The first kind of item is open until another is picked (skies while the 3D list is still loading).
+  // The first kind of item is open until another is picked.
   const slot = picked && slots.some((s) => s.id === picked) ? picked : slots[0]?.id ?? 'sky';
   const items = offered.filter((i) => i.slot === slot);
 
@@ -307,7 +302,7 @@ export function Shop() {
           return (
             <Tap key={item.id} onTap={() => setTrying(item.id)} scale={0.96} hap="select">
               <Card pad={false} className={cx('shop-item', (trying === item.id || (!trying && wearing)) && 'on')}>
-                <ItemPicture item={item} manifest={manifest} />
+                <ItemPicture item={item} />
                 {locked ? <span className="shop-lock"><Lock size={14} weight="fill" /></span> : null}
                 <span className="t-small clip" style={{ fontWeight: 700, maxWidth: '100%' }}>{t(`item.${item.id}` as Key)}</span>
                 <span className={cx('t-tiny', wearing ? 'accent' : 'muted')}>

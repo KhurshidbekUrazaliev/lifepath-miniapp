@@ -1,6 +1,6 @@
 // Wardrobe: things the companion can wear or keep near, bought with Sparks.
 // Items with a `model` are 3D files made in Tripo; the shop only offers them once the file exists
-// (see public/companion/models.json). Skies are drawn in CSS behind the 3D stage, and hijab colours
+// (see src/companion/models.json). Skies are drawn in CSS behind the 3D stage, and hijab colours
 // recolour the girl's ivory hijab (companion/scene.ts; the flat picture draws them too).
 import type { Gender } from './companion';
 

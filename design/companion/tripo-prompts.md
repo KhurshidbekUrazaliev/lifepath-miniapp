@@ -44,8 +44,8 @@ Prices as the studio showed them. The account started at 3,035 credits and has 7
    Private. It makes four variants; take the one whose face and hands came out cleanest.
 3. **Texture**, then **Rig**: Auto Rig, **Humanoid**, skeleton **Mixamo**. All eight use the same
    skeleton, so one set of motions fits them all.
-4. **Animate**: under *Preset* add `idle`, `cheer` and `agree`; under *AI Animation* add the five saved
-   motions (below).
+4. **Animate**: under *Preset* add `idle`. It is the only motion the app takes from Tripo (see Motions
+   below), so nothing from *AI Animation* is needed, and no credits are spent on motions.
 5. **Export**: GLB, texture 2k, with the skeleton, Number of Animations → Select All. Move the download to
    `models/<key>.glb` and run `npm run models`.
 
@@ -88,12 +88,34 @@ The app plays `idle`, `wave`, `talk`, `cheer`, `think`, `nod`, `read` and `dua`.
 
 | App motion | Where it comes from |
 | --- | --- |
-| `idle`, `cheer` | Tripo's ready-made motions of the same name. The cheer runs 12 seconds; the script keeps seconds 1 to 5. |
-| `nod` | Tripo's ready-made `agree`. |
-| `wave`, `talk`, `think`, `read`, `dua` | Made once from text prompts on `boy-2` (Waving Hello, Talking and Gesturing, Thinking Pose, Reading a Book, Prayer Gesture). They are saved in the account under Animate → AI Animation and go on any rigged character for free. |
+| `idle` | Tripo's ready-made motion of that name: standing, breathing, a little sway. The script calms it and gives it arms that hang clear of the body. |
+| `wave`, `talk`, `cheer`, `think`, `nod`, `read`, `dua` | Made by `npm run models` for each character from its own measurements (`scripts/companion-moves.mjs`). |
 
-Tripo's ready-made `greet_01` walks forward off the platform, so the script drops it and the saved
-"Waving Hello" is the wave.
+Tripo's motions are made for someone of ordinary build, and the eight exports still hold them (its
+ready-made `cheer` and `agree`, and five made from text prompts on `boy-2`). They are no longer used. On a
+companion with short arms, a wide tunic and a head a third of its height, the hands ended up inside the
+body or against an ear, "agree" came out as a sideways lean with a hand on the hip, and "thinking" tipped
+the head right over.
+
+So only the standing is kept, and the script makes the rest:
+
+- **The idle is calmed.** As made it leans, sways and steps a tenth of the body's height to one side and
+  back. `CALM` in `scripts/companion-rig.mjs` says how much of the body's and the head's nodding, turning
+  and leaning stays; the hips' travel shrinks with the body, so the feet stay where they stand.
+- **The arms reach for places** given in arm's lengths from the shoulder, so a short arm and a long one
+  make the same gesture (`MOVES` in `scripts/companion-moves.mjs`). In every frame the hand is checked
+  against the body's outline at its height, against the head and against the other hand, and moved out
+  until it is clear. Nothing has to be tuned for a new character: its body is measured from its mesh.
+- **The head nods and turns but never leans.**
+- **A gesture holds keys only for the bones it moves**, written as the companion standing still with the
+  gesture on top. The stage plays it over the running idle as the difference from the idle's first
+  moment (`src/companion/scene.ts`), so the breathing never stops and nothing jumps when a gesture
+  starts, ends, or is started again half way through.
+
+To change a gesture, change its numbers in `MOVES`, run `npm run models` and look at it on the smallest
+and on a grown companion, from the front and from the side. `npm test` checks on a small made-up
+companion that no hand is ever inside the body or the head and that every gesture begins and ends where
+the idle begins.
 
 ## Items, pets and places
 
@@ -164,11 +186,16 @@ and faintly tinted lenses. Change the numbers at the top of the script and run i
 `npm run models` (or `node scripts/companion-models.mjs kufi camel` for a few) reads `models/` and writes
 `public/companion/`:
 
-- a character's motions get the app's names, the long cheer is cut, and keys the app does not need
-  (finger joints, bones changing size) are dropped: a character goes from about 3.8 MB to about 0.9 MB;
+- a character's idle is kept and calmed, keys the app does not need (finger joints, bones changing size)
+  are dropped, and the other motions are made for its own body (above): a character goes from about
+  3.8 MB to about 0.7 MB;
+- everything above its neck is tied to the head bone alone. Tripo ties a girl's head and hijab to the
+  head bone by about two thirds and shares the rest between the neck and the shoulders, so the face and
+  the cloth slid apart when the head turned or an arm went up;
 - the caps are made lower and the garden's earth shallower (`RESHAPE` in the script);
 - textures become WebP (1024 px for characters, 512 for items) and the geometry is compressed;
-- each file's name carries a hash of its contents, and `models.json` lists what exists. The shop only
+- each file's name carries a hash of its contents, so phones can keep it for good (`public/_headers`),
+  and `src/companion/models.json` lists what exists. The list is built into the app; the shop only
   offers an item whose file is listed there.
 
 How an item sits on the companion is its `place` in `src/lib/wardrobe.ts`. The stage measures each

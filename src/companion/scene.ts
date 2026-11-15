@@ -13,6 +13,18 @@ const LOOPING = new Set<Clip>(['idle', 'talk', 'read']);
 /** World height of a grown companion; younger stages are scaled down from it. */
 const FULL_HEIGHT = 1;
 const PLATFORM_R = 0.5;
+/**
+ * How far the head turns after a finger, a glance or the viewer (radians each way), how far it looks up
+ * and down, and the share of each that the neck takes: a head that turns alone twists out of its collar.
+ */
+const LOOK_TURN = 0.42;
+const LOOK_UP = 0.2;
+const LOOK_DOWN = 0.24;
+const LOOK_NECK = 0.35;
+/** Seconds a gesture takes to come in over the idle (one that goes round takes longer) and to go again. */
+const GESTURE_IN = 0.15;
+const GESTURE_IN_LOOP = 0.35;
+const GESTURE_OUT = 0.3;
 
 // ---------- loading (shared by every stage on the page) ----------
 
@@ -41,23 +53,41 @@ function clipName(name: string): string {
   return last.trim().toLowerCase().replace(/[^a-z]/g, '');
 }
 
+type Motions = { idle: THREE.AnimationClip | null; gestures: Map<string, THREE.AnimationClip[]> };
+const motions = new WeakMap<GLTF, Motions>();
+
 /**
- * Drops the sideways drift some motions bake into the hips, so the companion stays on its platform.
- * The vertical part (a jump) stays. Done once per clip; clips are shared between stages.
+ * A model's motions, sorted out once for every stage that shows it. The idle is played as it is. Every
+ * other motion is a gesture laid over the running idle: it is kept as what it adds to the idle's first
+ * moment, so the breathing goes on underneath and nothing jumps when a gesture starts, ends or is cut
+ * short. There are two copies of each, so that one can start again while its last run is still fading.
  */
-function pinRoot(clip: THREE.AnimationClip): void {
-  if (clip.userData.pinned) return;
-  clip.userData.pinned = true;
-  for (const track of clip.tracks) {
-    if (!/hips\.position$/i.test(track.name)) continue;
-    const v = track.values;
-    const x0 = v[0];
-    const z0 = v[2];
-    for (let i = 0; i < v.length; i += 3) {
-      v[i] = x0;
-      v[i + 2] = z0;
+function motionsOf(gltf: GLTF): Motions {
+  let made = motions.get(gltf);
+  if (made) return made;
+  const named = new Map<string, THREE.AnimationClip>();
+  for (const clip of gltf.animations) {
+    const name = clipName(clip.name);
+    if (!named.has(name)) named.set(name, clip);
+  }
+  const idle = named.get('idle') ?? gltf.animations[0] ?? null;
+  made = { idle, gestures: new Map() };
+  if (idle) {
+    const standing = new Set(idle.tracks.map((track) => track.name));
+    for (const [name, clip] of named) {
+      if (clip === idle) continue;
+      made.gestures.set(
+        name,
+        [0, 1].map(() => {
+          const copy = clip.clone();
+          copy.tracks = copy.tracks.filter((track) => standing.has(track.name)); // only what the idle moves can be told apart from it
+          return THREE.AnimationUtils.makeClipAdditive(copy, 0, idle);
+        }),
+      );
     }
   }
+  motions.set(gltf, made);
+  return made;
 }
 
 // ---------- item thumbnails (one small shared renderer for the whole shop) ----------
@@ -124,6 +154,8 @@ function platformColor(accent: string): THREE.Color {
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+/** 0 to 1 with a soft start and a soft stop. */
+const eased = (v: number) => v * v * (3 - 2 * v);
 /** Angle folded into (-PI, PI]. */
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
@@ -288,9 +320,10 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
 
   let model: THREE.Object3D | null = null;
   let mixer: THREE.AnimationMixer | null = null;
-  const actions = new Map<string, THREE.AnimationAction>();
-  let current: THREE.AnimationAction | null = null;
-  let currentLoops = true;
+  let idle: THREE.AnimationAction | null = null;
+  const gestures = new Map<string, THREE.AnimationAction[]>();
+  // The gestures that are showing: how much of each is laid over the idle now (0 to 1) and where that is heading.
+  let layers: { action: THREE.AnimationAction; level: number; goal: number; rounds: boolean }[] = [];
   let head: THREE.Bone | null = null;
   let neck: THREE.Bone | null = null;
   let spine: THREE.Bone | null = null;
@@ -300,8 +333,8 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
   const fromRest = new Map<THREE.Bone, THREE.Matrix4>();
   // Each stage has its own hijab colour (the shop tries colours on without touching other stages).
   const tint: Tint = { color: { value: new THREE.Color(1, 1, 1) }, on: { value: 0 } };
-  const headRest = new THREE.Quaternion();
-  let headSaved = false;
+  // The neck and head as the motion left them, put back before the next frame's motion is worked out.
+  const looking: { bone: THREE.Bone; share: number; last: boolean; rest: THREE.Quaternion; saved: boolean }[] = [];
   let height = FULL_HEIGHT;
   let width = 0.5;
   let disposed = false;
@@ -398,6 +431,8 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
       if (m) spines[m[1] ?? ''] ??= bone;
     });
     spine = spines['2'] ?? spines['1'] ?? spines[''] ?? null;
+    if (head && neck) looking.push({ bone: neck, share: LOOK_NECK, last: false, rest: new THREE.Quaternion(), saved: false });
+    if (head) looking.push({ bone: head, share: 1, last: true, rest: new THREE.Quaternion(), saved: false });
 
     // Measure the body for what it will wear. A bone the model lacks is guessed from the one above it.
     const where = (bone: THREE.Bone | null, guess: Vec3): Vec3 => (bone ? (bone.getWorldPosition(point).toArray() as Vec3) : guess);
@@ -412,40 +447,45 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
     pivot.add(root);
     model = root;
 
-    mixer = new THREE.AnimationMixer(root);
-    for (const clip of gltf.animations) {
-      pinRoot(clip);
-      const name = clipName(clip.name);
-      if (!actions.has(name)) actions.set(name, mixer.clipAction(clip));
-    }
-    mixer.addEventListener('finished', (e) => {
-      if ((e as unknown as { action: THREE.AnimationAction }).action === current && !currentLoops) play('idle');
+    const made = motionsOf(gltf);
+    const playing = (mixer = new THREE.AnimationMixer(root));
+    if (made.idle) idle = playing.clipAction(made.idle).play();
+    for (const [name, pair] of made.gestures) gestures.set(name, pair.map((clip) => playing.clipAction(clip)));
+    playing.addEventListener('finished', (e) => {
+      // A gesture that has run its course is back where it began: let go of it.
+      const done = layers.find((l) => l.action === (e as unknown as { action: THREE.AnimationAction }).action);
+      if (done) done.goal = 0;
     });
-    if (!play('idle')) {
-      const first = actions.values().next().value as THREE.AnimationAction | undefined;
-      if (first) {
-        first.play();
-        current = first;
-      }
-    }
+    playing.update(0); // into the idle's first pose, so the first frame is not the arms-out pose it was modelled in
+    look.nextGlance = performance.now() + 2600; // it looks at the viewer first, and only then around
     applyProps();
   }
 
+  /**
+   * Plays a gesture over the idle. 'idle' ends a gesture that goes round (talking, reading); one that is
+   * played once is short and runs its course, so a wave is not cut off because a line of speech ended.
+   */
   function play(clip: Clip, o: { loop?: boolean } = {}): boolean {
-    const action = actions.get(clip);
-    if (!action || !mixer) return false;
-    const loops = o.loop ?? LOOPING.has(clip);
-    if (action === current && loops && currentLoops) return true;
+    if (!mixer) return false;
+    if (clip === 'idle') {
+      for (const l of layers) if (l.rounds) l.goal = 0;
+      return !!idle;
+    }
+    const pair = gestures.get(clip);
+    if (!pair) return false;
+    const rounds = o.loop ?? LOOPING.has(clip);
+    const showing = layers.find((l) => l.goal > 0 && pair.includes(l.action));
+    if (showing && rounds && showing.rounds) return true; // it is going round already
+    for (const l of layers) l.goal = 0;
+    // The copy that is free starts from the beginning (the other may still be fading out from its last run).
+    const action = pair.find((a) => !layers.some((l) => l.action === a)) ?? pair.find((a) => a !== showing?.action) ?? pair[0];
+    layers = layers.filter((l) => l.action !== action);
     action.reset();
-    action.setLoop(loops ? THREE.LoopRepeat : THREE.LoopOnce, loops ? Infinity : 1);
-    action.clampWhenFinished = !loops;
-    action.setEffectiveTimeScale(1);
-    action.setEffectiveWeight(1);
-    action.enabled = true;
+    action.setLoop(rounds ? THREE.LoopRepeat : THREE.LoopOnce, rounds ? Infinity : 1);
+    action.clampWhenFinished = true;
+    action.setEffectiveWeight(0);
     action.play();
-    if (current && current !== action) action.crossFadeFrom(current, 0.28, false);
-    current = action;
-    currentLoops = loops;
+    layers.push({ action, level: 0, goal: 1, rounds });
     return true;
   }
 
@@ -453,6 +493,8 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
 
   let props: PropSpec[] = [];
   const propObjects = new Map<string, THREE.Object3D>();
+  /** The items asked for last, each settled once it is on the companion (or could not be loaded). */
+  let arriving: Promise<void>[] = [];
 
   /** The bone a worn item moves with: a missing neck or spine falls back to the one above it. */
   function boneFor(anchor: PropSpec['anchor']): THREE.Bone | null {
@@ -526,20 +568,23 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
     }
     showGround();
     if (!model) return;
+    arriving = [];
     for (const spec of props) {
       if (propObjects.has(spec.id)) continue;
-      loadGltf(spec.url)
-        .then((g) => {
-          if (disposed || propObjects.has(spec.id) || !props.some((p) => p.id === spec.id)) return;
-          const obj = g.scene.clone(true);
-          propObjects.set(spec.id, obj);
-          placeProp(spec, obj);
-          showGround();
-        })
-        .catch((e) => {
-          // An item that cannot be shown is left out; the companion stays as it is.
-          if (import.meta.env.DEV) console.warn('companion item', spec.id, e);
-        });
+      arriving.push(
+        loadGltf(spec.url)
+          .then((g) => {
+            if (disposed || propObjects.has(spec.id) || !props.some((p) => p.id === spec.id)) return;
+            const obj = g.scene.clone(true);
+            propObjects.set(spec.id, obj);
+            placeProp(spec, obj);
+            showGround();
+          })
+          .catch((e) => {
+            // An item that cannot be shown is left out; the companion stays as it is.
+            if (import.meta.env.DEV) console.warn('companion item', spec.id, e);
+          }),
+      );
     }
   }
 
@@ -564,8 +609,8 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
   }
 
   function aimHead(): void {
-    look.tYaw = clamp(ndc.x * 0.55, -0.5, 0.5);
-    look.tPitch = clamp(-(ndc.y - 0.15) * 0.35, -0.25, 0.3);
+    look.tYaw = clamp(ndc.x * 0.4, -0.36, 0.36);
+    look.tPitch = clamp(-(ndc.y - 0.15) * 0.3, -LOOK_UP, LOOK_DOWN);
     look.nextGlance = performance.now() + 2500;
   }
 
@@ -635,6 +680,9 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
   const timer = new THREE.Timer();
   const tmpQ = new THREE.Quaternion();
   const tmpE = new THREE.Euler();
+  const bodyQ = new THREE.Quaternion();
+  const aboveQ = new THREE.Quaternion();
+  const partQ = new THREE.Quaternion();
   let raf = 0;
   let onScreen = true;
   let frameSkip = false;
@@ -660,26 +708,44 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
 
     // Glance around now and then when nobody is touching.
     if (now > look.nextGlance) {
-      look.tYaw = (Math.random() - 0.5) * 0.6;
-      look.tPitch = (Math.random() - 0.4) * 0.2;
+      look.tYaw = (Math.random() - 0.5) * 0.5;
+      look.tPitch = (Math.random() - 0.45) * 0.16;
       look.nextGlance = now + 1800 + Math.random() * 2600;
     }
     look.yaw += (look.tYaw - look.yaw) * Math.min(1, dt * 5);
     look.pitch += (look.tPitch - look.pitch) * Math.min(1, dt * 5);
 
-    if (head && headSaved) head.quaternion.copy(headRest);
+    for (const l of looking) if (l.saved) l.bone.quaternion.copy(l.rest);
+    // Gestures come in and go out softly over the idle.
+    for (const l of layers) {
+      const step = dt / (l.goal > l.level ? (l.rounds ? GESTURE_IN_LOOP : GESTURE_IN) : GESTURE_OUT);
+      l.level = l.goal > l.level ? Math.min(l.goal, l.level + step) : Math.max(l.goal, l.level - step);
+      l.action.setEffectiveWeight(eased(l.level));
+      if (l.goal === 0 && l.level === 0) l.action.stop();
+    }
+    if (layers.some((l) => l.goal === 0 && l.level === 0)) layers = layers.filter((l) => l.goal > 0 || l.level > 0);
     mixer?.update(dt);
-    if (head) {
-      headRest.copy(head.quaternion);
-      headSaved = true;
+    if (looking.length && model) {
       // Keep looking at the viewer while the body turns away (within the neck's reach).
       // (the sine eases it back to straight ahead as the body turns its back, instead of snapping across)
-      const towardViewer = clamp(-Math.sin(yaw) * 0.7, -0.6, 0.6);
-      tmpE.set(look.pitch, clamp(look.yaw + towardViewer, -0.7, 0.7), 0, 'YXZ');
-      tmpQ.setFromEuler(tmpE);
-      head.quaternion.multiply(tmpQ);
+      const towardViewer = clamp(-Math.sin(yaw) * 0.5, -0.4, 0.4);
+      const turnTo = clamp(look.yaw + towardViewer, -LOOK_TURN, LOOK_TURN);
+      model.getWorldQuaternion(bodyQ).invert();
+      for (const l of looking) {
+        l.rest.copy(l.bone.quaternion);
+        l.saved = true;
+        // The turn is the companion's own left-right and up-down, whichever way the rig's bones point:
+        // seen from the bone above, carried into that bone's directions, done, and carried back.
+        l.bone.parent!.getWorldQuaternion(aboveQ).premultiply(bodyQ);
+        tmpQ.setFromEuler(tmpE.set(look.pitch * l.share, turnTo * l.share, 0, 'YXZ'));
+        // The head finishes what the neck began, so the two together are a turn and a nod and never a lean.
+        if (l.last && looking.length > 1) {
+          tmpQ.multiply(partQ.setFromEuler(tmpE.set(look.pitch * LOOK_NECK, turnTo * LOOK_NECK, 0, 'YXZ')).invert());
+        }
+        l.bone.quaternion.premultiply(aboveQ).premultiply(tmpQ).premultiply(aboveQ.invert());
+      }
     }
-    if (actions.size === 0 && model) {
+    if (!idle && model) {
       model.scale.y = model.scale.x * (1 + Math.sin(now / 520) * 0.01); // breathing when there is no idle clip
     }
     renderer.render(scene, camera);
@@ -711,9 +777,13 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
   canvas.addEventListener('webglcontextlost', onLost);
 
   loadGltf(opts.modelUrl)
-    .then((gltf) => {
+    .then(async (gltf) => {
       if (disposed) return;
       setup(gltf);
+      // The first frame shows the companion in everything it wears, so nothing pops on a moment later.
+      // An item whose file is slower than this arrives when it arrives.
+      await Promise.race([Promise.all(arriving), new Promise((done) => setTimeout(done, 1500))]);
+      if (disposed) return;
       renderer.render(scene, camera);
       opts.onReady?.();
       start();
@@ -722,9 +792,23 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
       if (!disposed) opts.onError?.(e);
     });
 
+  function still(size: number): HTMLCanvasElement | null {
+    if (!model) return null;
+    try {
+      renderer.render(scene, camera);
+      const out = document.createElement('canvas');
+      out.width = size;
+      out.height = Math.round((size * viewH) / viewW);
+      out.getContext('2d')!.drawImage(canvas, 0, 0, out.width, out.height);
+      return out;
+    } catch {
+      return null;
+    }
+  }
+
   return {
     play,
-    has: (clip) => actions.has(clip),
+    has: (clip) => (clip === 'idle' ? !!idle : gestures.has(clip)),
     setAccent(hex) {
       platformMat.color.copy(platformColor(hex));
       ringMat.emissive.set(hex);
@@ -737,16 +821,10 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
       if (hex) tint.color.value.set(hex);
       tint.on.value = hex ? 1 : 0;
     },
+    still,
     snapshot(size) {
-      if (!model) return null;
       try {
-        renderer.render(scene, camera);
-        const out = document.createElement('canvas');
-        const ratio = viewW / viewH;
-        out.width = size;
-        out.height = Math.round(size / ratio);
-        out.getContext('2d')!.drawImage(canvas, 0, 0, out.width, out.height);
-        return out.toDataURL('image/webp', 0.86);
+        return still(size)?.toDataURL('image/webp', 0.86) ?? null;
       } catch {
         return null;
       }

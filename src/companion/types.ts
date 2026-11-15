@@ -21,14 +21,19 @@ export interface StageOptions {
 }
 
 export interface StageController {
-  /** Plays a motion; one-shot motions return to idle. False when the model has no such motion. */
+  /**
+   * Plays a gesture over the idle (the companion goes on standing and breathing underneath). One played
+   * once ends by itself; 'idle' ends one that goes round. False when the model has no such motion.
+   */
   play: (clip: Clip, o?: { loop?: boolean }) => boolean;
   has: (clip: Clip) => boolean;
   setAccent: (hex: string) => void;
   setProps: (props: PropSpec[]) => void;
   /** Recolours the girl's ivory hijab (null puts the ivory back). */
   setTint: (hex: string | null) => void;
-  /** A still picture of the stage (for the small avatar elsewhere in the app). */
+  /** A copy of the stage as it is drawn now, `size` pixels wide; null before the model has loaded. */
+  still: (size: number) => HTMLCanvasElement | null;
+  /** The same as a picture file's address (a data URL). */
   snapshot: (size: number) => string | null;
   dispose: () => void;
 }

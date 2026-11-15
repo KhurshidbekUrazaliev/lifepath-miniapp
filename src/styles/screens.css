@@ -485,6 +485,15 @@
 .cstage-gl {
   position: absolute;
   inset: 0;
+  opacity: 0;
+}
+.cstage.live .cstage-gl {
+  opacity: 1;
+  transition: opacity 0.3s var(--ease);
+}
+.cstage.still .cstage-gl {
+  /* it takes over from a picture of itself: no fade, or the companion would dim for a moment */
+  transition: none;
 }
 .cstage-gl canvas {
   display: block;
@@ -502,12 +511,35 @@
 .cstage-flat svg {
   filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.35));
 }
-.cstage-flat.loading {
-  animation: cstage-breathe 1.6s var(--ease) infinite alternate;
+/* While the 3D stage starts: its own first frame from last time, drawn just where the stage will draw it... */
+.cstage-poster {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  width: auto;
+  max-width: none;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
-@keyframes cstage-breathe {
-  from { opacity: 0.55; transform: scale(0.98); }
-  to { opacity: 0.9; transform: scale(1); }
+/* ...or, the first time, a soft light where the companion will stand. It waits a moment before showing,
+   so a stage that is ready at once shows nothing in between. */
+.cstage-wait {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 38%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, currentColor, transparent);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+  animation: cstage-wait 1.4s var(--ease) 0.35s infinite alternate;
+}
+@keyframes cstage-wait {
+  from { opacity: 0.1; transform: translate(-50%, -50%) scale(0.9); }
+  to { opacity: 0.34; transform: translate(-50%, -50%) scale(1); }
 }
 .cstage-badge {
   position: absolute;
@@ -765,7 +797,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cstage-flat.loading,
+  .cstage-wait {
+    animation: none;
+    opacity: 0.22;
+  }
   .speech-dots i {
     animation: none;
   }

@@ -24,8 +24,8 @@
     "bytes": 130824
   },
   "boy-1": {
-    "file": "boy-1.baa7b7e0.glb",
-    "bytes": 901516,
+    "file": "boy-1.d006141b.glb",
+    "bytes": 666236,
     "clips": [
       "idle",
       "wave",
@@ -38,8 +38,8 @@
     ]
   },
   "boy-2": {
-    "file": "boy-2.13f6d4e4.glb",
-    "bytes": 970352,
+    "file": "boy-2.f874ad52.glb",
+    "bytes": 680912,
     "clips": [
       "idle",
       "wave",
@@ -52,8 +52,8 @@
     ]
   },
   "boy-3": {
-    "file": "boy-3.57b878b6.glb",
-    "bytes": 955440,
+    "file": "boy-3.405d32ea.glb",
+    "bytes": 718164,
     "clips": [
       "idle",
       "wave",
@@ -66,8 +66,8 @@
     ]
   },
   "boy-4": {
-    "file": "boy-4.933d4a71.glb",
-    "bytes": 973884,
+    "file": "boy-4.e61e80a8.glb",
+    "bytes": 736836,
     "clips": [
       "idle",
       "wave",
@@ -92,8 +92,8 @@
     "bytes": 71924
   },
   "girl-1": {
-    "file": "girl-1.01639dcc.glb",
-    "bytes": 947388,
+    "file": "girl-1.92ba3dd6.glb",
+    "bytes": 693004,
     "clips": [
       "idle",
       "wave",
@@ -106,8 +106,8 @@
     ]
   },
   "girl-2": {
-    "file": "girl-2.09f40724.glb",
-    "bytes": 1001260,
+    "file": "girl-2.fe03a5e4.glb",
+    "bytes": 684896,
     "clips": [
       "idle",
       "wave",
@@ -120,8 +120,8 @@
     ]
   },
   "girl-3": {
-    "file": "girl-3.9cf2677e.glb",
-    "bytes": 956280,
+    "file": "girl-3.c91e9d29.glb",
+    "bytes": 701888,
     "clips": [
       "idle",
       "wave",
@@ -134,8 +134,8 @@
     ]
   },
   "girl-4": {
-    "file": "girl-4.5e4aeaca.glb",
-    "bytes": 995388,
+    "file": "girl-4.61b1851f.glb",
+    "bytes": 744924,
     "clips": [
       "idle",
       "wave",

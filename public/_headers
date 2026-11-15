@@ -1,0 +1,9 @@
+# Files whose name carries a hash of their contents never change, so a phone keeps them and does not ask
+# again: the app's own code, styles and fonts (Vite names them) and the companion's 3D files
+# (scripts/companion-models.mjs names them). Everything else keeps Cloudflare's default: kept, but checked
+# on every visit.
+/assets/*
+  Cache-Control: public, max-age=31556952, immutable
+
+/companion/*.glb
+  Cache-Control: public, max-age=31556952, immutable

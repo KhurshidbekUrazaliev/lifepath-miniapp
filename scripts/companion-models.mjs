@@ -3,11 +3,13 @@
 //   node scripts/companion-models.mjs            all files
 //   node scripts/companion-models.mjs boy-2 kufi only these
 //
-// Characters (boy-1 ... girl-4): the main file plus any one-motion files (boy-2-wave.glb) become one
-// GLB whose animations are called idle, wave, talk... as the app expects. Items, pets and bases are
-// optimised as they are. Textures become WebP (1024 px for characters, 512 for the rest) and the
-// geometry is meshopt-compressed. Each output name carries a content hash, so phones never keep a
-// stale copy, and public/companion/models.json lists what exists: the app offers only those.
+// Characters (boy-1 ... girl-4): the main file plus any one-motion files (boy-2-idle.glb) become one
+// GLB. Of Tripo's motions only the idle is kept (calmed, and with arms that hang clear of the body); the
+// wave, the nod and the others are made here for each character's own body (companion-moves.mjs), and
+// everything above the neck is tied to the head bone (companion-rig.mjs). Items, pets and bases are
+// optimised as they are. Textures become WebP (1024 px for characters, 512 for the rest) and the geometry
+// is meshopt-compressed. Each output name carries a content hash, so phones never keep a stale copy, and
+// src/companion/models.json lists what exists: the list is built into the app, which offers only those.
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -17,11 +19,13 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dedup, meshopt, prune, resample, textureCompress, weld } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import sharp from 'sharp';
+import { calmAnimation, dropAnimation, steadyHead } from './companion-rig.mjs';
+import { makeMoves } from './companion-moves.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = process.env.MODELS_SRC ?? path.join(ROOT, 'design/companion/models'); // overridable for tests
 const OUT = process.env.MODELS_OUT ?? path.join(ROOT, 'public/companion');
-const MANIFEST = path.join(OUT, 'models.json');
+const MANIFEST = process.env.MODELS_OUT ? path.join(OUT, 'models.json') : path.join(ROOT, 'src/companion/models.json');
 const CLIPS = ['idle', 'wave', 'talk', 'cheer', 'think', 'nod', 'read', 'dua'];
 const CHARACTER = /^(boy|girl)-([1-4])(?:-([a-z]+))?\.glb$/;
 
@@ -53,6 +57,8 @@ for (const file of files) {
 
 // Tripo's ready-made motions go by their own names (its "agree" is our nod), and a motion made from a
 // text prompt is named by the start of that prompt. Its "greet" walks off the platform, so it is not used.
+// (Only the idle ends up in the app; the others are named so that the ones made here take their place.
+// A rig the motion maker does not understand keeps Tripo's, calmed.)
 const ALIASES = {
   wave: ['raises the right hand', 'waving'],
   nod: ['agree'],
@@ -166,7 +172,7 @@ async function character(key, job) {
     // A one-motion file for the same motion wins over an animation inside the main file.
     if (!clip || named.has(clip) || (!idleFile && job.clips.has(clip))) {
       console.warn(`  ! ${mainFile}: dropped animation "${anim.getName()}"`);
-      anim.dispose();
+      dropAnimation(anim);
       continue;
     }
     anim.setName(clip);
@@ -182,7 +188,7 @@ async function character(key, job) {
       console.warn(`  ! ${file}: has no animation`);
       continue;
     }
-    root.listAnimations().filter((a) => a.getName() === clip).forEach((a) => a.dispose());
+    root.listAnimations().filter((a) => a.getName() === clip).forEach(dropAnimation);
     copyAnimation(doc, anim, clip);
     named.add(clip);
   }
@@ -191,7 +197,11 @@ async function character(key, job) {
     slimAnimation(anim);
     const stretch = TRIM[anim.getName()];
     if (stretch) trimAnimation(doc, anim, stretch[0], stretch[1]);
+    calmAnimation(doc, anim, anim.getName());
   }
+  steadyHead(doc);
+  // The idle is Tripo's; everything else the companion does is made for its own body.
+  for (const clip of makeMoves(doc)) named.add(clip);
   await optimise(doc, 1024);
   return { doc, clips: CLIPS.filter((c) => named.has(c)) };
 }
@@ -208,7 +218,7 @@ const RESHAPE = {
 
 async function item(key, job) {
   const doc = await io.read(path.join(SRC, job.main));
-  doc.getRoot().listAnimations().forEach((a) => a.dispose()); // items stand still
+  doc.getRoot().listAnimations().forEach(dropAnimation); // items stand still
   const reshape = RESHAPE[key];
   if (reshape) {
     for (const scene of doc.getRoot().listScenes()) {

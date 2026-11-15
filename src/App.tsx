@@ -17,6 +17,8 @@ import { Onboarding } from './screens/Onboarding';
 import { useInboxDot } from './screens/Inbox';
 import { useServerSync } from './store/serverSync';
 import { useFocusClock } from './store/focus';
+import { growthFor } from './lib/companion';
+import { warmCompanion } from './companion/warm';
 
 const CHROME = { dark: '#070a13', light: '#eef2fa' } as const;
 
@@ -70,6 +72,22 @@ function Page({ route, top }: { route: Route; top: boolean }) {
   );
 }
 
+/**
+ * Starts loading the 3D companion a moment after the app is up, so that its screen opens without a wait.
+ * Runs again when the companion grows or changes clothes (what is loaded already is not loaded twice).
+ */
+function useWarmCompanion(on: boolean): void {
+  // A companion from before there were girls has no gender written down and is a boy, as everywhere else.
+  const gender = useStore((s) => (s.profile.echo ? s.profile.echo.gender ?? 'boy' : undefined));
+  const stage = useStore((s) => growthFor(s.profile.xp).index);
+  const outfit = useStore((s) => s.profile.outfit);
+  useEffect(() => {
+    if (!on) return;
+    const timer = setTimeout(() => warmCompanion(gender, stage, outfit), 800);
+    return () => clearTimeout(timer);
+  }, [on, gender, stage, outfit]);
+}
+
 /** Counts a focus session when it ends; mounted once the saved data has loaded. */
 function FocusClock(): null {
   useFocusClock();
@@ -106,6 +124,7 @@ export function App() {
 
   useTheme();
   useServerSync();
+  useWarmCompanion(ready);
   setLang(lang); // before children render, so every string comes out in the right language
 
   useEffect(() => setHaptics(haptics), [haptics]);

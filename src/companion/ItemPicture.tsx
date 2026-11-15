@@ -2,13 +2,13 @@
 // file exists, or a placeholder until then.
 import { useEffect, useState } from 'react';
 import type { Item } from '../lib/wardrobe';
-import { Manifest, modelUrl } from './models';
+import { MANIFEST, modelUrl } from './models';
 import { Emoji } from '../ui/Emoji';
 
 const thumbs = new Map<string, string>();
 
-export function ItemPicture({ item, manifest }: { item: Item; manifest: Manifest | null }) {
-  const info = item.model ? manifest?.[item.model] : undefined;
+export function ItemPicture({ item }: { item: Item }) {
+  const info = item.model ? MANIFEST[item.model] : undefined;
   const [thumb, setThumb] = useState<string | null>(info ? thumbs.get(info.file) ?? null : null);
 
   useEffect(() => {
