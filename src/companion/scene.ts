@@ -685,6 +685,7 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
   const partQ = new THREE.Quaternion();
   let raf = 0;
   let onScreen = true;
+  let resting = false; // told to stop drawing: something covers the stage
   let frameSkip = false;
 
   function tick(): void {
@@ -752,7 +753,7 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
   }
 
   function start(): void {
-    if (raf || disposed || !onScreen || document.hidden) return;
+    if (raf || disposed || resting || !onScreen || document.hidden) return;
     timer.update(); // the time spent paused is not a frame
     raf = requestAnimationFrame(tick);
   }
@@ -822,6 +823,11 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
       tint.on.value = hex ? 1 : 0;
     },
     still,
+    rest(on) {
+      resting = on;
+      if (on) stop();
+      else start();
+    },
     snapshot(size) {
       try {
         return still(size)?.toDataURL('image/webp', 0.86) ?? null;

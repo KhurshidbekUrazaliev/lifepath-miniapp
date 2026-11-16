@@ -1,6 +1,6 @@
 // The create menu and the sheets for a task and a habit.
 import { useMemo, useState } from 'react';
-import { CalendarCheck, FolderPlus, PencilSimpleLine, Repeat, Target, Trash } from '@phosphor-icons/react';
+import { CalendarCheck, FolderPlus, Note, Notebook, PencilSimpleLine, Repeat, Target, Trash } from '@phosphor-icons/react';
 import { useStore } from '../store/store';
 import { Sheet as SheetState, useNav } from '../store/nav';
 import { dayKey } from '../lib/dates';
@@ -59,6 +59,7 @@ export function TimeField({ value, onChange, emptyLabel }: { value: string; onCh
 
 export function AddSheet({ onClose }: { onClose: () => void }) {
   const open = useNav((s) => s.open);
+  const push = useNav((s) => s.push);
   const tasks = useStore((s) => s.tasks);
   const folders = useStore((s) => s.folders);
   const entries = useStore((s) => s.entries);
@@ -69,6 +70,9 @@ export function AddSheet({ onClose }: { onClose: () => void }) {
 
   const options = [
     { icon: <CalendarCheck size={22} />, color: '#3d7bff', title: t('add.task'), hint: t('add.task.hint'), go: () => open({ name: 'task', day: dayKey() }) },
+    // Pushing a screen closes the menu.
+    { icon: <Notebook size={22} />, color: '#a596ff', title: t('add.entry'), hint: t('add.entry.hint'), go: () => push({ name: 'page' }) },
+    { icon: <Note size={22} />, color: '#ffcf5c', title: t('add.note'), hint: t('add.note.hint'), go: () => push({ name: 'page', kind: 'note' }) },
     { icon: <Repeat size={22} />, color: '#34d399', title: t('add.habit'), hint: t('add.habit.hint'), go: () => open({ name: 'habit' }) },
     { icon: <Target size={22} />, color: '#ff9f43', title: t('add.goal'), hint: t('add.goal.hint'), go: () => (folders.length ? open({ name: 'goal' }) : newArea()) },
     { icon: <PencilSimpleLine size={22} />, color: '#9b8cff', title: t('add.log'), hint: t('add.log.hint'), go: () => setPicking(true) },

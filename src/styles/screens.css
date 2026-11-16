@@ -45,7 +45,7 @@
   top: 0;
   right: 0;
   width: 62%;
-  height: 132px;
+  height: 112px;
   pointer-events: none;
   -webkit-mask-image: radial-gradient(130% 115% at 100% 0%, #000 38%, transparent 82%);
   mask-image: radial-gradient(130% 115% at 100% 0%, #000 38%, transparent 82%);
@@ -62,7 +62,7 @@
 }
 .ayah-main {
   position: relative;
-  padding: 14px 16px 2px;
+  padding: 12px 16px 0;
   text-align: left;
   color: inherit;
 }
@@ -78,18 +78,18 @@
 }
 .ayah-ar {
   display: block;
-  margin: 10px 0 8px;
+  margin: 6px 0 4px;
   font-family: var(--font-ar);
-  font-size: 25px;
-  line-height: 2.05;
+  font-size: 21px;
+  line-height: 1.95;
   text-align: center;
   color: var(--text);
   word-spacing: 1px;
 }
-/* Long ayat fade out after four lines on Home; the sheet shows all of it. */
+/* Long ayat fade out after three lines on Home; the sheet shows all of it. */
 .ayah-ar.long {
-  font-size: 22px;
-  max-height: calc(4 * 2.05em);
+  font-size: 19px;
+  max-height: calc(3 * 1.95em);
   overflow: hidden;
   -webkit-mask-image: linear-gradient(#000 70%, transparent);
   mask-image: linear-gradient(#000 70%, transparent);
@@ -114,10 +114,10 @@
 .ayah-tr {
   display: -webkit-box;
   margin: 0;
-  font-size: 14.5px;
-  line-height: 1.5;
+  font-size: 13.5px;
+  line-height: 1.45;
   color: var(--text-2);
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -143,7 +143,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 6px 12px 12px 16px;
+  padding: 2px 12px 10px 16px;
+}
+.ayah-foot .listen {
+  width: 36px;
+  height: 36px;
 }
 .ayah-error {
   color: var(--orange);
@@ -804,6 +808,95 @@
   .speech-dots i {
     animation: none;
   }
+}
+
+/* ---------- Home's hero: the companion, alive, and what it says today ---------- */
+
+.hero {
+  overflow: hidden;
+  padding: 16px 16px 16px 18px;
+  border-radius: var(--r-xl);
+}
+.hero-stage {
+  position: absolute;
+  top: 14px;
+  right: -8px;
+  /* the stage keeps room under the companion for a speech card; here that room hangs below the card */
+  bottom: -34px;
+  width: 62%;
+  /* its sky fades into the card on the side the words are */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 36%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 36%);
+}
+.hero-stage .cstage {
+  height: 100% !important;
+  border-radius: 0;
+}
+.hero-still {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 26px 0 0 18%;
+}
+.hero-still .companion-thumb {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+}
+.hero-seed {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border-radius: 30px;
+  font-size: 46px;
+  background: var(--accent-soft);
+  border: 1px solid var(--stroke);
+}
+.hero-copy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 58%;
+  min-height: 206px;
+  pointer-events: none; /* the companion can be touched beside the words */
+}
+.hero-copy > * {
+  pointer-events: auto;
+}
+.hero .t-display {
+  font-size: 28px;
+}
+.hero-tag {
+  margin: 3px 0 12px;
+  font-weight: 500;
+}
+.hero-say {
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+  padding: 9px 12px 10px;
+  border-radius: 18px 18px 6px 18px; /* the small corner points at the companion */
+  text-align: left;
+  background: var(--glass);
+  border: 1px solid var(--stroke-2);
+  box-shadow: var(--tile-shadow);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.hero-say .advisor-text {
+  font-size: 13.5px;
+  -webkit-line-clamp: 4;
+}
+.hero-streak {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  margin: 0;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 .advisor-card {

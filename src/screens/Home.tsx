@@ -1,5 +1,6 @@
-// Home: greeting, the next prayer, the ayah of the day, today's ring, shortcuts, today's focus and quick habit ticks.
-import { useMemo } from 'react';
+// Home: greeting, the companion as the hero (with the hadith of the day), the next prayer, the journal's
+// question for the day, the ayah of the day, the adhkar, today's ring, shortcuts, today's focus and quick habit ticks.
+import { useCallback, useMemo, useRef } from 'react';
 import { CalendarDots, Fire, GearSix as Gear, ListChecks, Repeat, Target } from '@phosphor-icons/react';
 import { useData, useVisibleStreak } from '../store/store';
 import { useNav } from '../store/nav';
@@ -8,7 +9,7 @@ import { dayStats, goalsRatio, openGoals } from '../lib/stats';
 import { activeHabits, dueHabits } from '../lib/habits';
 import { lastActivity, loggedToday } from '../lib/progress';
 import { XP, levelInfo } from '../lib/gamify';
-import { tgUser } from '../tg/telegram';
+import { haptic, lowPerf, tgUser } from '../tg/telegram';
 import { t, tn } from '../i18n';
 import { fmtShortDate, greetingKey, pct } from '../i18n/format';
 import { Avatar, Bubble, Card, Empty, IconBtn, Ring, Screen, Section, Tap } from '../ui/kit';
@@ -16,10 +17,13 @@ import { GoalCard, HabitDot, PlanItem } from '../ui/parts';
 import { useEcho } from '../store/echo';
 import { useAdvisor } from '../store/advisor';
 import { CompanionThumb } from '../companion/CompanionThumb';
+import { CompanionHandle, CompanionStage, StageState } from '../companion/CompanionStage';
+import type { TapPart } from '../companion/types';
 import { Emoji } from '../ui/Emoji';
 import { AyahCard } from '../ui/Ayah';
 import { AdhkarCard, PrayerCard } from './Prayer';
 import { FocusCard } from '../ui/FocusCard';
+import { JournalCard } from '../journal/Journal';
 
 export function Home() {
   const d = useData();
@@ -91,25 +95,13 @@ export function Home() {
         </IconBtn>
       </header>
 
-      <div className="row between" style={{ alignItems: 'flex-end', marginTop: 4 }}>
-        <div>
-          <h1 className="t-display">
-            {t('home.title.your')} <span className="grad-text">{t('home.title.path')}</span>
-          </h1>
-          <div className="t-body muted" style={{ marginTop: 4, fontWeight: 500 }}>{t('home.tagline')}</div>
-        </div>
-        <Tap className="streak-pill" onTap={() => push({ name: 'progress' })} scale={0.94} label={tn('home.streak', streak)}>
-          <Fire size={16} weight="bold" style={{ color: streak > 0 ? 'var(--orange)' : 'var(--text-3)' }} />
-          <span className="num">{streak}</span>
-          <i />
-          <span className="num">{t('common.lv', { n: lvl.level })}</span>
-        </Tap>
-      </div>
+      <Hero streak={streak} level={lvl.level} />
 
       <FocusCard />
       <PrayerCard />
-      <AdhkarCard />
+      <JournalCard />
       {d.settings.verse ? <AyahCard /> : null}
+      <AdhkarCard />
 
       <Card className="row" style={{ gap: 18 }}>
         <Ring value={stats.overall} size={128} stroke={13}>
@@ -138,8 +130,6 @@ export function Home() {
           </Tap>
         ))}
       </div>
-
-      <AdvisorCard />
 
       {habits.length ? (
         <Section title={t('habits.today')} action={`${stats.habits.done} / ${stats.habits.total}`} onAction={() => push({ name: 'habits' })}>
@@ -188,27 +178,92 @@ export function Home() {
   );
 }
 
-/** The companion's hadith of the day; a tap opens the companion for more. */
-function AdvisorCard() {
+// The companion waves once per visit to the app, not at every return to Home.
+let greeted = false;
+const TAP_MOVES = ['wave', 'cheer', 'nod'] as const;
+
+/**
+ * The top of Home: the companion, alive, with the hadith of the day beside it, under the app's title and
+ * the streak. Touching the companion makes it answer; the words open its own screen.
+ */
+function Hero({ streak, level }: { streak: number; level: number }) {
   const e = useEcho();
   const push = useNav((s) => s.push);
+  const open = useNav((s) => s.open);
+  // Something is over Home: the companion stops drawing until Home shows again.
+  const covered = useNav((s) => s.stack.length > 0 || !!s.sheet);
+  // Its own screens have a stage of their own; two at once is more than a phone should carry.
+  const elsewhere = useNav((s) => s.stack.some((r) => r.name === 'echo' || r.name === 'shop'));
   const { today } = useAdvisor();
-  if (!e.echo) return null;
+  const stage = useRef<CompanionHandle>(null);
+  const taps = useRef(0);
+
+  const onState = useCallback((state: StageState) => {
+    if (state !== 'ready' || greeted) return;
+    greeted = true;
+    setTimeout(() => stage.current?.play('wave'), 400);
+  }, []);
+  const onTap = (part: TapPart) => {
+    haptic('light');
+    stage.current?.play(part === 'head' ? 'nod' : TAP_MOVES[taps.current++ % TAP_MOVES.length]);
+  };
+
   return (
-    <Tap onTap={() => push({ name: 'echo' })} scale={0.98}>
-      <Card pad={false} className="advisor-card">
-        <div className="advisor-thumb">
-          <CompanionThumb size={64} />
-        </div>
-        <div className="grow" style={{ minWidth: 0 }}>
-          <div className="t-tiny advisor-kind">{e.echo.name} · {t('home.hadithOfDay')}</div>
-          <p className="advisor-text">{today.text}</p>
-          <div className="t-tiny faint">
-            {today.source}
-            {today.ai ? ` · ${t('advice.ai')}` : ''}
+    <section className="card hero">
+      <div className="hero-stage">
+        {!e.echo ? (
+          <div className="hero-still">
+            <span className="hero-seed"><Emoji e="🌱" /></span>
           </div>
-        </div>
-      </Card>
-    </Tap>
+        ) : elsewhere || lowPerf ? (
+          <div className="hero-still">
+            <CompanionThumb size={150} />
+          </div>
+        ) : (
+          <CompanionStage
+            ref={stage}
+            own="home"
+            resting={covered}
+            gender={e.gender}
+            stage={e.growth.index}
+            accent={e.accent}
+            outfit={e.outfit}
+            mood={e.mood}
+            skin={e.echo.skin}
+            hair={e.echo.hair}
+            height={240}
+            onTap={onTap}
+            onState={onState}
+          />
+        )}
+      </div>
+      <div className="hero-copy">
+        <h1 className="t-display">
+          {t('home.title.your')} <span className="grad-text">{t('home.title.path')}</span>
+        </h1>
+        <div className="t-body muted hero-tag">{t('home.tagline')}</div>
+        {e.echo ? (
+          <Tap className="hero-say" onTap={() => push({ name: 'echo' })} scale={0.98}>
+            <span className="t-tiny advisor-kind">{e.echo.name} · {t('home.hadithOfDay')}</span>
+            <span className="advisor-text">{today.text}</span>
+            <span className="t-tiny faint">
+              {today.source}
+              {today.ai ? ` · ${t('advice.ai')}` : ''}
+            </span>
+          </Tap>
+        ) : (
+          <Tap className="hero-say" onTap={() => open({ name: 'echo' })} scale={0.98}>
+            <span className="t-tiny advisor-kind">{t('you.echo.meet')}</span>
+            <span className="advisor-text">{t('you.echo.meet.body')}</span>
+          </Tap>
+        )}
+      </div>
+      <Tap className="streak-pill hero-streak" onTap={() => push({ name: 'progress' })} scale={0.94} label={tn('home.streak', streak)}>
+        <Fire size={16} weight="bold" style={{ color: streak > 0 ? 'var(--orange)' : 'var(--text-3)' }} />
+        <span className="num">{streak}</span>
+        <i />
+        <span className="num">{t('common.lv', { n: level })}</span>
+      </Tap>
+    </section>
   );
 }

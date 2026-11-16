@@ -1,6 +1,6 @@
 // Example data: a few weeks of a believable, made-up life, built with the same rules real logs use.
 // It belongs to nobody in particular: everyday goals, habits and times that suit most people.
-import { Checks, Entry, Folder, Habit, Khatm, Plan, Profile, Task } from '../lib/types';
+import { Checks, Entry, Feeling, Folder, Habit, Khatm, Page, Plan, Profile, Task } from '../lib/types';
 import { Data } from '../lib/stats';
 import { dayKey } from '../lib/dates';
 import { dayKeyToMs } from '../lib/calendar';
@@ -13,6 +13,7 @@ import { Key, t } from '../i18n';
 import { PAGE_XP } from '../lib/khatm';
 import { initialProfile, uid } from './store';
 import { PRAYERS, WORSHIP_XP } from '../lib/prayer';
+import { JOURNAL_XP } from '../lib/journal';
 
 /** Small seeded generator so the example looks the same every time. */
 function rng(seed: number) {
@@ -154,6 +155,31 @@ export function buildDemo(current: Data): Data {
   todo(t('demo.task.vocab'), '🗣️', shiftDay(today, 1), '09:00', language);
   todo(t('demo.task.shop'), '🛒', shiftDay(today, 2), undefined);
 
+  // The journal: the last four evenings (today is still to write, so Home asks its question), one
+  // entry from a month ago to the day (so "on this day" has something to bring back), and three notes.
+  const pages: Page[] = [];
+  const felt: Feeling[] = [4, 5, 3, 2];
+  felt.forEach((mood, i) => {
+    const day = shiftDay(today, -(i + 1));
+    pages.push({
+      id: uid(), day, at: at(day, 21, 40 - i * 7), mood, xp: JOURNAL_XP,
+      title: t(`demo.j${i + 1}.title` as Key), text: t(`demo.j${i + 1}.text` as Key),
+    });
+    xp += JOURNAL_XP;
+  });
+  const monthAgo = new Date(dayKeyToMs(today, 21));
+  const dayOfMonth = monthAgo.getDate();
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  // A month without this day of the month (the 31st) has no such date.
+  if (monthAgo.getDate() === dayOfMonth) {
+    pages.push({ id: uid(), day: dayKey(monthAgo.getTime()), at: monthAgo.getTime(), mood: 5, text: t('demo.j5.text') });
+  }
+  const note = (n: 1 | 2 | 3, back: number, color: number, pin?: boolean): Page => ({
+    id: uid(), kind: 'note', day: shiftDay(today, -back), at: at(shiftDay(today, -back), 13, n * 9), color, pin,
+    title: t(`demo.n${n}.title` as Key), text: t(`demo.n${n}.text` as Key),
+  });
+  pages.push(note(1, 6, 0, true), note(2, 4, 1, true), note(3, 3, 2));
+
   const base: Profile = {
     ...initialProfile,
     name: current.profile.name,
@@ -167,7 +193,7 @@ export function buildDemo(current: Data): Data {
     quranPages: khatm.best,
     echo: { name: t('demo.echo'), skin: 1, hair: 0, bornAt: at(shiftDay(today, -24), 9) },
   };
-  const data = { folders: [reading, study, fitness, languages], tasks, entries, plans, habits, checks, worship, profile: base };
+  const data = { folders: [reading, study, fitness, languages], tasks, entries, plans, habits, checks, worship, pages, profile: base };
   const achievements: Record<string, number> = {};
   for (const id of earnedBadges(data)) achievements[id] = now - Math.floor(rand() * 20) * 86400_000;
   void levelInfo;

@@ -86,6 +86,30 @@ export interface Habit {
 /** Habit check-offs: month ("YYYY-MM") -> habit id -> bitmask of the days checked (bit 0 = the 1st). */
 export type Checks = Record<string, Record<string, number>>;
 
+/** How a day felt, from 1 (hard) to 5 (great). */
+export type Feeling = 1 | 2 | 3 | 4 | 5;
+
+/**
+ * A page of the journal: a diary entry about a day, or a free note (kind 'note').
+ * The text is plain. A line that starts with "- " is a list item, "✓ " one that is done; "#word" is a tag.
+ */
+export interface Page {
+  id: string;
+  kind?: 'note';
+  day: string; // the day a diary entry is about; the day a note was started
+  at: number; // when it was written
+  edited?: number; // when it was last changed
+  title?: string;
+  text: string;
+  mood?: Feeling;
+  pin?: boolean; // a note kept on top
+  color?: number; // a note's colour (lib/journal.ts)
+  ask?: string; // the question it answers (lib/journal.ts)
+  xp?: number; // XP paid for it: the first diary entry of a day earns some
+  quran?: number; // Qurʼan pages read that day, as far as the app knew when the entry was saved
+  focus?: number; // minutes of focus that day, likewise
+}
+
 export type LangSetting = 'auto' | 'en' | 'uz' | 'ru';
 export type ThemeSetting = 'auto' | 'dark' | 'light';
 
@@ -116,6 +140,8 @@ export interface Settings {
   prayerBefore?: number; // minutes ahead of the prayer: 0, 10, 15 or 30
   jumuah?: boolean; // a Friday-morning reminder to read Surah Al-Kahf
   adhkarTr?: boolean; // transliteration under the Arabic of the adhkar (on unless turned off)
+  journalCard?: boolean; // the day's question on Home (on unless turned off)
+  journalAt?: string; // "HH:MM": the bot asks about the day at this time (needs `reminders`)
 }
 
 export interface NudgeSettings {

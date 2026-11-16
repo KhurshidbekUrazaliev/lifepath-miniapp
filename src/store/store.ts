@@ -2,7 +2,7 @@
 // with daily habits and stand-alone to-dos. The rules themselves live in src/lib (pure, tested).
 import { create } from 'zustand';
 import {
-  Checks, EchoProfile, Entry, EvidenceInput, Folder, Habit, Milestone, NudgeSettings, Plan, Profile, ProgressType,
+  Checks, EchoProfile, Entry, EvidenceInput, Feeling, Folder, Habit, Milestone, NudgeSettings, Page, Plan, Profile, ProgressType,
   Reminder, Resource, Settings, Task,
 } from '../lib/types';
 import { dayKey } from '../lib/dates';
@@ -17,6 +17,7 @@ import { Data } from '../lib/stats';
 import { WORSHIP_XP, WorshipKey } from '../lib/prayer';
 import { newKhatm, readTo } from '../lib/khatm';
 import { addSession, focusToday, focusXp } from '../lib/focus';
+import { JOURNAL_XP, TEXT_LIMIT, TITLE_LIMIT, isBlank, isNote, liveFacts, paidOn, toggleItem } from '../lib/journal';
 import { useServer } from './server';
 
 export function uid(): string {
@@ -25,7 +26,7 @@ export function uid(): string {
 
 /** Something worth celebrating. The UI turns these into toasts, confetti and haptics. */
 export type Celebration = { id: string } & (
-  | { kind: 'xp'; xp: number; from: 'log' | 'proof' | 'habit' | 'todo' | 'milestone' | 'prayer' | 'fast' | 'adhkar' | 'quran' | 'focus'; sparks?: number }
+  | { kind: 'xp'; xp: number; from: 'log' | 'proof' | 'habit' | 'todo' | 'milestone' | 'prayer' | 'fast' | 'adhkar' | 'quran' | 'focus' | 'journal'; sparks?: number }
   | { kind: 'complete'; title: string; xp: number }
   | { kind: 'levelup'; level: number }
   | { kind: 'achievement'; badge: string }
@@ -76,6 +77,21 @@ export interface NewPlanInput {
   note?: string;
 }
 
+/** What the writing page hands over. With an id it changes that page; without one it starts a new page. */
+export interface PageInput {
+  id?: string;
+  kind?: 'note';
+  /** The day a diary entry is about (today when left out). An entry that has earned its XP keeps its day. */
+  day?: string;
+  title?: string;
+  text: string;
+  mood?: Feeling;
+  pin?: boolean;
+  color?: number;
+  /** The question it answers; '' takes the question away, leaving it out keeps the one it has. */
+  ask?: string;
+}
+
 export interface NewHabitInput {
   title: string;
   icon: string;
@@ -106,7 +122,7 @@ export const defaultSettings: Settings = {
 };
 
 export const emptyData = (): Data => ({
-  folders: [], tasks: [], entries: [], plans: [], habits: [], checks: {}, worship: {}, profile: initialProfile, settings: defaultSettings,
+  folders: [], tasks: [], entries: [], plans: [], habits: [], checks: {}, worship: {}, pages: [], profile: initialProfile, settings: defaultSettings,
 });
 
 interface State extends Data {
@@ -157,6 +173,16 @@ interface State extends Data {
    */
   finishFocus: (minutes: number, taskId?: string, note?: string) => number;
 
+  /**
+   * Saves a page of the journal and returns its id. A page with no title, no words and no feeling is
+   * not kept (null). `finish` is for the moment the writer leaves the page: the first diary entry of
+   * today then earns its XP and counts as today's activity. While they are still writing, nothing is paid.
+   */
+  savePage: (input: PageInput, finish?: boolean) => string | null;
+  deletePage: (id: string) => void;
+  /** Ticks or unticks the list item on one line of a page. */
+  tickItem: (id: string, line: number) => void;
+
   setNudge: (patch: Partial<NudgeSettings>) => void;
   saveEcho: (input: { name: string; skin: number; hair: number; gender: 'boy' | 'girl' }) => void;
   buyItem: (itemId: string) => BuyCheck;
@@ -174,7 +200,7 @@ interface State extends Data {
   resetAll: () => void;
 }
 
-type Core = Pick<State, 'profile' | 'tasks' | 'entries' | 'folders' | 'habits' | 'checks' | 'worship'>;
+type Core = Pick<State, 'profile' | 'tasks' | 'entries' | 'folders' | 'habits' | 'checks' | 'worship' | 'pages'>;
 
 /** Adds XP (and Sparks) to the profile and finds the level-ups and badges that follow. */
 function award(s: Core, xp: number, patch: Partial<Profile> = {}, sparks: number = sparksFor(xp)) {
@@ -613,6 +639,74 @@ export const useStore = create<State>()((set, get) => ({
     return xp;
   },
 
+  savePage: (input, finish = false) => {
+    const s = get();
+    const old = input.id ? s.pages.find((p) => p.id === input.id) : undefined;
+    const title = (input.title ?? '').trim().slice(0, TITLE_LIMIT) || undefined;
+    const text = (finish ? input.text.trimEnd() : input.text).slice(0, TEXT_LIMIT);
+    if (isBlank({ title, text, mood: input.mood })) {
+      if (old) get().deletePage(old.id);
+      return null;
+    }
+    const now = Date.now();
+    const today = dayKey();
+    const page: Page = {
+      ...(old ?? { id: uid(), kind: input.kind, day: input.day ?? today, at: now }),
+      title,
+      text,
+      mood: input.mood,
+      pin: input.pin || undefined,
+      color: input.color,
+      ask: input.ask === '' ? undefined : input.ask ?? old?.ask,
+    };
+    if (old && !isNote(old) && !old.xp && input.day) page.day = input.day;
+    if (!isNote(page) && page.day === today) {
+      // What the app will have forgotten by tomorrow travels with today's entry.
+      const live = liveFacts(s.profile, today);
+      page.quran = Math.max(page.quran ?? 0, live.quran) || undefined;
+      page.focus = Math.max(page.focus ?? 0, live.focus) || undefined;
+    }
+    const pay = finish && !isNote(page) && page.day === today && !page.xp && !paidOn(s.pages, today);
+    const same =
+      !!old && old.title === page.title && old.text === page.text && old.mood === page.mood && old.pin === page.pin &&
+      old.color === page.color && old.ask === page.ask && old.day === page.day && old.quran === page.quran && old.focus === page.focus;
+    if (same && !pay) return page.id;
+    if (old && !same) page.edited = now;
+    if (pay) page.xp = JOURNAL_XP;
+    const pages = old ? s.pages.map((p) => (p.id === page.id ? page : p)) : [...s.pages, page];
+    if (!pay) {
+      set({ pages });
+      return page.id;
+    }
+    const act = activity(s.profile, today);
+    const { profile, celebrations } = award({ ...s, pages }, JOURNAL_XP, act.patch, 0);
+    set({
+      pages,
+      profile,
+      celebrations: [...s.celebrations, { id: uid(), kind: 'xp', xp: JOURNAL_XP, from: 'journal' }, ...act.toast, ...celebrations],
+    });
+    return page.id;
+  },
+
+  deletePage: (id) =>
+    set((s) => {
+      const page = s.pages.find((p) => p.id === id);
+      if (!page) return {};
+      const back = page.xp ?? 0;
+      return {
+        pages: s.pages.filter((p) => p.id !== id),
+        profile: back ? { ...s.profile, xp: Math.max(0, s.profile.xp - back) } : s.profile,
+      };
+    }),
+
+  tickItem: (id, line) =>
+    set((s) => {
+      const page = s.pages.find((p) => p.id === id);
+      const text = page ? toggleItem(page.text, line) : '';
+      if (!page || text === page.text) return {};
+      return { pages: s.pages.map((p) => (p.id === id ? { ...p, text, edited: Date.now() } : p)) };
+    }),
+
   setNudge: (patch) => set((s) => ({ profile: { ...s.profile, nudge: { ...s.profile.nudge, ...patch } } })),
 
   saveEcho: ({ name, skin, hair, gender }) =>
@@ -669,7 +763,8 @@ export const useStore = create<State>()((set, get) => ({
   replaceData: (data) =>
     set({
       folders: data.folders, tasks: data.tasks, entries: data.entries, plans: data.plans,
-      habits: data.habits, checks: data.checks, worship: data.worship ?? {}, profile: data.profile, settings: data.settings,
+      habits: data.habits, checks: data.checks, worship: data.worship ?? {}, pages: data.pages ?? [],
+      profile: data.profile, settings: data.settings,
     }),
 
   resetAll: () => set((s) => ({ ...emptyData(), settings: { ...s.settings }, celebrations: [] })),
@@ -679,13 +774,14 @@ export const useStore = create<State>()((set, get) => ({
 export function snapshot(s: State = useStore.getState()): Data {
   return {
     folders: s.folders, tasks: s.tasks, entries: s.entries, plans: s.plans,
-    habits: s.habits, checks: s.checks, worship: s.worship, profile: s.profile, settings: s.settings,
+    habits: s.habits, checks: s.checks, worship: s.worship, pages: s.pages, profile: s.profile, settings: s.settings,
   };
 }
 
 export const dataChanged = (a: Data, b: Data): boolean =>
   a.folders !== b.folders || a.tasks !== b.tasks || a.entries !== b.entries || a.plans !== b.plans ||
-  a.habits !== b.habits || a.checks !== b.checks || a.worship !== b.worship || a.profile !== b.profile || a.settings !== b.settings;
+  a.habits !== b.habits || a.checks !== b.checks || a.worship !== b.worship || a.pages !== b.pages ||
+  a.profile !== b.profile || a.settings !== b.settings;
 
 /** The day streak to show right now (it lapses after a missed day no freeze can cover). */
 export function useVisibleStreak(): number {

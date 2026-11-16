@@ -1,6 +1,7 @@
 // Where the user is: one of four tabs, a stack of screens pushed on top, and at most one bottom sheet.
 import { create } from 'zustand';
 import { haptic } from '../tg/telegram';
+import type { Feeling } from '../lib/types';
 
 export type Tab = 'home' | 'you' | 'stats' | 'inbox';
 
@@ -32,7 +33,12 @@ export type Screen =
   | { name: 'challenges' }
   | { name: 'challenge'; id: string }
   | { name: 'plus' }
-  | { name: 'admin' };
+  | { name: 'admin' }
+  | { name: 'journal'; tab?: 'diary' | 'notes' }
+  // One page of the journal. Without an id it is a new one: a diary entry (about `day`, today when left
+  // out) or a note; `mood` and `ask` are what the page starts with.
+  | { name: 'page'; id?: string; kind?: 'note'; day?: string; mood?: Feeling; ask?: string }
+  | { name: 'lookback' };
 
 export type Sheet =
   | { name: 'add' }
@@ -91,13 +97,18 @@ export const useNav = create<Nav>()((set, get) => ({
   close: () => set({ sheet: null }),
 }));
 
-/** Opens whatever a deep link points at: "goal_<id>", "ch_<id>" (a friend challenge), or a screen's name. */
+/**
+ * Opens whatever a deep link points at: "goal_<id>", "ch_<id>" (a friend challenge), "write" (a new
+ * diary entry, from the journal reminder), or a screen's name.
+ */
 export function openDeepLink(param: string | undefined): void {
   if (!param) return;
   const nav = useNav.getState();
   const [kind, id] = param.split('_');
   if (kind === 'goal' && id) nav.push({ name: 'goal', id });
   else if (kind === 'ch' && id) nav.push({ name: 'challenge', id });
+  else if (kind === 'write') nav.push({ name: 'page' });
+  else if (kind === 'journal') nav.push({ name: 'journal' });
   else if (
     kind === 'habits' || kind === 'tasks' || kind === 'calendar' || kind === 'plus' || kind === 'rankings' || kind === 'goals' ||
     kind === 'prayer' || kind === 'qibla' || kind === 'adhkar' || kind === 'khatm' || kind === 'focus' || kind === 'challenges'

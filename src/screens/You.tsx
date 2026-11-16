@@ -1,5 +1,5 @@
 // You: profile and level, the Echo companion, and the doors to rankings, the wardrobe and Plus.
-import { Crown, FlagCheckered, GearSix as Gear, Gift, Medal, Trophy, TShirt } from '@phosphor-icons/react';
+import { Crown, FlagCheckered, GearSix as Gear, Gift, Medal, Notebook, Trophy, TShirt } from '@phosphor-icons/react';
 import { useStore, useVisibleStreak } from '../store/store';
 import { useNav } from '../store/nav';
 import { growthName, useEcho } from '../store/echo';
@@ -106,6 +106,7 @@ export function You() {
       ) : null}
 
       <Card pad={false} className="list">
+        <Row icon={<Notebook size={21} style={{ color: 'var(--violet)' }} />} title={t('j.title')} sub={t('you.journal.body')} onTap={() => push({ name: 'journal' })} />
         <Row icon={<Medal size={21} style={{ color: 'var(--gold)' }} />} title={t('you.progress')} sub={t('you.progress.body', { done: unlocked, total: BADGES.length })} onTap={() => push({ name: 'progress' })} />
         <Row icon={<Trophy size={21} style={{ color: 'var(--orange)' }} />} title={t('you.rankings')} sub={t('you.rankings.body')} onTap={() => push({ name: 'rankings' })} />
         <Row icon={<FlagCheckered size={21} style={{ color: 'var(--blue)' }} />} title={t('ch.title')} sub={t('ch.body')} onTap={() => push({ name: 'challenges' })} />

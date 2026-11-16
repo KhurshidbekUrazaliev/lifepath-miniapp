@@ -1,12 +1,12 @@
 # LifePath companion: how the 3D models were made
 
 The companion grows with your level through four stages, as a boy or a girl: 8 characters, each rigged
-with 8 motions. The Sparks shop adds 19 things in 3D: caps, glasses, a scarf, a medal, a backpack, things
+with 8 motions. The Sparks shop adds 30 things in 3D: caps, glasses, a scarf, a medal, a backpack, things
 kept nearby, pets and places to stand on.
 
-Everything was made in Tripo Studio (studio.tripo3d.ai) on 15 November 2026, except the glasses, which a
-script draws. The Tripo exports are in `models/` next to this file. That folder is 44 MB and is not in
-git: the exports stay on this Mac and can be downloaded again from the Tripo account. `npm run models`
+Everything was made in Tripo Studio (studio.tripo3d.ai) on 15 and 16 November 2026, except the glasses,
+which a script draws. The Tripo exports are in `models/` next to this file. That folder is 54 MB and is
+not in git: the exports stay on this Mac and can be downloaded again from the Tripo account. `npm run models`
 turns them into the small files the app loads (`public/companion/`, which is in git). This page is for
 remaking one or adding another.
 
@@ -21,7 +21,7 @@ remaking one or adding another.
 
 ## What it cost
 
-Prices as the studio showed them. The account started at 3,035 credits and has 720 left.
+Prices as the studio showed them. The account started at 3,035 credits and has 225 left.
 
 | Step | Credits |
 | --- | --- |
@@ -32,10 +32,12 @@ Prices as the studio showed them. The account started at 3,035 credits and has 7
 | Auto Rig (Humanoid, Mixamo) | 20 |
 | A motion from a text prompt | 20 |
 | A ready-made motion, or reusing a saved one | free |
+| Free Retry of a mesh that came out wrong | free, three per model |
 
 - Characters: 1,160. Seven meshes at 100 (the first used a free trial), nine textures and nine rigs (one
   for an early test that was not cute enough and is not used), five motions.
-- Items: 1,155. Nineteen at 55 each (mesh 35, texture 20), and the doppi and the camel made a second time.
+- Items: 1,650. Twenty-eight at 55 each (mesh 35, texture 20), and the doppi and the camel made a second
+  time. Nineteen were made on the first day (1,155 with the two remakes) and nine on the second (495).
 
 ## A character
 
@@ -136,6 +138,7 @@ Cute stylized 3D game prop in a soft animated-film style, smooth rounded shapes,
 - `scarf.glb`: A soft knitted winter scarf in warm red with cream stripes, loosely wrapped in a loop. (The boy's: the girl's hijab covers her neck.)
 - `medal.glb`: A round gold medal with an embossed star, hanging from a short blue ribbon loop.
 - `backpack.glb`: A small rounded school backpack in mint green with an orange zipper and a front pocket.
+- `cap.glb`: A baseball cap in sky blue with a white front panel, a short curved brim and a small round button on top. Only the cap, nothing else, no head, no person, empty inside. (The boy's, like the kufi and the doppi.)
 
 **Kept nearby**
 
@@ -144,11 +147,19 @@ Cute stylized 3D game prop in a soft animated-film style, smooth rounded shapes,
 - `tasbih.glb`: A loop of round wooden prayer beads (tasbih) with a small tassel, lying in a circle.
 - `piyola.glb`: A small Uzbek tea bowl (piyola) with the blue-and-white cotton-boll pattern.
 - `sprout-pot.glb`: A small terracotta pot with a young green sprout that has two rounded leaves.
+- `football.glb`: A classic football (soccer ball) with white and navy-blue panels, round and slightly soft like a toy.
+- `notebook.glb`: A small closed diary notebook with a soft purple cover, a golden crescent moon ornament on the front, an elastic band around it, and a yellow pencil lying on top. (Made twice, the second time with Free Retry. The cover still came out plain; it is small on the stage, so it stayed.)
+- `rehal.glb`: An open book resting on a small folding carved wooden X-shaped book stand (a rehal), dark walnut wood with simple geometric carving, cream blank pages with a green ribbon bookmark.
 
 **Pets**
 
 - `kitten.glb`: A cute fluffy orange-and-white kitten sitting upright with big round eyes.
 - `dove.glb`: A cute small white dove standing with its wings folded.
+- `lamb.glb`: A cute fluffy white baby lamb with a cream face, small pink ears and big round eyes, standing on four short legs.
+- `bunny.glb`: A cute fluffy light-grey baby rabbit with long upright ears, a white belly and big round eyes, sitting upright.
+- `bear.glb` and `scholar.glb` were not asked for. The bear cub is what the text prompt for a camel gave,
+  and the little scholar is the round creature in glasses that came out when the prompt was for a pair
+  of glasses (both below). They were too good to throw away, so the shop has them as pets.
 
 **Places (the companion stands on these)**
 
@@ -156,10 +167,16 @@ Cute stylized 3D game prop in a soft animated-film style, smooth rounded shapes,
 - `base-courtyard.glb`: A round diorama platform tiled with turquoise and blue Samarkand-style geometric mosaic, a short low wall with one small pointed arch along the back edge, open empty center.
 - `base-study.glb`: A round wooden-floor diorama platform with a woven rug, a low bookshelf with books along the back edge and a floor cushion, open empty center.
 - `base-night.glb`: A round diorama platform of soft desert sand with small dunes and a brass lantern at the edge, deep blue night mood, open empty center.
+- `base-masjid.glb` (the prayer rug): A round diorama platform of a mosque floor: warm cream stone tiles with a soft red prayer rug with a pointed arch pattern lying flat in the middle, a small wooden book stand and a brass lamp at the back edge, open empty center. (It came out as a rug on a square slab, not round, and it stayed that way.)
+- `base-mountain.glb`: A round floating-island diorama base: a green mountain meadow with tiny yellow and red wildflowers, a small white felt yurt and two little pine trees along the back edge, a few snowy rocks at one side, open empty center.
+- `base-bazaar.glb`: A round diorama platform of warm sunlit paving stones, a small wooden market stall with a red-and-white striped awning along the back edge, baskets of yellow melons, watermelons and pomegranates beside it, open empty center.
+
+Ask for anything tall "along the back edge" and for an "open empty center": the companion stands in the
+middle, and whatever is behind it must not hide it.
 
 ### Made from a picture instead
 
-Text alone gave a plain black box for the doppi and a bear cub for the camel. For a shape Tripo does not
+Text alone gave a plain black box for the doppi and a bear cub for the camel (now `bear.glb`). For a shape Tripo does not
 know, make a picture first (Generate Image, aspect 1:1), open it, press **Generate Smart Mesh**, and
 choose **P1.0 - Fast** and Private there.
 
@@ -178,7 +195,7 @@ A super cute chibi baby camel as an adorable collectible vinyl toy, kawaii masco
 ### Drawn by a script
 
 `glasses.glb` comes from `node scripts/make-glasses.mjs`. Tripo turns thin frames into a blob (it made a
-round creature wearing glasses), and round glasses are simple shapes: two rims, a bridge, two short arms
+round creature wearing glasses, now `scholar.glb`), and round glasses are simple shapes: two rims, a bridge, two short arms
 and faintly tinted lenses. Change the numbers at the top of the script and run it again to reshape them.
 
 ## From an export to the app
@@ -192,7 +209,8 @@ and faintly tinted lenses. Change the numbers at the top of the script and run i
 - everything above its neck is tied to the head bone alone. Tripo ties a girl's head and hijab to the
   head bone by about two thirds and shares the rest between the neck and the shoulders, so the face and
   the cloth slid apart when the head turned or an arm went up;
-- the caps are made lower and the garden's earth shallower (`RESHAPE` in the script);
+- the caps are made lower, and the garden's earth and the prayer rug's floor shallower (`RESHAPE` in the
+  script);
 - textures become WebP (1024 px for characters, 512 for items) and the geometry is compressed;
 - each file's name carries a hash of its contents, so phones can keep it for good (`public/_headers`),
   and `src/companion/models.json` lists what exists. The list is built into the app; the shop only
@@ -201,5 +219,8 @@ and faintly tinted lenses. Change the numbers at the top of the script and run i
 How an item sits on the companion is its `place` in `src/lib/wardrobe.ts`. The stage measures each
 character as it loads (`src/companion/fit.ts`): how wide the head is at each height, where the eyes are,
 how wide the chest is and where its front and back are. A cap comes to rest where the head is as wide
-as its opening, so the same numbers fit the toddler and the grown-up. After adding or changing an item,
-look at it in the shop on a small and a grown companion, from the front and from the side.
+as its opening, so the same numbers fit the toddler and the grown-up. A cap with a brim is longer than its
+dome, so its `pivot` moves the point that is put on the head back to the middle of the dome (the baseball
+cap's brim points to +z as exported, and its dome's middle is 0.15 of its length behind the middle of the
+whole cap). After adding or changing an item, look at it in the shop on a small and a grown companion, from
+the front and from the side.

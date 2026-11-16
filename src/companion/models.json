@@ -3,6 +3,10 @@
     "file": "backpack.882b468c.glb",
     "bytes": 113836
   },
+  "base-bazaar": {
+    "file": "base-bazaar.10c14816.glb",
+    "bytes": 141900
+  },
   "base-courtyard": {
     "file": "base-courtyard.c28e6daf.glb",
     "bytes": 119520
@@ -11,6 +15,14 @@
     "file": "base-garden.55723aa2.glb",
     "bytes": 153816
   },
+  "base-masjid": {
+    "file": "base-masjid.78267fdd.glb",
+    "bytes": 129624
+  },
+  "base-mountain": {
+    "file": "base-mountain.6af46c7c.glb",
+    "bytes": 150660
+  },
   "base-night": {
     "file": "base-night.0f4e4761.glb",
     "bytes": 91308
@@ -18,6 +30,10 @@
   "base-study": {
     "file": "base-study.06edde5c.glb",
     "bytes": 104940
+  },
+  "bear": {
+    "file": "bear.d54c2bab.glb",
+    "bytes": 69780
   },
   "book": {
     "file": "book.e1f088c0.glb",
@@ -79,9 +95,17 @@
       "dua"
     ]
   },
+  "bunny": {
+    "file": "bunny.deed9767.glb",
+    "bytes": 94164
+  },
   "camel": {
     "file": "camel.e61377bc.glb",
     "bytes": 128500
+  },
+  "cap": {
+    "file": "cap.90afb039.glb",
+    "bytes": 67656
   },
   "doppi": {
     "file": "doppi.8f8f04cc.glb",
@@ -90,6 +114,10 @@
   "dove": {
     "file": "dove.914997dd.glb",
     "bytes": 71924
+  },
+  "football": {
+    "file": "football.d9590d2f.glb",
+    "bytes": 156148
   },
   "girl-1": {
     "file": "girl-1.92ba3dd6.glb",
@@ -163,6 +191,10 @@
     "file": "kufi.41ff412c.glb",
     "bytes": 81560
   },
+  "lamb": {
+    "file": "lamb.dc77fd68.glb",
+    "bytes": 127072
+  },
   "lantern": {
     "file": "lantern.6b0a7352.glb",
     "bytes": 104920
@@ -171,13 +203,25 @@
     "file": "medal.95dbe68a.glb",
     "bytes": 74164
   },
+  "notebook": {
+    "file": "notebook.7fb3075d.glb",
+    "bytes": 98108
+  },
   "piyola": {
     "file": "piyola.ab92cb89.glb",
     "bytes": 126228
   },
+  "rehal": {
+    "file": "rehal.231e78ea.glb",
+    "bytes": 116460
+  },
   "scarf": {
     "file": "scarf.4ed16871.glb",
     "bytes": 75500
+  },
+  "scholar": {
+    "file": "scholar.792806eb.glb",
+    "bytes": 68284
   },
   "sprout-pot": {
     "file": "sprout-pot.361225ec.glb",

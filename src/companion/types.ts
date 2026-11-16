@@ -31,6 +31,8 @@ export interface StageController {
   setProps: (props: PropSpec[]) => void;
   /** Recolours the girl's ivory hijab (null puts the ivory back). */
   setTint: (hex: string | null) => void;
+  /** Stops drawing while something covers the stage (true), and goes on from the same moment (false). */
+  rest: (on: boolean) => void;
   /** A copy of the stage as it is drawn now, `size` pixels wide; null before the model has loaded. */
   still: (size: number) => HTMLCanvasElement | null;
   /** The same as a picture file's address (a data URL). */

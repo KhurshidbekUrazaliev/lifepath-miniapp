@@ -29,6 +29,13 @@ interface Props {
   onState?: (state: StageState) => void;
   children?: ReactNode; // overlays (speech bubble, effects)
   className?: string;
+  /** Stop drawing while another screen covers the stage. */
+  resting?: boolean;
+  /**
+   * A stage of another shape (Home's) keeps its first frame under its own name, so that it starts from a
+   * picture of itself and the small avatars keep the picture from the companion's own screen.
+   */
+  own?: string;
 }
 
 export type StageState = 'loading' | 'ready' | 'flat';
@@ -41,10 +48,10 @@ interface Snapshot {
   look?: string; // everything that shows in it: the model's file, the colours, what is worn
 }
 
-/** The last picture of the 3D companion, for small avatars elsewhere. */
-export function companionSnapshot(): Snapshot | null {
+/** The last picture of the 3D companion, for small avatars elsewhere (or a stage's own, by its name). */
+export function companionSnapshot(own?: string): Snapshot | null {
   try {
-    const raw = localStorage.getItem(SNAP_KEY);
+    const raw = localStorage.getItem(own ? `${SNAP_KEY}:${own}` : SNAP_KEY);
     return raw ? (JSON.parse(raw) as Snapshot) : null;
   } catch {
     return null;
@@ -52,7 +59,7 @@ export function companionSnapshot(): Snapshot | null {
 }
 
 /** Keeps a picture of the stage. Phones that cannot write WebP would keep a heavy PNG, so theirs is smaller. */
-function keepSnapshot(picture: HTMLCanvasElement, key: string, look: string): void {
+function keepSnapshot(picture: HTMLCanvasElement, key: string, look: string, own?: string): void {
   try {
     let url = picture.toDataURL('image/webp', 0.86);
     if (!url.startsWith('data:image/webp')) {
@@ -62,14 +69,14 @@ function keepSnapshot(picture: HTMLCanvasElement, key: string, look: string): vo
       small.getContext('2d')!.drawImage(picture, 0, 0, small.width, small.height);
       url = small.toDataURL('image/png');
     }
-    localStorage.setItem(SNAP_KEY, JSON.stringify({ key, url, look } satisfies Snapshot));
+    localStorage.setItem(own ? `${SNAP_KEY}:${own}` : SNAP_KEY, JSON.stringify({ key, url, look } satisfies Snapshot));
   } catch {
     // storage full or blocked: the picture from before stays
   }
 }
 
 export const CompanionStage = forwardRef<CompanionHandle, Props>(function CompanionStage(
-  { gender, stage, accent, outfit, mood = 'content', skin, hair, height, onTap, onState, children, className },
+  { gender, stage, accent, outfit, mood = 'content', skin, hair, height, onTap, onState, children, className, resting = false, own },
   ref,
 ) {
   const box = useRef<HTMLDivElement>(null);
@@ -89,11 +96,11 @@ export const CompanionStage = forwardRef<CompanionHandle, Props>(function Compan
   const look = info ? [info.file, accent, tint ?? '', ...props3d.map((p) => p.url)].join('|') : '';
   const poster = useMemo(() => {
     if (state !== 'loading') return null;
-    const last = companionSnapshot();
+    const last = companionSnapshot(own);
     return last?.look === look ? last.url : null;
-  }, [state, look]);
-  const now = useRef({ accent, tint, props3d, look });
-  now.current = { accent, tint, props3d, look };
+  }, [state, look, own]);
+  const now = useRef({ accent, tint, props3d, look, resting });
+  now.current = { accent, tint, props3d, look, resting };
 
   useEffect(() => onState?.(state), [state, onState]);
 
@@ -119,13 +126,14 @@ export const CompanionStage = forwardRef<CompanionHandle, Props>(function Compan
           // The first frame, for the small avatars and for next time. Copied now, while it is the first
           // frame, and written a moment later, when it no longer competes with the stage starting up.
           const picture = ctl.current?.still(480);
-          if (picture) setTimeout(() => keepSnapshot(picture, modelKey(gender, stage), start.look), 700);
+          if (picture) setTimeout(() => keepSnapshot(picture, modelKey(gender, stage), start.look, own), 700);
           setState('ready');
         },
         onError: () => alive && setState('flat'),
       });
       ctl.current.setProps(start.props3d);
       ctl.current.setTint(start.tint);
+      ctl.current.rest(now.current.resting);
       // Development only: lets the preview play motions from the console.
       if (import.meta.env.DEV) (window as unknown as { __lpStage?: StageController | null }).__lpStage = ctl.current;
     });
@@ -141,6 +149,7 @@ export const CompanionStage = forwardRef<CompanionHandle, Props>(function Compan
   useEffect(() => ctl.current?.setAccent(accent), [accent]);
   useEffect(() => ctl.current?.setProps(props3d), [props3d]);
   useEffect(() => ctl.current?.setTint(tint), [tint]);
+  useEffect(() => ctl.current?.rest(resting), [resting]);
 
   useImperativeHandle(ref, () => ({
     play: (clip) => ctl.current?.play(clip) ?? false,

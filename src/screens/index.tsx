@@ -18,6 +18,9 @@ import { Echo, Shop } from './Echo';
 import { Plus, Rankings } from './Social';
 import { ChallengeScreen, Challenges } from './Challenges';
 import { Admin } from './Admin';
+import { Journal } from '../journal/Journal';
+import { PageScreen } from '../journal/PageScreen';
+import { LookBack } from '../journal/LookBack';
 
 // The adhkar texts are long, so their screen loads when it is first opened.
 const Adhkar = lazy(() => import('./Adhkar').then((m) => ({ default: m.Adhkar })));
@@ -54,4 +57,7 @@ export const SCREENS: { [K in Route['name']]: ComponentType<{ route: Extract<Rou
   challenge: ChallengeScreen,
   plus: Plus,
   admin: Admin,
+  journal: Journal,
+  page: PageScreen,
+  lookback: LookBack,
 };

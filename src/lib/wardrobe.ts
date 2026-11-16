@@ -62,6 +62,7 @@ export const SLOTS: { id: Slot; emoji: string }[] = [
 const KUFI: Placement = { anchor: 'head', size: 0.86, opening: 1, pivot: [0, 0.2, 0] };
 const DOPPI: Placement = { anchor: 'head', size: 0.9, opening: 0.97, pivot: [0, 0.04, 0] };
 const GRAD_CAP: Placement = { anchor: 'head', size: 1, opening: 0.8, pivot: [0.03, 0.1, 0] };
+const CAP: Placement = { anchor: 'head', size: 1.42, opening: 0.69, pivot: [0, 0.035, -0.15], offset: [0, -0.1, 0.02] };
 const GLASSES: Placement = { anchor: 'face', size: 0.64, pivot: [0, 0.25, 0.132] };
 const SCARF: Placement = { anchor: 'neck', size: 1.15, pivot: [-0.03, 0.67, 0], offset: [0, -0.05, 0.1], rotation: [-0.35, 0, 0] };
 const MEDAL: Placement = { anchor: 'chest', size: 0.6, pivot: [0, 0.5, 0], offset: [0, 0.05, 0] };
@@ -74,6 +75,7 @@ export const ITEMS: Item[] = [
   // On the head (the girl's hijab stays; caps are for the boy, the graduation cap for both)
   { id: 'head-none', slot: 'head', price: 0, color: '#8B82FF', emoji: '🙂' },
   { id: 'kufi', slot: 'head', price: 60, color: '#F4F1EA', gender: 'boy', model: 'kufi', place: KUFI, emoji: '🧶' },
+  { id: 'cap', slot: 'head', price: 80, color: '#5BB8F5', gender: 'boy', model: 'cap', place: CAP, emoji: '🧢' },
   { id: 'doppi', slot: 'head', price: 90, color: '#22232B', color2: '#F4F1EA', gender: 'boy', model: 'doppi', place: DOPPI, emoji: '🎩' },
   { id: 'grad-cap', slot: 'head', price: 220, color: '#24346B', color2: '#F2C14E', minStage: 2, model: 'grad-cap', place: GRAD_CAP, emoji: '🎓' },
   // The girl's hijab colour (ivory is the model's own)
@@ -100,19 +102,29 @@ export const ITEMS: Item[] = [
   { id: 'hold-none', slot: 'hold', price: 0, color: '#8B82FF', emoji: '✋' },
   { id: 'sprout-pot', slot: 'hold', price: 30, color: '#C8794A', model: 'sprout-pot', place: NEAR, emoji: '🪴' },
   { id: 'book', slot: 'hold', price: 40, color: '#1F8A8A', model: 'book', place: NEAR, emoji: '📗' },
+  { id: 'football', slot: 'hold', price: 45, color: '#2D3E8F', color2: '#FFFFFF', model: 'football', place: NEAR, emoji: '⚽' },
   { id: 'tasbih', slot: 'hold', price: 50, color: '#8A5A3C', model: 'tasbih', place: NEAR, emoji: '📿' },
+  { id: 'notebook', slot: 'hold', price: 55, color: '#8B3FE0', model: 'notebook', place: NEAR, emoji: '📓' },
   { id: 'piyola', slot: 'hold', price: 60, color: '#2F6FD6', color2: '#FFFFFF', model: 'piyola', place: NEAR, emoji: '🍵' },
   { id: 'lantern', slot: 'hold', price: 80, color: '#D9A441', model: 'lantern', place: NEAR, emoji: '🏮' },
+  { id: 'rehal', slot: 'hold', price: 110, color: '#B5713A', color2: '#F4EBDD', model: 'rehal', place: NEAR, emoji: '📖' },
   // Pets
   { id: 'pet-none', slot: 'pet', price: 0, color: '#8B82FF', emoji: '🐾' },
+  { id: 'scholar', slot: 'pet', price: 120, color: '#F3E2B8', color2: '#E0762B', model: 'scholar', place: PET, emoji: '🤓' },
   { id: 'dove', slot: 'pet', price: 140, color: '#F5F5F5', model: 'dove', place: PET, emoji: '🕊️' },
+  { id: 'bear', slot: 'pet', price: 160, color: '#C98A4B', model: 'bear', place: PET, emoji: '🐻' },
   { id: 'kitten', slot: 'pet', price: 180, color: '#F2A65A', model: 'kitten', place: PET, emoji: '🐱' },
+  { id: 'lamb', slot: 'pet', price: 200, color: '#F4F1EA', model: 'lamb', place: PET, emoji: '🐑' },
+  { id: 'bunny', slot: 'pet', price: 220, color: '#D9DCE3', model: 'bunny', place: PET, emoji: '🐰' },
   { id: 'camel', slot: 'pet', price: 260, color: '#D8B27C', minStage: 1, model: 'camel', place: { ...PET, rotation: [0, -1, 0] }, emoji: '🐫' },
   // Places to stand on
   { id: 'place-none', slot: 'place', price: 0, color: '#8B82FF', emoji: '⭕' },
   { id: 'base-garden', slot: 'place', price: 150, color: '#7BC86C', model: 'base-garden', place: BASE, emoji: '🌷' },
   { id: 'base-study', slot: 'place', price: 200, color: '#B98A5E', model: 'base-study', place: BASE, emoji: '📚' },
+  { id: 'base-masjid', slot: 'place', price: 220, color: '#C0392B', color2: '#E8C98A', model: 'base-masjid', place: BASE, emoji: '🕌' },
+  { id: 'base-bazaar', slot: 'place', price: 240, color: '#D9843B', minStage: 1, model: 'base-bazaar', place: BASE, emoji: '🍉' },
   { id: 'base-courtyard', slot: 'place', price: 250, color: '#2BB5C8', minStage: 1, model: 'base-courtyard', place: BASE, emoji: '🕌' },
+  { id: 'base-mountain', slot: 'place', price: 280, color: '#6FBF73', color2: '#FFFFFF', minStage: 1, model: 'base-mountain', place: BASE, emoji: '⛰️' },
   { id: 'base-night', slot: 'place', price: 300, color: '#2A3A7A', minStage: 2, model: 'base-night', place: BASE, emoji: '🌙' },
   // Skies behind the stage
   { id: 'bg-none', slot: 'sky', price: 0, color: '#8B82FF' },

@@ -213,7 +213,9 @@ const RESHAPE = {
   kufi: [1, 0.6, 1],
   doppi: [1, 0.8, 1],
   'grad-cap': [1, 0.65, 1],
+  cap: [1, 0.72, 1],
   'base-garden': [1, 0.6, 1],
+  'base-masjid': [1, 0.6, 1],
 };
 
 async function item(key, job) {

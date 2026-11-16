@@ -250,6 +250,87 @@ export function openInvoice(url: string): Promise<InvoiceStatus> {
   });
 }
 
+// ---------- A face or fingerprint check (Bot API 7.2), for what should stay private ----------
+
+export interface Biometrics {
+  /** The phone can check a face or a finger, and this Telegram offers that to Mini Apps. */
+  available: boolean;
+  kind: 'face' | 'finger' | 'unknown';
+  /** The user has let this bot ask for the check. */
+  granted: boolean;
+}
+
+const NO_BIOMETRICS: Biometrics = { available: false, kind: 'unknown', granted: false };
+// Development outside Telegram: a pretend check that always passes, so locked screens can be tried.
+const pretendBiometrics = !!import.meta.env?.DEV && !inTelegram;
+
+const biometricManager = (): any => (atLeast('7.2') ? wa.BiometricManager ?? null : null);
+
+/** What this phone can do. Safe to ask again and again. */
+export function biometrics(): Promise<Biometrics> {
+  if (pretendBiometrics) return Promise.resolve({ available: true, kind: 'face', granted: true });
+  const bm = biometricManager();
+  if (!bm) return Promise.resolve(NO_BIOMETRICS);
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (value: Biometrics) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    const read = () =>
+      done({
+        available: !!bm.isBiometricAvailable,
+        kind: bm.biometricType === 'face' || bm.biometricType === 'finger' ? bm.biometricType : 'unknown',
+        granted: !!bm.isAccessGranted,
+      });
+    setTimeout(() => done(NO_BIOMETRICS), 4000);
+    try {
+      if (bm.isInited) read();
+      else bm.init(read);
+    } catch {
+      done(NO_BIOMETRICS);
+    }
+  });
+}
+
+/** Asks the user to let this bot use the check. `reason` is shown in Telegram's own question. */
+export function allowBiometrics(reason: string): Promise<boolean> {
+  if (pretendBiometrics) return Promise.resolve(true);
+  const bm = biometricManager();
+  if (!bm) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    try {
+      bm.requestAccess({ reason: reason.slice(0, 128) }, (granted: boolean) => resolve(!!granted));
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
+/** Runs the check. True when the face or finger was the owner's. */
+export function checkBiometrics(reason: string): Promise<boolean> {
+  if (pretendBiometrics) return new Promise((resolve) => setTimeout(() => resolve(true), 350));
+  const bm = biometricManager();
+  if (!bm) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    try {
+      bm.authenticate({ reason: reason.slice(0, 128) }, (ok: boolean) => resolve(!!ok));
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
+/** Telegram's page where the check can be allowed again after a "no". */
+export function openBiometricSettings(): void {
+  try {
+    biometricManager()?.openSettings();
+  } catch {
+    // nothing to open
+  }
+}
+
 // ---------- Cloud storage (per user, per bot; 1024 keys, 4096 characters per value) ----------
 
 export const hasCloud: boolean = atLeast('6.9');

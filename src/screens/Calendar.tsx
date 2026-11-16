@@ -1,7 +1,7 @@
 // Calendar: a month of activity dots and, below it, the chosen day as a timeline with a "now" line.
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { CaretLeft, CaretRight, Plus } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, Notebook, PencilSimpleLine, Plus } from '@phosphor-icons/react';
 import { useData } from '../store/store';
 import { useNav } from '../store/nav';
 import { dayKey } from '../lib/dates';
@@ -13,6 +13,9 @@ import { fmtAmount, fmtClock, fmtMonth, fmtTime, fmtWeekdayDate, weekdayShort } 
 import { Bar, Bubble, Card, Header, IconBtn, Screen, Section, Tap, cx, spring } from '../ui/kit';
 import { PlanItem } from '../ui/parts';
 import { Route } from '../store/nav';
+import { diaryOf, headline, writtenDays } from '../lib/journal';
+import { Face, feelName } from '../journal/Feel';
+import { useLocked } from '../journal/lock';
 
 interface Cell {
   key: string;
@@ -35,6 +38,8 @@ function monthCells(year: number, month: number): Cell[] {
 export function Calendar({ route }: { route: Extract<Route, { name: 'calendar' }> }) {
   const d = useData();
   const open = useNav((s) => s.open);
+  const push = useNav((s) => s.push);
+  const locked = useLocked();
   const today = dayKey();
   const [day, setDay] = useState(route.day ?? today);
   const [cursor, setCursor] = useState(() => {
@@ -46,10 +51,11 @@ export function Calendar({ route }: { route: Extract<Route, { name: 'calendar' }
 
   // What happened on each day: planned to-dos, logs, and whether every habit was ticked.
   const marks = useMemo(() => {
-    const m = new Map<string, { plans: number; logs: number; habits: boolean }>();
+    const m = new Map<string, { plans: number; logs: number; habits: boolean; written?: boolean }>();
     const get = (k: string) => m.get(k) ?? m.set(k, { plans: 0, logs: 0, habits: false }).get(k)!;
     for (const p of d.plans) get(p.day).plans++;
     for (const e of d.entries) get(dayKey(e.at)).logs++;
+    for (const k of writtenDays(d.pages)) get(k).written = true;
     const habits = activeHabits(d.habits);
     for (const c of cells) {
       if (c.key > today) continue;
@@ -57,7 +63,9 @@ export function Calendar({ route }: { route: Extract<Route, { name: 'calendar' }
       if (tally.due > 0 && tally.done === tally.due) get(c.key).habits = true;
     }
     return m;
-  }, [d.plans, d.entries, d.habits, d.checks, cells, today]);
+  }, [d.plans, d.entries, d.habits, d.checks, d.pages, cells, today]);
+
+  const written = useMemo(() => diaryOf(d.pages).filter((p) => p.day === day), [d.pages, day]);
 
   const move = (delta: number) =>
     setCursor((c) => {
@@ -165,6 +173,7 @@ export function Calendar({ route }: { route: Extract<Route, { name: 'calendar' }
                   {m?.plans ? <i style={{ background: 'var(--blue-hi)' }} /> : null}
                   {m?.logs ? <i style={{ background: 'var(--pink)' }} /> : null}
                   {m?.habits ? <i style={{ background: 'var(--green)' }} /> : null}
+                  {m?.written ? <i style={{ background: 'var(--violet)' }} /> : null}
                 </span>
               </button>
             );
@@ -209,6 +218,29 @@ export function Calendar({ route }: { route: Extract<Route, { name: 'calendar' }
           </div>
         )}
       </Section>
+
+      {written.length > 0 || day <= today ? (
+        <Section title={t('cal.journal')}>
+          {written.map((p) => (
+            <Tap key={p.id} onTap={() => push({ name: 'page', id: p.id })} scale={0.98}>
+              <Card pad={false} className="item" style={{ paddingTop: 11, paddingBottom: 11 }}>
+                {p.mood ? <Face feel={p.mood} size={34} /> : <span className="bubble sm"><Notebook size={18} /></span>}
+                {/* A locked journal shows that the day was written, not what. */}
+                <span className="grow t-body clip">{locked ? t('cal.journal.entry') : headline(p) || (p.mood ? feelName(p.mood) : t('cal.journal.entry'))}</span>
+                <CaretRight size={18} weight="bold" className="chev" />
+              </Card>
+            </Tap>
+          ))}
+          {written.length === 0 ? (
+            <Tap onTap={() => push({ name: 'page', day })} scale={0.98}>
+              <Card className="row" style={{ gap: 12 }}>
+                <span className="bubble sm"><PencilSimpleLine size={18} /></span>
+                <span className="t-small muted">{t('cal.journal.write')}</span>
+              </Card>
+            </Tap>
+          ) : null}
+        </Section>
+      ) : null}
     </Screen>
   );
 }

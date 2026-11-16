@@ -1,10 +1,11 @@
 // LifePath's ten achievements, two for habits, and the Mini App's own: a higher level, prayer, fasting,
-// the adhkar, the Qurʼan, focus and friend challenges. Most are worked out from the data; the two for
+// the adhkar, the Qurʼan, focus, the journal and friend challenges. Most are worked out from the data; the two for
 // challenges are unlocked when they happen (the server keeps challenges, not the app).
 import { ACHIEVEMENTS, earnedAchievements, levelInfo } from './gamify';
-import { Checks, Entry, Folder, Habit, Profile, Task } from './types';
+import { Checks, Entry, Folder, Habit, Page, Profile, Task } from './types';
 import { bestHabitStreak, shiftDay } from './habits';
 import { PRAYERS } from './prayerTimes';
+import { bestJournalStreak, writtenDays } from './journal';
 
 export interface Badge {
   id: string;
@@ -34,6 +35,9 @@ export const BADGES: Badge[] = [
   { id: 'khatm-1', icon: '🌟', tone: 'gold' },
   { id: 'focus-first', icon: '🎯', tone: 'pink' },
   { id: 'focus-10h', icon: '⏳', tone: 'violet' },
+  { id: 'journal-first', icon: '📝', tone: 'violet' },
+  { id: 'journal-7', icon: '✍️', tone: 'pink' },
+  { id: 'journal-30', icon: '📚', tone: 'gold' },
   { id: 'challenge-join', icon: '🤝', tone: 'blue' },
   { id: 'challenge-win', icon: '🏆', tone: 'gold' },
 ];
@@ -82,6 +86,7 @@ export function bestPrayerRun(worship: Checks): number {
 
 export function earnedBadges(d: {
   profile: Profile; tasks: Task[]; entries: Entry[]; folders: Folder[]; habits: Habit[]; checks: Checks; worship: Checks;
+  pages?: Page[];
 }): string[] {
   const ids = earnedAchievements(d.profile, d.tasks, d.entries, d.folders.length);
   const anyTick = Object.values(d.checks).some((month) => Object.values(month).some((mask) => mask !== 0));
@@ -107,5 +112,11 @@ export function earnedBadges(d: {
   const focus = d.profile.focus?.total ?? 0;
   if (focus > 0) ids.push('focus-first');
   if (focus >= 600) ids.push('focus-10h');
+
+  const pages = d.pages ?? [];
+  const written = writtenDays(pages).size;
+  if (written >= 1) ids.push('journal-first');
+  if (written >= 7 && bestJournalStreak(pages) >= 7) ids.push('journal-7');
+  if (written >= 30) ids.push('journal-30');
   return ids;
 }

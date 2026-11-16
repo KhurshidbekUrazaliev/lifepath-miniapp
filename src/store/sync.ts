@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { cloud, hasCloud, onTelegramEvent, tgUser } from '../tg/telegram';
 import {
-  KeyMap, MANIFEST_KEY, Placement, decode, diff, encode, keysOf, manifestFor, merge, parseManifest, sameData, usage,
+  KeyMap, MANIFEST_KEY, Placement, chunksOf, decode, diff, encode, keysOf, manifestFor, merge, parseManifest, sameData, unlisted, usage,
 } from '../lib/cloudCodec';
 import { Data } from '../lib/stats';
 import { dataChanged, emptyData, snapshot, useStore } from './store';
@@ -113,7 +113,11 @@ export function syncNow(): Promise<void> {
 
       if (remoteManifest && remoteManifest.rev !== cache.rev) {
         // Another device saved since this one last looked (or this device never looked): pull and merge.
-        const remoteMap = await fetchAll(keysOf(remoteManifest));
+        const keys = keysOf(remoteManifest);
+        // An older copy of the app saved last: what it does not know about is still there, just not counted.
+        const older = unlisted(remoteManifest);
+        if (older.length) keys.push(...chunksOf(await cloud.getKeys(), older));
+        const remoteMap = await fetchAll(keys);
         const remote = decode(remoteMap, emptyData());
         const local = snapshot();
         const untouched = fresh && !cache.pending;

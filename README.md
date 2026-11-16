@@ -3,9 +3,10 @@
 Plan goals, build daily habits and tasks, and watch yourself grow, inside Telegram.
 Open it from [@LifePathAppBot](https://t.me/LifePathAppBot).
 
-- **Home** with the verse of the day, today's progress ring and focus
+- **Home** with your companion in 3D and the hadith of the day, the next prayer, the day's journal question, the verse of the day, today's progress ring and focus
 - **Goals** in life areas, logged progress, proof, milestones and a smart planner
 - **Habits** with weekday schedules and streaks; **Tasks** and a **Calendar** with a "now" line
+- **Journal**: a diary with a question for each day and one-tap check-ins, and notes with lists and tags; kept in your own Telegram storage, with an optional face or fingerprint lock
 - **Analytics** and **Progress**: XP, levels, badges, Echo (your companion) and the Sparks shop
 - **Rankings** (opt-in) and **LifePath Plus**, paid in Telegram Stars
 - Reminders from the bot, in English, O'zbekcha or Русский, in dark and light themes

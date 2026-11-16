@@ -5,13 +5,14 @@ import { useStore, snapshot } from './store';
 import { useFocus } from './focus';
 import { api, useServer } from './server';
 import { Data, provenXp } from '../lib/stats';
-import { activeHabits } from '../lib/habits';
+import { activeHabits, shiftDay } from '../lib/habits';
 import { levelInfo, visibleStreak } from '../lib/gamify';
 import { weekStartMs } from '../lib/rankings';
 import { parseTime } from '../lib/calendar';
 import { dayKey } from '../lib/dates';
 import { TIME_EMOJI, alertPrayers, resolveMethod } from '../lib/prayer';
 import { counters } from '../lib/challenges';
+import { wroteOn } from '../lib/journal';
 import type { Settings } from '../lib/types';
 import { getLang, t } from '../i18n';
 import { requestWriteAccess } from '../tg/telegram';
@@ -97,6 +98,20 @@ export function buildReminders(d: Data): ReminderItem[] {
       date: dayKey(at.getTime()),
       open: 'focus',
     });
+  }
+  // The journal: a question on each of the next seven evenings. They are one-off reminders, so writing
+  // today takes today's away, and after a week without opening the app the bot stops asking.
+  const ask = parseTime(d.settings.journalAt);
+  if (ask) {
+    const now = new Date();
+    const late = now.getHours() * 60 + now.getMinutes() >= ask.hour * 60 + ask.minute;
+    const evenings: ReminderItem[] = [];
+    for (let i = 0; i < 7; i++) {
+      if (i === 0 && (late || wroteOn(d.pages, today))) continue;
+      const day = shiftDay(today, i);
+      evenings.push({ id: `j_${day}`, text: `📝 ${t('notif.msg.journal')}`, hour: ask.hour, minute: ask.minute, date: day, open: 'write' });
+    }
+    items.unshift(...evenings);
   }
   return items.slice(0, 60);
 }
@@ -213,7 +228,10 @@ export function useServerSync(): void {
       const reminders = !(
         s.tasks === prev.tasks && s.habits === prev.habits && s.plans === prev.plans && s.entries === prev.entries &&
         s.checks === prev.checks && s.profile.nudge === prev.profile.nudge && s.settings.reminders === prev.settings.reminders &&
-        s.settings.lang === prev.settings.lang && samePrayerSettings(s.settings, prev.settings)
+        s.settings.lang === prev.settings.lang && samePrayerSettings(s.settings, prev.settings) &&
+        s.settings.journalAt === prev.settings.journalAt &&
+        // The journal's question for tonight goes away once today is written (and comes back if that is undone).
+        (s.pages === prev.pages || wroteOn(s.pages, dayKey()) === wroteOn(prev.pages, dayKey()))
       );
       // Prayers marked, Qurʼan pages and focus minutes move challenge scores without touching the reminders.
       const activity =

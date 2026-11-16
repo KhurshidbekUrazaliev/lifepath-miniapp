@@ -7,7 +7,7 @@ import { t } from '../i18n';
 import { hideKeyboard } from '../tg/telegram';
 
 /** Keeps --kb equal to the height the on-screen keyboard covers (iOS does not resize the page). */
-function useKeyboardInset(): void {
+export function useKeyboardInset(): void {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;

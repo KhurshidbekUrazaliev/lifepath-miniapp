@@ -4,7 +4,11 @@
 // chunks ("e0", "e1", ... for log entries) that each stay under the limit. A record stays in the chunk
 // it was first written to, so adding a log rewrites one small value instead of the whole history.
 // The manifest ("m") lists how many chunks each kind has and carries a revision counter.
-import { Checks, Entry, Folder, Habit, Plan, Profile, Settings, Task } from './types';
+//
+// A kind added later (the journal, "j") is unknown to a copy of the app from before it. Such a copy
+// leaves the kind's chunks alone but writes a manifest that does not count them, so a manifest that
+// says nothing about a kind is not proof that there is none: see unlisted().
+import { Checks, Entry, Folder, Habit, Page, Plan, Profile, Settings, Task } from './types';
 import { Data } from './stats';
 import { mergeProfiles, stableStringify } from './syncPlan';
 
@@ -20,7 +24,7 @@ export const MANIFEST_KEY = 'm';
 const PROFILE_KEY = 'pr';
 const SETTINGS_KEY = 'st';
 
-const KINDS = ['f', 't', 'e', 'p', 'h', 'c', 'w'] as const;
+const KINDS = ['f', 't', 'e', 'p', 'h', 'c', 'w', 'j'] as const;
 type Kind = (typeof KINDS)[number];
 
 export interface Manifest {
@@ -146,6 +150,7 @@ export function encode(data: Data, placement: Placement): KeyMap {
     h: data.habits,
     c: checksToRecords(data.checks),
     w: checksToRecords(data.worship ?? {}),
+    j: data.pages ?? [],
   };
   const map: KeyMap = {};
   for (const kind of KINDS) {
@@ -186,6 +191,16 @@ export function keysOf(m: Manifest): string[] {
   for (const kind of KINDS) for (let i = 0; i < (m.n[kind] ?? 0); i++) keys.push(`${kind}${i}`);
   return keys;
 }
+
+/**
+ * The kinds a manifest does not count at all: it was written by a copy of the app from before they
+ * existed. Their chunks may still be in the cloud and have to be found by listing the keys.
+ */
+export const unlisted = (m: Manifest): string[] => KINDS.filter((kind) => m.n[kind] === undefined);
+
+/** Of all the keys in the cloud, the chunks of these kinds ("j0", "j1", ...). */
+export const chunksOf = (keys: string[], kinds: string[]): string[] =>
+  keys.filter((key) => /^[a-z]\d+$/.test(key) && kinds.includes(key[0]));
 
 function parseJson<T>(raw: string | undefined, fallback: T): T {
   if (!raw) return fallback;
@@ -246,6 +261,7 @@ export function decode(map: KeyMap, defaults: Data): { data: Data; placement: Pl
     habits: read('h') as Habit[],
     checks,
     worship,
+    pages: (read('j') as Page[]).sort((a, b) => a.at - b.at),
     profile: { ...defaults.profile, ...parseJson<Partial<Profile>>(map[PROFILE_KEY], {}) },
     settings: { ...defaults.settings, ...parseJson<Partial<Settings>>(map[SETTINGS_KEY], {}) },
   };
@@ -333,7 +349,7 @@ export function merge(local: Data, base: Data | null, remote: Data): Data {
       profile.sparks = add(local.profile.sparks, base.profile.sparks, remote.profile.sparks);
     }
   }
-  const b = base ?? { folders: [], tasks: [], entries: [], plans: [], habits: [], checks: {}, worship: {} };
+  const b = base ?? { folders: [], tasks: [], entries: [], plans: [], habits: [], checks: {}, worship: {}, pages: [] };
   return {
     folders: mergeList(local.folders, b.folders, remote.folders),
     tasks: mergeList(local.tasks, b.tasks, remote.tasks),
@@ -342,6 +358,8 @@ export function merge(local: Data, base: Data | null, remote: Data): Data {
     habits: mergeList(local.habits, b.habits, remote.habits),
     checks: mergeChecks(local.checks, b.checks, remote.checks),
     worship: mergeChecks(local.worship ?? {}, b.worship ?? {}, remote.worship ?? {}),
+    // A copy saved before the journal existed has no pages at all.
+    pages: mergeList(local.pages ?? [], b.pages ?? [], remote.pages ?? []).sort((x, y) => x.at - y.at),
     profile,
     settings: mergeSettings(local.settings, base?.settings ?? null, remote.settings),
   };

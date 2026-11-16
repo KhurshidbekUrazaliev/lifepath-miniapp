@@ -120,6 +120,8 @@ export function App() {
   const tab = useNav((s) => s.tab);
   const stack = useNav((s) => s.stack);
   const sheet = useNav((s) => s.sheet);
+  // The writing page is a page and nothing else: its own tools sit where the tab bar would be.
+  const writing = useNav((s) => s.stack[s.stack.length - 1]?.name === 'page');
   const inboxDot = useInboxDot();
 
   useTheme();
@@ -176,7 +178,7 @@ export function App() {
                 <Page key={route.key} route={route} top={i === stack.length - 1} />
               ))}
             </AnimatePresence>
-            <TabBar inboxDot={inboxDot} />
+            {writing ? null : <TabBar inboxDot={inboxDot} />}
             <FocusClock />
           </>
         ) : (

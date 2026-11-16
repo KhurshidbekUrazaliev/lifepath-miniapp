@@ -1,13 +1,18 @@
 // Tests for what the Mini App adds to LifePath's rules. Run with: npx tsx src/lib/miniapp.test.ts
 import assert from 'node:assert/strict';
-import { Checks, Entry, Folder, Habit, Plan, Profile, Settings, Task } from './types';
+import { Checks, Entry, Folder, Habit, Page, Plan, Profile, Settings, Task } from './types';
 import { Data, dayStats, lastDays, provenXp, xpSeries } from './stats';
 import {
   HABIT_XP, bestHabitStreak, checksOn, completionRate, dayTally, habitStreak, isChecked, isDue, shiftDay, weekdayOf, withCheck, withoutHabit,
 } from './habits';
 import {
-  KeyMap, MANIFEST_KEY, VALUE_LIMIT, decode, diff, encode, keysOf, manifestFor, merge, parseManifest, sameData, usage, utf8Length,
+  KeyMap, MANIFEST_KEY, VALUE_LIMIT, chunksOf, decode, diff, encode, keysOf, manifestFor, merge, parseManifest, sameData, unlisted, usage, utf8Length,
 } from './cloudCodec';
+import {
+  EVENING_ASKS, JOURNAL_XP, MORNING_ASKS, allTags, askFor, bestJournalStreak, continueList, dayFacts, diaryOf, excerpt, feelingOn, feelingsIn,
+  hasFacts, hasTag, headline, insight, isBlank, journalStreak, journalTotals, lastWritten, linesOf, liveFacts, memoryFor, notesOf, paidOn,
+  searchPages, tagsOf, toggleItem, toggleListAt, wordCount, wroteOn,
+} from './journal';
 import { dayKeyToMs } from './calendar';
 import {
   PRAYERS, WORSHIP_XP, alertPrayers, canTick, daysToRamadan, kmToKaaba, nextPrayerAt, prayerNow, prayerStreak, prayedOn, qiblaBearing,
@@ -39,7 +44,7 @@ const profile: Profile = {
   achievements: {}, nudge: { enabled: false, hour: 21, minute: 0 },
 };
 const settings: Settings = { lang: 'auto', theme: 'auto', verse: true, fullscreen: true, reminders: false, onboarded: true };
-const empty = (): Data => ({ folders: [], tasks: [], entries: [], plans: [], habits: [], checks: {}, worship: {}, profile, settings });
+const empty = (): Data => ({ folders: [], tasks: [], entries: [], plans: [], habits: [], checks: {}, worship: {}, pages: [], profile, settings });
 
 const at = (day: string, hour = 12) => dayKeyToMs(day, hour);
 const habit = (id: string, days = [1, 2, 3, 4, 5, 6, 7], created = '2026-11-01'): Habit => ({
@@ -825,6 +830,253 @@ test('admin: the list is asked for by search, order and page', () => {
   assert.equal(listQuery('  @ali b ', 'level', 50), '/admin/users?sort=level&offset=50&q=%40ali+b');
   assert.equal(profileLink(person()), 'https://t.me/ali');
   assert.equal(profileLink(person({ username: null })), null);
+});
+
+// ---------- the journal ----------
+
+let pageNo = 0;
+/** A diary entry on a day (a note with kind: 'note'), written at nine in the evening unless said. */
+const page = (day: string, more: Partial<Page> = {}): Page => ({ id: `pg${++pageNo}`, day, at: at(day, 21), text: '', ...more });
+
+test('journal: the streak counts days written in a row, and a today not written yet does not break it', () => {
+  const pages = [
+    page('2026-11-10', { text: 'an older day' }),
+    page('2026-11-13', { text: 'a' }),
+    page('2026-11-14', { text: 'b' }),
+    page('2026-11-15', { mood: 4 }),
+    page('2026-11-15', { kind: 'note', text: 'a note is not a day written' }),
+  ];
+  assert.equal(journalStreak(pages, '2026-11-15'), 3);
+  assert.equal(journalStreak(pages, '2026-11-16'), 3, 'today is still to write');
+  assert.equal(journalStreak(pages, '2026-11-17'), 0, 'a whole day was missed');
+  assert.equal(bestJournalStreak(pages), 3);
+  assert.equal(bestJournalStreak([page('2026-10-31'), page('2026-11-01')]), 2, 'a run carries across the end of a month');
+  assert.equal(journalStreak([page('2026-11-16', { kind: 'note', text: 'only a note' })], '2026-11-16'), 0);
+  assert.ok(wroteOn(pages, '2026-11-15') && !wroteOn(pages, '2026-11-16'));
+  assert.equal(diaryOf(pages)[0].day, '2026-11-15');
+  assert.equal(diaryOf(pages).length, 4);
+});
+
+test('journal: a day feels like its latest entry that has a feeling', () => {
+  const pages = [
+    page('2026-11-15', { mood: 2, at: at('2026-11-15', 9) }),
+    page('2026-11-15', { mood: 5, at: at('2026-11-15', 21) }),
+    page('2026-11-15', { text: 'no feeling given', at: at('2026-11-15', 23) }),
+    page('2026-11-14', { text: 'words only' }),
+  ];
+  assert.equal(feelingOn(pages, '2026-11-15'), 5);
+  assert.equal(feelingOn(pages, '2026-11-14'), undefined);
+  const week = lastWritten(pages, '2026-11-16');
+  assert.equal(week.length, 7);
+  assert.deepEqual(week.slice(-3), [
+    { day: '2026-11-14', written: true, mood: undefined },
+    { day: '2026-11-15', written: true, mood: 5 },
+    { day: '2026-11-16', written: false, mood: undefined },
+  ]);
+  assert.deepEqual(feelingsIn(pages, '2026-11'), { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1 });
+  assert.deepEqual(journalTotals(pages), { entries: 4, days: 2, notes: 0, words: 5 });
+});
+
+test('journal: nothing is kept of a page with no title, no words and no feeling', () => {
+  assert.ok(isBlank({ text: '  \n ' }));
+  assert.ok(isBlank({ title: ' ', text: '' }));
+  assert.ok(!isBlank({ text: '', mood: 3 }));
+  assert.ok(!isBlank({ title: 'A title', text: '' }));
+  assert.equal(wordCount('  Bugun  yaxshi\nkun boʻldi. '), 4);
+  assert.equal(wordCount(''), 0);
+  assert.equal(wordCount('- milk\n✓ warm bread\n- '), 3, 'the marks of a list are not words');
+});
+
+test('journal: the question stays the same all morning and all evening, and steps without repeating', () => {
+  const morning = askFor('2026-11-16', 8);
+  assert.equal(morning, askFor('2026-11-16', 11));
+  assert.ok(morning.startsWith('m'));
+  const evening = askFor('2026-11-16', 20);
+  assert.equal(evening, askFor('2026-11-16', 23));
+  assert.ok(evening.startsWith('e'));
+  assert.notEqual(askFor('2026-11-17', 20), evening, 'tomorrow asks something else');
+  const evenings = new Set(EVENING_ASKS.map((_, skip) => askFor('2026-11-16', 20, skip)));
+  assert.equal(evenings.size, EVENING_ASKS.length, 'every evening question comes before one repeats');
+  const mornings = new Set(MORNING_ASKS.map((_, skip) => askFor('2026-11-16', 8, skip)));
+  assert.equal(mornings.size, MORNING_ASKS.length);
+  assert.ok(askFor('2020-01-05', 20).startsWith('e'), 'a day before the count began still has a question');
+  const english = en as Record<string, string>;
+  for (const id of [...MORNING_ASKS, ...EVENING_ASKS]) assert.ok(english[`ask.${id}`]?.endsWith('?'), id);
+});
+
+test('journal: a page goes by its title or its first line, and the rest is what shows under it', () => {
+  const titled = { title: ' Tea with Grandma ', text: 'Stopped by after Asr.\nShe had set two cups.' };
+  assert.equal(headline(titled), 'Tea with Grandma');
+  assert.equal(excerpt(titled), 'Stopped by after Asr. She had set two cups.');
+  const list = { text: '\n- Rabbi zidni ilma\n✓ Health for my parents\n- Ease in the exam' };
+  assert.equal(headline(list), 'Rabbi zidni ilma');
+  assert.equal(excerpt(list), '• Health for my parents • Ease in the exam');
+  assert.equal(headline({ text: '' }), '');
+  assert.ok(excerpt({ title: 'T', text: 'word '.repeat(100) }, 40).endsWith('…'));
+  assert.ok(excerpt({ title: 'T', text: 'word '.repeat(100) }, 40).length <= 41);
+});
+
+test('journal: list items can be ticked and unticked, and other lines are left alone', () => {
+  const text = 'Books\n- Atomic Habits\n✓ Deep Work\n\nNot a list';
+  assert.deepEqual(linesOf(text).map((l) => l.kind), ['p', 'item', 'done', 'gap', 'p']);
+  assert.equal(linesOf(text)[1].text, 'Atomic Habits');
+  assert.equal(toggleItem(text, 1), 'Books\n✓ Atomic Habits\n✓ Deep Work\n\nNot a list');
+  assert.equal(toggleItem(text, 2), 'Books\n- Atomic Habits\n- Deep Work\n\nNot a list');
+  assert.equal(toggleItem(text, 0), text, 'a line of words is not ticked');
+  assert.equal(toggleItem(text, 99), text);
+  assert.equal(toggleItem(toggleItem(text, 1), 1), text);
+});
+
+test('journal: a new line goes on with a list, an empty item ends it, and a line can become a list', () => {
+  const going = continueList('- milk', 6);
+  assert.deepEqual(going, { text: '- milk\n- ', caret: 9 });
+  const afterDone = continueList('first\n✓ done', 12);
+  assert.deepEqual(afterDone, { text: 'first\n✓ done\n- ', caret: 15 });
+  assert.deepEqual(continueList('- milk\n- ', 9), { text: '- milk\n', caret: 7 }, 'the empty item goes');
+  assert.equal(continueList('just words', 10), null);
+  assert.deepEqual(continueList('- one\n- two', 5), { text: '- one\n- \n- two', caret: 8 }, 'in the middle of a list too');
+  assert.deepEqual(toggleListAt('milk', 4), { text: '- milk', caret: 6 });
+  assert.deepEqual(toggleListAt('a\n- milk', 5), { text: 'a\nmilk', caret: 3 });
+  assert.deepEqual(toggleListAt('', 0), { text: '- ', caret: 2 });
+});
+
+test('journal: tags are found in any script, and a search needs every word', () => {
+  assert.deepEqual(tagsOf('Read today #Books and #дуа, again #books. Not a#tag, not # alone. (#oʻqish)'), ['books', 'дуа', 'oʻqish']);
+  const pages = [
+    page('2026-11-10', { kind: 'note', title: 'My duas', text: '- Health for my parents\n#duas' }),
+    page('2026-11-11', { kind: 'note', title: 'Books', text: 'Deep Work #books #duas' }),
+    page('2026-11-12', { title: 'Tea with Grandma', text: 'She set two cups.' }),
+  ];
+  assert.deepEqual(allTags(pages), ['duas', 'books']);
+  assert.ok(hasTag(pages[1], 'books') && !hasTag(pages[0], 'books'));
+  assert.deepEqual(searchPages(pages, 'DEEP work').map((p) => p.title), ['Books']);
+  assert.deepEqual(searchPages(pages, 'grandma cups').map((p) => p.title), ['Tea with Grandma']);
+  assert.equal(searchPages(pages, 'grandma parents').length, 0);
+  assert.equal(searchPages(pages, '  ').length, 3);
+  assert.deepEqual(notesOf([...pages, page('2026-11-09', { kind: 'note', title: 'Pinned', text: 'x', pin: true })]).map((p) => p.title), ['Pinned', 'Books', 'My duas']);
+});
+
+test('journal: a memory is an entry from this date in an earlier year, or some months ago to the day', () => {
+  const lastYear = page('2025-11-16', { text: 'First week of Fajr at the mosque.' });
+  const lastMonth = page('2026-10-16', { text: 'A month ago.' });
+  assert.equal(memoryFor([lastMonth, lastYear], '2026-11-16')?.page, lastYear);
+  assert.deepEqual({ ...memoryFor([lastYear], '2026-11-16'), page: 0 }, { page: 0, unit: 'year', n: 1 });
+  assert.deepEqual({ ...memoryFor([lastMonth], '2026-11-16'), page: 0 }, { page: 0, unit: 'month', n: 1 });
+  assert.equal(memoryFor([page('2026-08-16', { text: 'x' })], '2026-11-16')?.n, 3);
+  assert.equal(memoryFor([page('2026-10-17', { text: 'the day after' })], '2026-11-16'), null);
+  assert.equal(memoryFor([page('2026-10-16', { mood: 4 })], '2026-11-16'), null, 'a feeling alone is not a memory to read');
+  assert.equal(memoryFor([page('2026-02-28', { text: 'x' }), page('2026-03-01', { text: 'y' })], '2026-03-31'), null, 'February has no 31st');
+  assert.equal(memoryFor([page('2025-11-16', { kind: 'note', text: 'a note' })], '2026-11-16'), null);
+});
+
+test('journal: days with all five prayers are named only when there are enough and they do feel better', () => {
+  let worship: Checks = {};
+  const pages: Page[] = [];
+  const full = ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06'];
+  full.forEach((day, i) => {
+    for (const p of PRAYERS) worship = withCheck(worship, p, day, true);
+    pages.push(page(day, { mood: i < 5 ? 4 : 2 }));
+  });
+  for (const day of ['2026-11-07', '2026-11-08', '2026-11-09']) pages.push(page(day, { mood: 2 }));
+  assert.deepEqual(insight(pages, worship), { kind: 'prayers', good: 5, days: 6 });
+  assert.deepEqual(insight(pages.slice(0, 4), worship), { kind: 'run', days: 4 }, 'four such days are too few to say');
+  const happyAnyway = pages.map((p) => ({ ...p, mood: 5 as const }));
+  assert.deepEqual(insight(happyAnyway, worship), { kind: 'run', days: 9 }, 'no better than the other days: nothing to claim');
+  assert.equal(insight([page('2026-11-01', { mood: 5 })], {}), null);
+});
+
+test('journal: what the app knows about a day, and what today’s entry keeps for later', () => {
+  const d = sample(0);
+  d.plans = [
+    { id: 'a', title: 'One', day: '2026-11-14', doneAt: 5, createdAt: 1 } as Plan,
+    { id: 'b', title: 'Two', day: '2026-11-14', createdAt: 1 } as Plan,
+  ];
+  d.checks = withCheck({}, 'h1', '2026-11-14', true);
+  d.profile = { ...profile, khatm: { ...newKhatm(30, '2026-11-01'), xpDay: '2026-11-14', xpPages: 3 }, focus: { day: '2026-11-14', min: 50, n: 2, total: 50 } };
+  const facts = dayFacts(d, '2026-11-14');
+  assert.equal(facts.prayers, 1);
+  assert.deepEqual(facts.tasks, { done: 1, total: 2 });
+  assert.deepEqual(facts.habits, { done: 1, due: 1 });
+  assert.equal(facts.quran, 3);
+  assert.equal(facts.focus, 50);
+  assert.ok(hasFacts(facts));
+  assert.deepEqual(liveFacts(d.profile, '2026-11-15'), { quran: 0, focus: 0 }, 'the app only knows these for the day they are for');
+  const later = dayFacts({ ...d, profile }, '2026-11-14', { quran: 3, focus: 50 });
+  assert.equal(later.quran, 3, 'the entry kept it');
+  assert.equal(later.focus, 50);
+  assert.ok(!hasFacts(dayFacts(empty(), '2026-11-14')));
+});
+
+test('journal: the first diary entry of a day is the one paid, and its XP counts on that day', () => {
+  const pages = [page('2026-11-14', { text: 'a', xp: JOURNAL_XP }), page('2026-11-14', { text: 'b' }), page('2026-11-14', { kind: 'note', text: 'n' })];
+  assert.equal(paidOn(pages, '2026-11-14'), pages[0]);
+  assert.equal(paidOn(pages, '2026-11-15'), undefined);
+  const d = { ...empty(), pages };
+  assert.deepEqual(xpSeries(d, ['2026-11-13', '2026-11-14']), [0, JOURNAL_XP]);
+  assert.equal(dayStats(d, '2026-11-14').xp.value, JOURNAL_XP);
+});
+
+test('badges: the journal’s three come from the days written', () => {
+  const run = (n: number): Page[] => Array.from({ length: n }, (_, i) => page(shiftDay('2026-10-01', i), { text: 'x' }));
+  assert.ok(!earnedBadges(empty()).some((id) => id.startsWith('journal')));
+  assert.deepEqual(earnedBadges({ ...empty(), pages: run(1) }).filter((id) => id.startsWith('journal')), ['journal-first']);
+  assert.ok(earnedBadges({ ...empty(), pages: run(7) }).includes('journal-7'));
+  const gaps = Array.from({ length: 8 }, (_, i) => page(shiftDay('2026-10-01', i * 2), { text: 'x' }));
+  assert.ok(!earnedBadges({ ...empty(), pages: gaps }).includes('journal-7'), 'eight days, never seven in a row');
+  assert.ok(earnedBadges({ ...empty(), pages: run(30) }).includes('journal-30'));
+  assert.ok(!earnedBadges({ ...empty(), pages: [page('2026-10-01', { kind: 'note', text: 'a note' })] }).includes('journal-first'));
+});
+
+test('codec: journal pages survive a round trip, a long one in pieces', () => {
+  const d = sample(20);
+  d.pages = [
+    page('2026-11-14', { title: 'Чай у бабушки', text: 'Зашёл после асра. ' + 'Она уже поставила две чашки. '.repeat(120), mood: 4, xp: JOURNAL_XP, ask: 'e1' }),
+    page('2026-11-15', { text: '', mood: 5 }),
+    page('2026-11-12', { kind: 'note', title: 'Duolarim', text: '- Rabbi zidni ilma\n✓ Ota-onamga sogʻliq\n#duolar', pin: true, color: 3 }),
+  ];
+  const map = encode(d, new Map());
+  for (const value of Object.values(map)) assert.ok(utf8Length(value) <= VALUE_LIMIT);
+  assert.ok(Object.keys(map).filter((k) => /^j\d+$/.test(k)).length >= 2, 'the long page takes more than one value');
+  assert.ok((manifestFor(map, 1).n.j ?? 0) >= 2);
+  const round = decode({ ...map }, empty());
+  assert.ok(sameData(round.data, { ...d, pages: [...d.pages].sort((a, b) => a.at - b.at) }));
+  // a small change to one page rewrites only that page's value
+  const { placement } = decode(map, empty());
+  const edited = d.pages.map((p) => (p.kind === 'note' ? { ...p, text: `${p.text}\n- yana bir duo` } : p));
+  assert.equal(diff(map, encode({ ...d, pages: edited }, placement)).write.length, 1);
+});
+
+test('merge: pages written on two devices are both kept, and a copy from before the journal loses nothing', () => {
+  const base = { ...sample(3), pages: [page('2026-11-13', { text: 'on both' })] };
+  const local = { ...base, pages: [...base.pages, page('2026-11-14', { text: 'on the phone' })] };
+  const remote = { ...base, pages: [...base.pages, page('2026-11-15', { text: 'on the tablet' })] };
+  assert.deepEqual(merge(local, base, remote).pages.map((p) => p.text), ['on both', 'on the phone', 'on the tablet']);
+  const gone = { ...base, pages: [] };
+  assert.equal(merge(base, base, gone).pages.length, 0, 'a page deleted on the other device goes here too');
+  const edited = { ...base, pages: [{ ...base.pages[0], text: 'edited here' }] };
+  assert.equal(merge(edited, base, gone).pages[0]?.text, 'edited here', 'but not one changed here since');
+  // An older copy of the data has no `pages` at all.
+  const { pages: _none, ...old } = base;
+  void _none;
+  assert.equal(merge(local, old as Data, old as Data).pages.length, 2, 'what this phone wrote stays: the older copy never knew of pages, so it deleted none');
+  assert.equal(merge(local, null, old as Data).pages.length, 2);
+});
+
+test('codec: a manifest from before the journal does not count its chunks, and they are found by their keys', () => {
+  const d = { ...sample(3), pages: [page('2026-11-14', { text: 'kept' })] };
+  const map = encode(d, new Map());
+  const now = manifestFor(map, 5);
+  assert.deepEqual(unlisted(now), []);
+  assert.ok(keysOf(now).includes('j0'));
+  const { j: _j, ...known } = now.n;
+  void _j;
+  const older = { ...now, n: known };
+  assert.deepEqual(unlisted(older), ['j']);
+  assert.ok(!keysOf(older).includes('j0'), 'the older copy of the app does not ask for it');
+  const inCloud = [...Object.keys(map), MANIFEST_KEY, 'lp_other', 'jm', 'e12'];
+  assert.deepEqual(chunksOf(inCloud, unlisted(older)), ['j0']);
+  const found = decode(Object.fromEntries([...keysOf(older), ...chunksOf(inCloud, unlisted(older))].map((k) => [k, map[k]])), empty());
+  assert.equal(found.data.pages[0]?.text, 'kept');
 });
 
 console.log(`\n${passed} tests passed`);

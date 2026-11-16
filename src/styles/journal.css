@@ -1,0 +1,1121 @@
+/* The journal: the day's question, the diary's timeline, notes, the page you write on, looking back,
+   and the lock. Its own surface is a dusk sky (.j-dusk); everything else uses the app's cards. */
+
+/* ---------- the five faces ---------- */
+
+.face {
+  display: block;
+  flex: none;
+}
+.feelbar {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 99px;
+  background: var(--well);
+  border: 1px solid var(--stroke);
+}
+.j-dusk .feelbar {
+  background: rgba(12, 8, 46, 0.38);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.feel {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: auto;
+  border-radius: 50%;
+}
+.feel.on::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 18px var(--fc);
+}
+:root[data-theme='light'] :not(.j-dusk) > .feelbar .feel.on::after {
+  border-color: var(--fc);
+}
+.feel.dim {
+  opacity: 0.5;
+}
+
+/* ---------- the twilight surface the journal owns ---------- */
+
+.j-dusk {
+  position: relative;
+  overflow: hidden;
+  color: #f6f3ff;
+  background:
+    radial-gradient(86% 120% at 104% -12%, rgba(226, 124, 255, 0.5), transparent 58%),
+    radial-gradient(74% 110% at -8% 112%, rgba(102, 110, 255, 0.5), transparent 60%),
+    linear-gradient(152deg, #33217a 0%, #221a5a 50%, #17143e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 16px 36px rgba(38, 22, 110, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+.j-rings {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.j-eyebrow {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #dcd2ff;
+}
+
+/* ---------- Home: the journal card ---------- */
+
+.j-home {
+  padding: 14px 14px 14px 16px;
+  border-radius: var(--r-lg);
+}
+.j-home-q {
+  position: relative;
+  margin: 5px 0 12px;
+  font-size: 18px;
+  line-height: 1.22;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.j-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.j-write {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  height: 44px;
+  padding: 0 17px 0 14px;
+  border-radius: 99px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #201766;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(10, 4, 60, 0.42);
+}
+/* The faces and Write share one line. Where it is too short for both (the word is longer in Russian, or
+   the phone is narrow) the faces give way a little, and on the narrowest phones Write is its pencil alone. */
+.j-row .feelbar {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.j-row .feel {
+  flex: 0 1 auto;
+  min-width: 0;
+  height: auto !important;
+  aspect-ratio: 1;
+}
+.j-row .feel .face {
+  width: 82.4%;
+  height: auto;
+}
+@media (max-width: 359px) {
+  .j-row .j-write {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .j-row .j-write-t {
+    display: none;
+  }
+}
+
+/* ---------- Journal: tonight's card ---------- */
+
+.j-hero {
+  padding: 18px 18px 16px;
+  border-radius: var(--r-xl);
+}
+.j-hero-date {
+  position: relative;
+  margin-top: 3px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(238, 232, 255, 0.64);
+}
+.j-hero-q {
+  position: relative;
+  max-width: 270px;
+  margin: 14px 0 18px;
+  font-size: 25px;
+  line-height: 1.16;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.j-done {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px 13px 13px;
+  border-radius: var(--r-lg);
+}
+.j-done-ic {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+  color: #201766;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(10, 4, 60, 0.4);
+}
+.j-done b {
+  position: relative;
+  display: block;
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.j-done small::first-letter {
+  text-transform: uppercase;
+}
+.j-done small {
+  position: relative;
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(238, 232, 255, 0.7);
+}
+.j-more {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+/* The door to the journal in the corner of Home's card. It is small, so what can be touched is larger. */
+.j-open {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.j-open::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+.j-home .j-eyebrow {
+  padding-right: 36px;
+}
+.j-xp {
+  position: relative;
+  flex: none;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 99px;
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 28px;
+  color: #ffe9a8;
+  background: rgba(255, 207, 92, 0.18);
+  border: 1px solid rgba(255, 207, 92, 0.34);
+}
+
+/* ---------- the week and the streak ---------- */
+
+.j-week {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 12px 11px 14px;
+}
+.j-streak {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding-right: 14px;
+  border-right: 1px solid var(--stroke);
+}
+.j-streak b {
+  display: block;
+  font-size: 23px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.j-streak small {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.j-wdays {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.j-wday {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.j-wday.today {
+  color: var(--text);
+}
+.j-dot {
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--stroke-2);
+}
+.j-wday.today .j-dot {
+  border: 2px solid var(--violet);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--violet) 24%, transparent);
+}
+/* On the narrowest phones seven days of that size would touch. */
+@media (max-width: 359px) {
+  .j-week {
+    gap: 10px;
+    padding: 12px 10px 11px 12px;
+  }
+  .j-streak {
+    gap: 6px;
+    padding-right: 10px;
+  }
+  .j-wday .face,
+  .j-dot {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ---------- the timeline ---------- */
+
+.j-month {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 0 3px;
+}
+.j-month span {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.j-entry {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 13px;
+  padding: 14px 14px 13px 18px;
+  overflow: hidden;
+}
+.j-entry.fresh {
+  border-color: color-mix(in srgb, var(--violet) 46%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--violet) 14%, transparent), var(--shadow-card), inset 0 1px 0 var(--hi);
+}
+.j-entry-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 1px;
+}
+.j-entry-date b {
+  font-size: 25px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.j-entry-date small {
+  margin-top: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.j-entry-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.j-entry-top span {
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+}
+.j-entry-text {
+  margin-top: 4px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--text-2);
+}
+.j-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.j-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  background: var(--track);
+  white-space: nowrap;
+}
+.j-time {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.j-memory {
+  padding: 14px 16px 13px;
+  border-color: color-mix(in srgb, var(--gold) 34%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 13%, var(--card-solid)), color-mix(in srgb, var(--gold) 5%, var(--card-solid)));
+}
+.j-memory .j-eyebrow {
+  color: var(--gold-ink);
+}
+.j-memory p {
+  margin-top: 8px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.j-memory small {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+/* ---------- the page you write on ---------- */
+
+.j-page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(96% 36% at 50% -8%, color-mix(in srgb, var(--mc, var(--violet)) 30%, transparent), transparent 72%), var(--bg);
+  /* the keyboard covers the bottom of the screen: the tools and the end of the text stay above it */
+  padding-bottom: var(--kb);
+}
+.j-bar {
+  flex: none;
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: calc(var(--safe-top) + 12px) var(--gutter) 8px;
+}
+.j-datepill {
+  position: relative;
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 13px;
+  border-radius: 99px;
+  font-size: 13.5px;
+  font-weight: 700;
+  background: linear-gradient(180deg, var(--card-hi), var(--card-lo));
+  border: 1px solid var(--stroke);
+}
+.j-datepill i {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-3);
+}
+/* a date field lying unseen over the pill: touching the pill opens the phone's own date picker */
+.j-dateinput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.j-donebtn {
+  min-height: 38px;
+  padding: 0 17px;
+}
+.j-sheet {
+  position: relative; /* the caret's place is measured from here */
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding: 10px 22px 28px;
+}
+.j-sheet::-webkit-scrollbar {
+  display: none;
+}
+.j-ask {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 12px;
+  border-radius: 16px;
+  font-size: 13.5px;
+  line-height: 1.35;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 28%, transparent);
+}
+.j-ask > span {
+  flex: 1;
+}
+.j-askbtn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin: -4px -4px -4px 0;
+  border-radius: 50%;
+  color: var(--text-3);
+}
+.j-title {
+  display: block;
+  width: 100%;
+  margin: 20px 0 10px;
+  font-size: 27px;
+  line-height: 1.14;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.j-title::placeholder {
+  color: var(--text-3);
+  font-weight: 700;
+}
+/* The words of a page: the same measure while writing (a textarea) and while reading (lines). */
+.j-text {
+  display: block;
+  width: 100%;
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.62;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  color: color-mix(in srgb, var(--text) 92%, transparent);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+textarea.j-text {
+  min-height: 190px;
+  overflow: hidden;
+  resize: none;
+}
+/* The page is the field: no ring is drawn around the words being written. */
+.j-text:focus-visible,
+.j-title:focus-visible,
+.j-search input:focus-visible {
+  outline: none;
+}
+.j-search:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+textarea.j-text::placeholder {
+  color: var(--text-3);
+}
+/* A copy of the text up to the caret, never seen: its height says where the caret is. */
+.j-mirror {
+  position: absolute;
+  top: 0;
+  left: 22px;
+  visibility: hidden;
+  pointer-events: none;
+}
+.j-read {
+  min-height: 150px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.j-gap {
+  height: 12px;
+}
+.j-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.j-item > span:first-child {
+  flex: none;
+}
+.j-tick {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: -3px 0 -3px -6px;
+}
+.j-item.done .j-text {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+}
+.j-hash {
+  font-weight: 700;
+  color: color-mix(in srgb, var(--mc, var(--violet)) 72%, var(--text));
+}
+.j-nothing {
+  color: var(--text-3);
+}
+.j-day {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--stroke-2);
+}
+.j-day .j-eyebrow {
+  color: var(--text-3);
+}
+.j-day-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 11px;
+}
+.j-daychip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px 0 9px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 800;
+  background: linear-gradient(180deg, var(--card-hi), var(--card-lo));
+  border: 1px solid var(--stroke);
+}
+.j-daychip span {
+  font-weight: 600;
+  color: var(--text-2);
+}
+.j-tools {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 60px;
+  /* with the keyboard up, the phone's own bottom inset is under the keyboard */
+  margin: 6px 14px max(10px, calc(var(--safe-bottom) + 12px - var(--kb)));
+  padding: 0 8px;
+  border-radius: 24px;
+  background: var(--glass);
+  border: 1px solid var(--stroke);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 var(--hi);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  backdrop-filter: blur(22px) saturate(1.4);
+}
+.j-tool {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 44px;
+  border-radius: 14px;
+  color: var(--text-2);
+}
+.j-tool.on {
+  color: color-mix(in srgb, var(--mc, var(--violet)) 80%, var(--text));
+}
+.j-tool.mood {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  min-width: 0;
+  white-space: nowrap;
+  margin-right: 4px;
+  padding: 0 13px 0 8px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text);
+  background: color-mix(in srgb, var(--mc) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mc) 34%, transparent);
+}
+.j-tool.mood.none {
+  padding-left: 10px;
+  font-weight: 700;
+  color: var(--text-2);
+  background: var(--well);
+  border-color: var(--stroke);
+}
+/* the five faces, opened over the tools */
+.j-pop {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  z-index: 6;
+  border-radius: 99px;
+  background: var(--sheet);
+  box-shadow: var(--shadow-pop);
+}
+.j-colordot {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--mc);
+  box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3.5px var(--stroke-2);
+}
+.j-count {
+  margin-left: auto;
+  padding-right: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* ---------- notes ---------- */
+
+.j-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 15px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--well);
+  border: 1px solid var(--stroke);
+}
+.j-tags {
+  display: flex;
+  gap: 8px;
+  margin: 0 calc(var(--gutter) * -1);
+  padding: 0 var(--gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.j-tags::-webkit-scrollbar {
+  display: none;
+}
+.j-tag {
+  flex: none;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 32px;
+  color: var(--text-2);
+  background: var(--track);
+  border: 1px solid transparent;
+}
+.j-tag.on {
+  color: var(--text);
+  background: color-mix(in srgb, var(--violet) 24%, transparent);
+  border-color: color-mix(in srgb, var(--violet) 55%, transparent);
+}
+.j-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 3px -4px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.j-notes {
+  columns: 2;
+  column-gap: 12px;
+}
+.j-note {
+  break-inside: avoid;
+  margin-bottom: 12px;
+  padding: 14px 14px 12px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 22%, var(--card-solid)), color-mix(in srgb, var(--c) 9%, var(--card-solid)));
+  border: 1px solid color-mix(in srgb, var(--c) 32%, transparent);
+  box-shadow: var(--tile-shadow), inset 0 1px 0 var(--hi);
+}
+.j-note h3 {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.012em;
+}
+.j-note h3 svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--c);
+}
+.j-note p,
+.j-note li {
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--text-2);
+}
+.j-note p {
+  margin-top: 6px;
+}
+.j-note ul {
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.j-note li {
+  position: relative;
+  padding-left: 13px;
+}
+.j-note li + li {
+  margin-top: 2px;
+}
+.j-note li::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 0.56em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c);
+}
+.j-note li.done {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+}
+.j-note-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 11px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+}
+.j-note-foot b {
+  font-weight: 800;
+  color: var(--c);
+}
+
+/* ---------- looking back ---------- */
+
+.j-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 13px 4px;
+}
+.j-stats > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-align: center;
+}
+.j-stats > div + div {
+  border-left: 1px solid var(--stroke);
+}
+.j-stats b {
+  font-size: 21px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.j-cal-step {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: -6px;
+  border-radius: 50%;
+  color: var(--text-2);
+}
+.j-cal-step:disabled {
+  opacity: 0.28;
+}
+.j-cal-d:disabled {
+  opacity: 1; /* days still to come are dimmed by their own colour, not twice */
+}
+.j-cal {
+  padding: 12px 10px 0;
+}
+.j-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px 10px;
+}
+.j-key {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin: 8px 6px 0;
+  padding: 11px 0 12px;
+  border-top: 1px solid var(--stroke);
+}
+.j-key > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+.j-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 4px;
+}
+.j-cal-w {
+  padding-bottom: 6px;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.j-cal-d {
+  display: grid;
+  place-items: center;
+  height: 37px;
+}
+.j-cal-d > span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+.j-cal-d.has > span {
+  font-weight: 800;
+  color: #10152b;
+  background: var(--mc);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--mc) 38%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.j-cal-d.today > span {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+.j-cal-d.later > span {
+  color: var(--text-3);
+  opacity: 0.55;
+}
+.j-insight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px 12px 10px;
+}
+.j-insight p {
+  margin: 3px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+/* ---------- pieces that are buttons (a .tap is a full-width block unless told otherwise) ---------- */
+
+.j-home-main,
+.j-hero-q {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+}
+.j-home-main .j-home-q {
+  display: block;
+}
+.j-write,
+.j-again,
+.j-tag {
+  width: auto;
+}
+.j-again {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin: -6px -6px -6px 0;
+  border-radius: 50%;
+  color: #dcd2ff;
+  background: rgba(255, 255, 255, 0.1);
+}
+.j-done {
+  width: 100%;
+  text-align: left;
+}
+.j-done-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  text-align: left;
+  color: inherit;
+}
+.j-dot.on {
+  border: 0;
+  background: var(--violet);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--violet) 60%, transparent);
+}
+.j-private {
+  display: flex;
+  gap: 8px;
+  padding: 4px 6px 0;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--text-3);
+}
+.j-private svg {
+  margin-top: 2px;
+}
+.j-search input {
+  color: var(--text);
+}
+.j-note {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+.j-note h3 span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.j-note p {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.j-li {
+  position: relative;
+  display: block;
+  margin-top: 3px;
+  padding-left: 13px;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+.j-li::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 0.56em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c);
+}
+.j-li.done {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+}
+.j-note h3 + .j-li {
+  margin-top: 7px;
+}
+/* On a light card the note colours are too pale for words: the tag takes the darker text colour. */
+:root[data-theme='light'] .j-note-foot b {
+  color: color-mix(in srgb, var(--c) 55%, #10152b);
+}
+
+/* ---------- the lock ---------- */
+
+.j-lock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 56px 28px 0;
+  text-align: center;
+}
+.j-lock-ic {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  margin-bottom: 10px;
+  border-radius: 32px;
+  color: #fff;
+  background: linear-gradient(160deg, #8f7bff, #5a48e0);
+  box-shadow: 0 18px 44px rgba(105, 86, 240, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.j-lock .btn {
+  width: auto;
+  min-width: 180px;
+  margin-top: 14px;
+}

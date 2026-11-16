@@ -1,5 +1,5 @@
 // Numbers for Home, Analytics and Progress. Pure functions over the app data.
-import { Checks, Entry, Folder, Habit, Plan, Profile, Settings, Task } from './types';
+import { Checks, Entry, Folder, Habit, Page, Plan, Profile, Settings, Task } from './types';
 import { dayKey } from './dates';
 import { activeHabits, checksOn, dayTally, HABIT_XP, shiftDay, topHabitStreak } from './habits';
 import { computeProgress } from './progress';
@@ -13,6 +13,7 @@ export interface Data {
   habits: Habit[];
   checks: Checks;
   worship: Checks; // prayers, fasts and adhkar ticked: month -> what -> days (lib/prayer.ts)
+  pages: Page[]; // the journal: diary entries and notes (lib/journal.ts)
   profile: Profile;
   settings: Settings;
 }
@@ -24,8 +25,10 @@ export function lastDays(n: number, today: string = dayKey()): string[] {
   return out;
 }
 
-/** XP earned on each of the given days: logs, habit ticks and stand-alone to-dos. */
-export function xpSeries(d: Pick<Data, 'entries' | 'plans' | 'checks'> & { worship?: Checks }, days: string[]): number[] {
+type XpSource = Pick<Data, 'entries' | 'plans' | 'checks'> & { worship?: Checks; pages?: Page[] };
+
+/** XP earned on each of the given days: logs, habit ticks, stand-alone to-dos, worship and the journal. */
+export function xpSeries(d: XpSource, days: string[]): number[] {
   const index = new Map(days.map((day, i) => [day, i]));
   const out = days.map((day) => checksOn(d.checks, day) * HABIT_XP + (d.worship ? worshipXpOn(d.worship, day) : 0));
   for (const e of d.entries) {
@@ -37,10 +40,15 @@ export function xpSeries(d: Pick<Data, 'entries' | 'plans' | 'checks'> & { worsh
     const i = index.get(dayKey(p.doneAt));
     if (i !== undefined) out[i] += p.xp;
   }
+  for (const page of d.pages ?? []) {
+    if (!page.xp) continue;
+    const i = index.get(page.day);
+    if (i !== undefined) out[i] += page.xp;
+  }
   return out;
 }
 
-export const xpOnDay = (d: Pick<Data, 'entries' | 'plans' | 'checks'> & { worship?: Checks }, day: string): number => xpSeries(d, [day])[0];
+export const xpOnDay = (d: XpSource, day: string): number => xpSeries(d, [day])[0];
 
 export interface Tally {
   done: number;

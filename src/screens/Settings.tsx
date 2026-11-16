@@ -1,6 +1,6 @@
 // Settings and its sub-pages: notifications, appearance, language, prayer & Qurʼan, data and about.
 import { useEffect, useState } from 'react';
-import { ArrowsClockwise, Bell, BellRinging, BookOpen, BookOpenText, Calculator, ChatsCircle, Check as CheckIcon, Cloud, CloudSlash, Database, Globe, Headphones, Info, MapPin, Moon, Mosque, PencilSimple, ShieldCheck, SpeakerHigh, SpinnerGap, Sun, Target, UsersThree, WarningCircle, Waveform } from '@phosphor-icons/react';
+import { ArrowsClockwise, Bell, BellRinging, BookOpen, BookOpenText, Calculator, ChatsCircle, Check as CheckIcon, Cloud, CloudSlash, Database, Globe, Headphones, Info, LockSimple, MapPin, Moon, Mosque, PencilSimple, ShieldCheck, SpeakerHigh, SpinnerGap, Sun, Target, UsersThree, WarningCircle, Waveform } from '@phosphor-icons/react';
 import { useStore, snapshot } from '../store/store';
 import { useNav } from '../store/nav';
 import { exportJson, syncNow, useSync } from '../store/sync';
@@ -21,6 +21,7 @@ import { HIJRI_MONTHS } from '../lib/hijri';
 import { dayKey } from '../lib/dates';
 import { placeName } from './Prayer';
 import { openIlmulHaq } from '../ui/IlmulHaq';
+import { useLock } from '../journal/lock';
 
 const deviceZone = (): string => {
   try {
@@ -173,6 +174,7 @@ export function Appearance() {
           <Row title={t('appearance.fullscreen')} sub={t('appearance.fullscreen.hint')} right={<Toggle on={settings.fullscreen} onChange={(fullscreen) => setSettings({ fullscreen })} label={t('appearance.fullscreen')} />} />
         ) : null}
         <Row title={t('appearance.haptics')} sub={t('appearance.haptics.hint')} right={<Toggle on={haptics} onChange={toggleHaptics} label={t('appearance.haptics')} />} />
+        <Row title={t('j.onHome')} sub={t('j.onHome.hint')} right={<Toggle on={settings.journalCard !== false} onChange={(journalCard) => setSettings({ journalCard })} label={t('j.onHome')} />} />
       </Card>
     </Screen>
   );
@@ -430,9 +432,11 @@ export function Notifications() {
   const profile = useStore((s) => s.profile);
   const settings = useStore((s) => s.settings);
   const setNudge = useStore((s) => s.setNudge);
+  const setSettings = useStore((s) => s.setSettings);
   const server = useServer((s) => s.status);
   const [problem, setProblem] = useState('');
-  const items = buildReminders(snapshot());
+  // The journal asks on each of the next evenings; the list names it once.
+  const items = buildReminders(snapshot()).filter((r, i, all) => !r.id.startsWith('j_') || all.findIndex((x) => x.id.startsWith('j_')) === i);
   const time = `${String(profile.nudge.hour).padStart(2, '0')}:${String(profile.nudge.minute).padStart(2, '0')}`;
 
   return (
@@ -455,6 +459,24 @@ export function Notifications() {
               onChange={(e) => {
                 const [h, m] = e.target.value.split(':').map(Number);
                 if (Number.isFinite(h) && Number.isFinite(m)) setNudge({ hour: h, minute: m });
+              }}
+            />
+          </div>
+        ) : null}
+        <Row
+          title={t('notif.journal')}
+          sub={t('notif.journal.hint')}
+          right={<Toggle on={!!settings.journalAt} onChange={(on) => setSettings({ journalAt: on ? '21:00' : undefined })} label={t('notif.journal')} />}
+        />
+        {settings.journalAt ? (
+          <div className="lrow">
+            <span className="grow t-body">{t('notif.nudge.time')}</span>
+            <input
+              className="input time"
+              type="time"
+              value={settings.journalAt}
+              onChange={(e) => {
+                if (/^\d{2}:\d{2}$/.test(e.target.value)) setSettings({ journalAt: e.target.value });
               }}
             />
           </div>
@@ -487,6 +509,18 @@ export function DataPrivacy() {
   const replaceData = useStore((s) => s.replaceData);
   const usage = useSync((s) => s.usage);
   const [note, setNote] = useState('');
+  const lock = useLock();
+  const [lockNote, setLockNote] = useState('');
+
+  const setLock = async (on: boolean) => {
+    setLockNote('');
+    if (!on) {
+      await lock.turnOff(t('lock.reason'));
+      return;
+    }
+    const result = await lock.turnOn(t('lock.reason'));
+    if (result !== 'ok') setLockNote(t(result === 'unavailable' ? 'lock.unavailable' : 'lock.refused'));
+  };
 
   const copy = async () => {
     try {
@@ -512,6 +546,16 @@ export function DataPrivacy() {
           <div className="t-small muted" style={{ marginTop: 8 }}>{t('data.usage', { pct: pct(usage.share) })}</div>
         </div>
       </Card>
+
+      <Card pad={false} className="list">
+        <Row
+          icon={<LockSimple size={21} style={{ color: 'var(--violet)' }} />}
+          title={t('lock.setting')}
+          sub={t('lock.setting.hint')}
+          right={<Toggle on={lock.on} onChange={(on) => void setLock(on)} label={t('lock.setting')} />}
+        />
+      </Card>
+      {lockNote ? <div className="t-small" style={{ color: 'var(--orange)', padding: '0 4px' }}>{lockNote}</div> : null}
 
       <Card pad={false} className="list">
         <Row title={t('data.export')} onTap={copy} />
