@@ -10,7 +10,7 @@ import { useLevelsOpen, useServer, useSparksGift } from '../store/server';
 import { ATTRIBUTES, ageInDays, attrLevel } from '../lib/echo';
 import { GROWTH_IDS, GROWTH_LEVELS, TOP_STAGE } from '../lib/companion';
 import type { Advice, AdviceKind } from '../lib/advisor';
-import { ITEMS, SLOTS, Slot, canBuy, isOwned, itemById, sparkBalance, wornOutfit } from '../lib/wardrobe';
+import { ITEMS, SLOTS, Slot, canBuy, earnProgress, isOwned, itemById, sparkBalance, wornOutfit } from '../lib/wardrobe';
 import { haptic, shareText } from '../tg/telegram';
 import { Key, t, tn } from '../i18n';
 import { fmtNumber } from '../i18n/format';
@@ -197,6 +197,8 @@ export function Echo() {
 }
 
 export function Shop() {
+  const worship = useStore((s) => s.worship);
+  const pages = useStore((s) => s.pages);
   const profile = useStore((s) => s.profile);
   const buyItem = useStore((s) => s.buyItem);
   const wearItem = useStore((s) => s.wearItem);
@@ -219,7 +221,7 @@ export function Shop() {
     () => ITEMS.filter((i) => (!i.gender || i.gender === e.gender) && itemAvailable(i.id)),
     [e.gender],
   );
-  const slots = SLOTS.filter((s) => offered.some((i) => i.slot === s.id && i.price > 0));
+  const slots = SLOTS.filter((s) => offered.some((i) => i.slot === s.id && (i.price > 0 || !!i.earn)));
   // The first kind of item is open until another is picked.
   const slot = picked && slots.some((s) => s.id === picked) ? picked : slots[0]?.id ?? 'sky';
   const items = offered.filter((i) => i.slot === slot);
@@ -255,7 +257,9 @@ export function Shop() {
   const check = tryItem && !isOwned(profile, tryItem) ? canBuy(profile, tryItem.id, lockStage, e.gender, gift) : null;
   const blocked =
     check && !check.ok
-      ? check.reason === 'stage'
+      ? check.reason === 'earned'
+        ? t(`earn.${tryItem!.earn!.by}.hint` as Key)
+        : check.reason === 'stage'
         ? t('shop.locked', { stage: growthName(tryItem!.minStage ?? 0, e.gender) })
         : check.reason === 'poor'
           ? t('shop.poor', { n: tryItem!.price - balance })
@@ -298,6 +302,7 @@ export function Shop() {
         {items.map((item) => {
           const owned = isOwned(profile, item);
           const wearing = worn[item.slot] === item.id;
+          const earned = !owned ? earnProgress({ profile, worship, pages }, item) : null;
           const locked = !owned && (item.minStage ?? 0) > lockStage;
           return (
             <Tap key={item.id} onTap={() => setTrying(item.id)} scale={0.96} hap="select">
@@ -306,8 +311,9 @@ export function Shop() {
                 {locked ? <span className="shop-lock"><Lock size={14} weight="fill" /></span> : null}
                 <span className="t-small clip" style={{ fontWeight: 700, maxWidth: '100%' }}>{t(`item.${item.id}` as Key)}</span>
                 <span className={cx('t-tiny', wearing ? 'accent' : 'muted')}>
-                  {wearing ? t('shop.wearing') : owned ? (item.price === 0 ? t('shop.free') : t('shop.wear')) : <><Emoji e="✨" /> {item.price}</>}
+                  {wearing ? t('shop.wearing') : owned ? (item.price === 0 && !item.earn ? t('shop.free') : t('shop.wear')) : earned ? t(`earn.${item.earn!.by}` as Key, { have: Math.min(earned.have, earned.need), need: earned.need }) : <><Emoji e="✨" /> {item.price}</>}
                 </span>
+                {earned ? <div className="earn-bar"><Bar value={earned.have / earned.need} height={4} /></div> : null}
               </Card>
             </Tap>
           );
@@ -317,7 +323,7 @@ export function Shop() {
       {tryItem && worn[tryItem.slot] !== tryItem.id ? (
         <>
           <Tap className="btn primary" onTap={act} disabled={!!blocked} hap={false}>
-            {isOwned(profile, tryItem) ? t('shop.wear') : t('shop.buy', { n: tryItem.price })}
+            {isOwned(profile, tryItem) ? t('shop.wear') : tryItem.earn ? t('earn.deeds') : t('shop.buy', { n: tryItem.price })}
           </Tap>
           {blocked ? <div className="t-small center" style={{ color: 'var(--orange)' }}>{blocked}</div> : null}
         </>

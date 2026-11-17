@@ -3,14 +3,15 @@ import { useEffect, useState } from 'react';
 import { ArrowsClockwise, Bell, BellRinging, BookOpen, BookOpenText, Calculator, ChatsCircle, Check as CheckIcon, Cloud, CloudSlash, Database, Globe, Headphones, Info, LockSimple, MapPin, Moon, Mosque, PencilSimple, ShieldCheck, SpeakerHigh, SpinnerGap, Sun, Target, UsersThree, WarningCircle, Waveform } from '@phosphor-icons/react';
 import { useStore, snapshot } from '../store/store';
 import { useNav } from '../store/nav';
-import { exportJson, syncNow, useSync } from '../store/sync';
+import { syncNow, useSync } from '../store/sync';
+import { restartWeek } from '../store/week';
 import { useServer } from '../store/server';
 import { buildDemo } from '../store/demo';
 import { buildReminders, enableReminders } from '../store/serverSync';
 import { addToHomeScreen, canAddToHome, canFullscreen, haptic, openLink, tgUser } from '../tg/telegram';
 import { LangSetting, ThemeSetting } from '../lib/types';
 import { getLang, t, tn } from '../i18n';
-import { fmtTime, pct } from '../i18n/format';
+import { fmtTime, pct, weekdayShort } from '../i18n/format';
 import { Avatar, Bar, Card, Field, Header, Row, Screen, Section, Segmented, Tap, Toggle, cx } from '../ui/kit';
 import { confirmSheet } from '../sheets/confirm';
 import { RemindersSwitch } from './Inbox';
@@ -19,9 +20,12 @@ import { stopRecitation, toggleRecitation, useRecitation } from '../store/recita
 import { AsrSchool, METHOD_MENU, PRAYERS, alertPrayers, hijriOf, isMethod, methodName, resolveMethod } from '../lib/prayer';
 import { HIJRI_MONTHS } from '../lib/hijri';
 import { dayKey } from '../lib/dates';
+import { BUILD } from '../lib/build';
 import { placeName } from './Prayer';
 import { openIlmulHaq } from '../ui/IlmulHaq';
 import { useLock } from '../journal/lock';
+import { copyBackup, useJournalOut } from '../journal/out';
+import { House } from '@phosphor-icons/react';
 
 const deviceZone = (): string => {
   try {
@@ -125,6 +129,7 @@ export function Settings() {
       <Card pad={false} className="list">
         <Row icon={<Bell size={21} />} title={t('settings.notifications')} value={settings.reminders ? t('inbox.reminders.on') : undefined} onTap={() => push({ name: 'notifications' })} />
         <Row icon={<Moon size={21} />} title={t('settings.appearance')} value={themeName} onTap={() => push({ name: 'appearance' })} />
+        <Row icon={<House size={21} />} title={t('homecards.title')} onTap={() => push({ name: 'homecards' })} />
         <Row icon={<Globe size={21} />} title={t('settings.language')} value={langName} onTap={() => push({ name: 'language' })} />
         <Row icon={<Mosque size={21} />} title={t('settings.faith')} onTap={() => push({ name: 'faith' })} />
         <Row icon={<ShieldCheck size={21} />} title={t('settings.data')} onTap={() => push({ name: 'data' })} />
@@ -481,6 +486,11 @@ export function Notifications() {
             />
           </div>
         ) : null}
+        <Row
+          title={t('notif.week')}
+          sub={t('notif.week.hint')}
+          right={<Toggle on={settings.weekLetter !== false} onChange={(weekLetter) => setSettings({ weekLetter })} label={t('notif.week')} />}
+        />
       </Card>
       {problem || server === 'off' ? (
         <div className="t-small" style={{ color: problem ? 'var(--orange)' : 'var(--text-3)', padding: '0 4px' }}>{problem || t('notif.off')}</div>
@@ -492,7 +502,8 @@ export function Notifications() {
             {items.map((r) => (
               <div className="lrow" key={r.id}>
                 <span className="grow t-small clip" style={{ fontWeight: 600 }}>{r.text}</span>
-                <span className="lrow-val num">{fmtTime(r.hour, r.minute)}</span>
+                {/* The weekly letter comes on one day of the week, so its day is named with its time. */}
+                <span className="lrow-val num">{r.id.startsWith('w_') ? `${weekdayShort(0)} ` : ''}{fmtTime(r.hour, r.minute)}</span>
               </div>
             ))}
           </Card>
@@ -507,8 +518,11 @@ export function Notifications() {
 export function DataPrivacy() {
   const resetAll = useStore((s) => s.resetAll);
   const replaceData = useStore((s) => s.replaceData);
+  const open = useNav((s) => s.open);
   const usage = useSync((s) => s.usage);
-  const [note, setNote] = useState('');
+  // How the last thing done here went, said under the list: green when it worked.
+  const [note, setNote] = useState<{ text: string; ok: boolean } | null>(null);
+  const journal = useJournalOut((text, ok) => setNote(text ? { text, ok } : null));
   const lock = useLock();
   const [lockNote, setLockNote] = useState('');
 
@@ -520,16 +534,6 @@ export function DataPrivacy() {
     }
     const result = await lock.turnOn(t('lock.reason'));
     if (result !== 'ok') setLockNote(t(result === 'unavailable' ? 'lock.unavailable' : 'lock.refused'));
-  };
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(exportJson());
-      setNote(t('data.export.done'));
-      haptic('success');
-    } catch {
-      setNote(t('data.export.failed'));
-    }
   };
 
   return (
@@ -558,17 +562,30 @@ export function DataPrivacy() {
       {lockNote ? <div className="t-small" style={{ color: 'var(--orange)', padding: '0 4px' }}>{lockNote}</div> : null}
 
       <Card pad={false} className="list">
-        <Row title={t('data.export')} onTap={copy} />
+        <Row title={t('data.export')} onTap={() => void copyBackup().then(setNote)} />
+        <Row title={t('data.restore')} onTap={() => open({ name: 'restore' })} />
+        {/* The journal as plain text: copied always, and through the share sheet where the phone has one. */}
+        <div className="lrow">
+          <Tap className="grow t-body" onTap={journal.copy} scale={0.985}>
+            {t('data.jtext')}
+          </Tap>
+          {journal.canShare ? (
+            <Tap className="btn soft sm pill" onTap={journal.share}>
+              {t('jtext.share')}
+            </Tap>
+          ) : null}
+        </div>
         <Row
           title={t('data.examples')}
           onTap={() => {
             replaceData(buildDemo(snapshot()));
-            setNote(t('data.examples.done'));
+            restartWeek(); // the examples' totals are not this week's doing
+            setNote({ text: t('data.examples.done'), ok: true });
             haptic('success');
           }}
         />
       </Card>
-      {note ? <div className="t-small center" style={{ color: 'var(--green)' }}>{note}</div> : null}
+      {note ? <div className="t-small center" style={{ color: note.ok ? 'var(--green)' : 'var(--orange)' }}>{note.text}</div> : null}
 
       <Tap
         className="btn danger"
@@ -595,6 +612,8 @@ export function About() {
         <div className="t-small muted" style={{ marginTop: 4 }}>{t('home.tagline')}</div>
         <div className="t-small muted" style={{ marginTop: 14, lineHeight: 1.55 }}>{t('about.body')}</div>
         <div className="t-tiny faint" style={{ marginTop: 14 }}>{t('about.version', { v: VERSION })}</div>
+        {/* Which build this is: an error report carries the same name, so the two can be matched. */}
+        <div className="t-tiny faint num" style={{ marginTop: 2 }}>{t('about.build', { id: BUILD })}</div>
       </Card>
       <Card pad={false} className="list">
         {canAddToHome ? <Row title={t('about.home')} onTap={addToHomeScreen} /> : null}

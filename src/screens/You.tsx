@@ -1,5 +1,5 @@
 // You: profile and level, the Echo companion, and the doors to rankings, the wardrobe and Plus.
-import { Crown, FlagCheckered, GearSix as Gear, Gift, Medal, Notebook, Trophy, TShirt } from '@phosphor-icons/react';
+import { Crown, GearSix as Gear, Gift, Medal, Notebook, Trophy, TShirt, UsersThree } from '@phosphor-icons/react';
 import { useStore, useVisibleStreak } from '../store/store';
 import { useNav } from '../store/nav';
 import { growthName, useEcho } from '../store/echo';
@@ -109,7 +109,7 @@ export function You() {
         <Row icon={<Notebook size={21} style={{ color: 'var(--violet)' }} />} title={t('j.title')} sub={t('you.journal.body')} onTap={() => push({ name: 'journal' })} />
         <Row icon={<Medal size={21} style={{ color: 'var(--gold)' }} />} title={t('you.progress')} sub={t('you.progress.body', { done: unlocked, total: BADGES.length })} onTap={() => push({ name: 'progress' })} />
         <Row icon={<Trophy size={21} style={{ color: 'var(--orange)' }} />} title={t('you.rankings')} sub={t('you.rankings.body')} onTap={() => push({ name: 'rankings' })} />
-        <Row icon={<FlagCheckered size={21} style={{ color: 'var(--blue)' }} />} title={t('ch.title')} sub={t('ch.body')} onTap={() => push({ name: 'challenges' })} />
+        <Row icon={<UsersThree size={21} style={{ color: 'var(--blue)' }} />} title={t('tg.title')} sub={t('tg.body')} onTap={() => push({ name: 'together' })} />
         <Row icon={<TShirt size={21} style={{ color: 'var(--pink)' }} />} title={t('you.shop')} sub={t('you.shop.body')} onTap={() => push({ name: 'shop' })} />
         <Row icon={<Crown size={21} style={{ color: 'var(--violet)' }} />} title={t('you.plus')} sub={plus ? t('you.plus.active') : t('you.plus.body')} onTap={() => push({ name: 'plus' })} />
         <Row icon={<Gift size={21} style={{ color: 'var(--green)' }} />} title={t('you.invite')} sub={t('you.invite.body')} onTap={() => shareText(t('you.invite.text'), link)} />

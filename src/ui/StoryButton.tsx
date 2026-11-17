@@ -8,6 +8,8 @@ import { drawStory, StoryCard, StoryStat } from '../lib/story';
 import { levelInfo, visibleStreak } from '../lib/gamify';
 import { BADGES } from '../lib/achievements';
 import type { Challenge, ChallengeMember } from '../lib/challenges';
+import { PRAYERS_A_WEEK, Week, WeekPart, weekParts } from '../lib/week';
+import { weekRange } from '../store/week';
 import type { Profile } from '../lib/types';
 import { canStory, haptic, shareStory, tgUser } from '../tg/telegram';
 import { Key, t, tn } from '../i18n';
@@ -31,6 +33,27 @@ function numbers(p: Profile) {
     streakN: streak,
   } satisfies Record<string, StoryStat | number>;
 }
+
+/** One of the week's numbers as a story tile. They are lib/week.ts's numbers: the journal is not in them. */
+function weekStat(w: Week, part: WeekPart): StoryStat {
+  switch (part) {
+    case 'prayers':
+      return { value: `${w.prayers}/${PRAYERS_A_WEEK}`, label: t('ch.kind.prayer') };
+    case 'quran':
+      return { value: fmtNumber(w.quran), label: t('ch.kind.quran') };
+    case 'habits':
+      return { value: `${w.habits.done}/${w.habits.due}`, label: t('habits.title') };
+    case 'focus':
+      return { value: fmtNumber(w.focus), label: t('ch.kind.focus') };
+    case 'tasks':
+      return { value: fmtNumber(w.tasks), label: t('stats.tasksDone') };
+    case 'xp':
+      return { value: fmtNumber(w.xp), label: t('story.stat.xp') };
+  }
+}
+
+/** The picture a week's story gets from the first of its numbers (the ones that have a large picture). */
+const WEEK_EMOJI: Partial<Record<WeekPart, string>> = { prayers: '🕌', quran: '📖', focus: '🎯' };
 
 /** What each kind of story shows. */
 export const storyCards = {
@@ -67,6 +90,16 @@ export const storyCards = {
       { value: fmtNumber(c.days), label: tn('story.stat.days', c.days) },
     ],
   }),
+  /** The week: its dates and its three most important numbers that are not zero. */
+  week: (w: Week): Body => {
+    const parts = weekParts(w).slice(0, 3);
+    return {
+      emoji: WEEK_EMOJI[parts[0]] ?? (w.streak >= 3 ? '🔥' : '⭐'),
+      title: t('week.story.title'),
+      sub: weekRange(w),
+      stats: parts.map((part) => weekStat(w, part)),
+    };
+  },
 };
 
 /** Whether stories can be shared here, and a function that shares one. */

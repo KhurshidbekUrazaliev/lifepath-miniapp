@@ -1,5 +1,6 @@
 // The journal's rules (pure): diary entries and notes, feelings, the streak of days written, the day's
-// question, what a page shows in a list, lists inside a page, tags, search, and looking back.
+// question, what a page shows in a list, lists inside a page, tags, search, looking back, a year in
+// colours, and the whole journal as plain text.
 import { Checks, Feeling, Page, Profile } from './types';
 import type { Data } from './stats';
 import { xpOnDay } from './stats';
@@ -377,4 +378,121 @@ export function insight(pages: Page[], worship: Checks): Insight {
   }
   const best = bestJournalStreak(pages);
   return best >= 3 ? { kind: 'run', days: best } : null;
+}
+
+// ---------- a year in colours ----------
+
+/**
+ * One day in a year's grid: its feeling; 'plain' when it was written without one; 'blank' when it was
+ * not written; 'later' when it has not come; null where the month has no such day.
+ */
+export type YearDot = Feeling | 'plain' | 'blank' | 'later' | null;
+
+export interface YearView {
+  year: number;
+  /** Twelve months of thirty-one places each. */
+  months: YearDot[][];
+  /** How many days of the year felt each way. */
+  counts: Record<Feeling, number>;
+  /** Days written. */
+  days: number;
+  /** The longest run of days in a row inside the year. */
+  run: number;
+}
+
+export function yearOf(pages: Page[], year: number, today: string = dayKey()): YearView {
+  // Each written day of the year, with the feeling of its latest entry that has one (as feelingOn says).
+  const felt = new Map<string, { at: number; mood?: Feeling }>();
+  for (const p of pages) {
+    if (isNote(p) || Number(p.day.slice(0, 4)) !== year) continue;
+    const known = felt.get(p.day);
+    if (!known) felt.set(p.day, { at: p.at, mood: p.mood });
+    else if (p.mood !== undefined && (known.mood === undefined || p.at > known.at)) felt.set(p.day, { at: p.at, mood: p.mood });
+  }
+  const counts: Record<Feeling, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  for (const { mood } of felt.values()) if (mood) counts[mood]++;
+
+  const months = Array.from({ length: 12 }, (_, m) => {
+    const last = new Date(year, m + 1, 0).getDate();
+    return Array.from({ length: 31 }, (_, i): YearDot => {
+      if (i >= last) return null;
+      const day = `${year}-${String(m + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+      const known = felt.get(day);
+      if (known) return known.mood ?? 'plain';
+      return day > today ? 'later' : 'blank';
+    });
+  });
+
+  let run = 0;
+  let now = 0;
+  let prev = '';
+  for (const day of [...felt.keys()].sort()) {
+    now = prev && daysBetween(prev, day) === 1 ? now + 1 : 1;
+    run = Math.max(run, now);
+    prev = day;
+  }
+  return { year, months, counts, days: felt.size, run };
+}
+
+/** The years Looking back can show: the ones with diary entries, and this year. Oldest first. */
+export function journalYears(pages: Page[], today: string = dayKey()): number[] {
+  const years = new Set<number>([Number(today.slice(0, 4))]);
+  for (const day of writtenDays(pages)) years.add(Number(day.slice(0, 4)));
+  return [...years].filter((y) => Number.isFinite(y)).sort((a, b) => a - b);
+}
+
+// ---------- the journal as text ----------
+
+/** The labels the text needs, in the reader's language (the app's own texts stay out of this file). */
+export interface JournalWords {
+  /** The heading of the whole text. */
+  title: string;
+  diary: string;
+  notes: string;
+  /** What a note without a title is called. */
+  note: string;
+  feelings: Record<Feeling, string>;
+  /** A day written out: "Saturday, November 14, 2026". */
+  date: (day: string) => string;
+}
+
+const ruled = (heading: string, mark: string): string => `${heading}\n${mark.repeat([...heading].length)}`;
+
+/** A page's words as plain text: list items as "- ", ticked ones as "[x] ". */
+function plainText(text: string): string {
+  return linesOf(text.trimEnd())
+    .map((line) => (line.kind === 'item' ? `- ${line.text}` : line.kind === 'done' ? `[x] ${line.text}` : line.kind === 'gap' ? '' : line.text))
+    .join('\n');
+}
+
+/** One page: the line above it, its title, and its words after an empty line. */
+function pageText(head: string, title: string, text: string): string {
+  const top = [head, title].filter(Boolean).join('\n');
+  const body = plainText(text);
+  return body ? `${top}\n\n${body}` : top;
+}
+
+/**
+ * The whole journal as one readable text: the diary from its first day to its last (each entry under its
+ * date and how the day felt), then the notes with their titles and tags. An empty journal gives ''.
+ */
+export function journalText(pages: Page[], words: JournalWords): string {
+  const diary = diaryOf(pages).reverse();
+  const notes = notesOf(pages);
+  if (diary.length === 0 && notes.length === 0) return '';
+  const parts = [ruled(words.title, '=')];
+  if (diary.length) {
+    const entries = diary.map((p) =>
+      pageText([words.date(p.day), p.mood ? words.feelings[p.mood] : ''].filter(Boolean).join(' · '), (p.title ?? '').trim(), p.text),
+    );
+    parts.push(`${ruled(words.diary, '-')}\n\n${entries.join('\n\n\n')}`);
+  }
+  if (notes.length) {
+    const texts = notes.map((p) => {
+      const tags = tagsOf(`${p.title ?? ''} ${p.text}`).map((tag) => `#${tag}`).join(' ');
+      return pageText((p.title ?? '').trim() || words.note, [words.date(dayKey(p.edited ?? p.at)), tags].filter(Boolean).join(' · '), p.text);
+    });
+    parts.push(`${ruled(words.notes, '-')}\n\n${texts.join('\n\n\n')}`);
+  }
+  return `${parts.join('\n\n\n')}\n`;
 }

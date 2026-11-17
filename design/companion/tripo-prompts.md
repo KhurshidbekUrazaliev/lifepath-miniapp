@@ -4,7 +4,7 @@ The companion grows with your level through four stages, as a boy or a girl: 8 c
 with 8 motions. The Sparks shop adds 30 things in 3D: caps, glasses, a scarf, a medal, a backpack, things
 kept nearby, pets and places to stand on.
 
-Everything was made in Tripo Studio (studio.tripo3d.ai) on 15 and 16 November 2026, except the glasses,
+Everything was made in Tripo Studio (studio.tripo3d.ai) on 15–17 November 2026, except the glasses,
 which a script draws. The Tripo exports are in `models/` next to this file. That folder is 54 MB and is
 not in git: the exports stay on this Mac and can be downloaded again from the Tripo account. `npm run models`
 turns them into the small files the app loads (`public/companion/`, which is in git). This page is for
@@ -21,7 +21,7 @@ remaking one or adding another.
 
 ## What it cost
 
-Prices as the studio showed them. The account started at 3,035 credits and has 225 left.
+Prices as the studio showed them. The account started at 3,035 credits and has 95 left.
 
 | Step | Credits |
 | --- | --- |
@@ -38,6 +38,8 @@ Prices as the studio showed them. The account started at 3,035 credits and has 2
   for an early test that was not cute enough and is not used), five motions.
 - Items: 1,650. Twenty-eight at 55 each (mesh 35, texture 20), and the doppi and the camel made a second
   time. Nineteen were made on the first day (1,155 with the two remakes) and nine on the second (495).
+
+- Remakes on 17 November: 130. Notebook: mesh 35 + texture 20. Prayer rug: mesh 35 + texture 20 + second texture 20.
 
 ## A character
 
@@ -148,7 +150,7 @@ Cute stylized 3D game prop in a soft animated-film style, smooth rounded shapes,
 - `piyola.glb`: A small Uzbek tea bowl (piyola) with the blue-and-white cotton-boll pattern.
 - `sprout-pot.glb`: A small terracotta pot with a young green sprout that has two rounded leaves.
 - `football.glb`: A classic football (soccer ball) with white and navy-blue panels, round and slightly soft like a toy.
-- `notebook.glb`: A small closed diary notebook with a soft purple cover, a golden crescent moon ornament on the front, an elastic band around it, and a yellow pencil lying on top. (Made twice, the second time with Free Retry. The cover still came out plain; it is small on the stage, so it stayed.)
+- `notebook.glb` (remade 17 November): A cute chunky diary book standing upright on its bottom edge, front cover facing the viewer. Soft lavender-purple leather cover with a large golden crescent moon and a small golden star embossed in the middle of the front cover, golden corner protectors, cream page edges visible at the side, a red ribbon bookmark hanging out at the bottom, and a golden elastic strap. Thick, with rounded corners. Add the usual closing line above.
 - `rehal.glb`: An open book resting on a small folding carved wooden X-shaped book stand (a rehal), dark walnut wood with simple geometric carving, cream blank pages with a green ribbon bookmark.
 
 **Pets**
@@ -167,7 +169,15 @@ Cute stylized 3D game prop in a soft animated-film style, smooth rounded shapes,
 - `base-courtyard.glb`: A round diorama platform tiled with turquoise and blue Samarkand-style geometric mosaic, a short low wall with one small pointed arch along the back edge, open empty center.
 - `base-study.glb`: A round wooden-floor diorama platform with a woven rug, a low bookshelf with books along the back edge and a floor cushion, open empty center.
 - `base-night.glb`: A round diorama platform of soft desert sand with small dunes and a brass lantern at the edge, deep blue night mood, open empty center.
-- `base-masjid.glb` (the prayer rug): A round diorama platform of a mosque floor: warm cream stone tiles with a soft red prayer rug with a pointed arch pattern lying flat in the middle, a small wooden book stand and a brass lamp at the back edge, open empty center. (It came out as a rug on a square slab, not round, and it stayed that way.)
+- `base-masjid.glb` (remade 17 November): A round flat circular diorama platform, like a thick coin, tiled with cream and turquoise mosque floor tiles in a geometric star pattern. In the middle a small red prayer rug with a pointed arch pattern and golden fringe lies flat on the floor. Along the back edge stand a small wooden book stand and a brass oil lamp. The platform is perfectly round, with an open empty center for a character to stand on. Add the usual closing line without "no base". The first mesh had a hole in the floor; a free retry was clean.
+
+The left-bar Texture tool accepts a prompt of its own. The rug was textured again with:
+
+> Bright warm cream marble floor tiles with thin turquoise geometric star lines. In the center a vivid red prayer rug with a golden pointed arch pattern, a golden border and golden fringe. The outer rim is glossy turquoise glazed tiles with a golden band. Warm walnut wood book stand. Polished golden brass lamp. Clean, bright, saturated colours, soft matte toy look, no dirt, no noise, no grey.
+
+It came out warm sand with a terracotta rug and a red rim, better than the first texture but different from the requested colours. A mesh can be retried free three times before texturing. The previous exports are in `models/old/`.
+
+Both remakes fit the existing stage placements: notebook `ground`, size 0.24, offset [-0.68, 0, 0.3]; rug `base`, size 1.2, with the floor measured by the stage. The new rug needs no `RESHAPE`.
 - `base-mountain.glb`: A round floating-island diorama base: a green mountain meadow with tiny yellow and red wildflowers, a small white felt yurt and two little pine trees along the back edge, a few snowy rocks at one side, open empty center.
 - `base-bazaar.glb`: A round diorama platform of warm sunlit paving stones, a small wooden market stall with a red-and-white striped awning along the back edge, baskets of yellow melons, watermelons and pomegranates beside it, open empty center.
 
@@ -209,7 +219,7 @@ and faintly tinted lenses. Change the numbers at the top of the script and run i
 - everything above its neck is tied to the head bone alone. Tripo ties a girl's head and hijab to the
   head bone by about two thirds and shares the rest between the neck and the shoulders, so the face and
   the cloth slid apart when the head turned or an arm went up;
-- the caps are made lower, and the garden's earth and the prayer rug's floor shallower (`RESHAPE` in the
+- the caps are made lower, and the garden's earth shallower (`RESHAPE` in the
   script);
 - textures become WebP (1024 px for characters, 512 for items) and the geometry is compressed;
 - each file's name carries a hash of its contents, so phones can keep it for good (`public/_headers`),

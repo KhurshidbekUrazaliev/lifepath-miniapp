@@ -142,6 +142,15 @@ export interface Settings {
   adhkarTr?: boolean; // transliteration under the Arabic of the adhkar (on unless turned off)
   journalCard?: boolean; // the day's question on Home (on unless turned off)
   journalAt?: string; // "HH:MM": the bot asks about the day at this time (needs `reminders`)
+  home?: HomeSettings; // how Home is arranged (lib/home.ts)
+  weekLetter?: boolean; // the bot writes on Sunday evening with the week in numbers (on unless turned off; needs `reminders`)
+}
+
+/** How the person arranged Home. Unset: the usual order, nothing hidden, and the time of day lifting one card. */
+export interface HomeSettings {
+  order?: string[]; // card ids, first on top
+  hidden?: string[]; // cards switched off (the prayer, ayah and journal cards keep their own older switches)
+  auto?: boolean; // false: Home keeps the order above whatever the time of day
 }
 
 export interface NudgeSettings {
@@ -211,7 +220,8 @@ export interface Profile {
   nudge: NudgeSettings; // evening "keep your streak" reminder
   achievements: Record<string, number>; // id -> unlockedAt
   echo?: EchoProfile; // set once the person names their Echo
-  owned?: string[]; // wardrobe item ids bought with Sparks (free items are always available)
+  owned?: string[]; // wardrobe items bought or earned
+  specialDays?: string[]; // first ten days of Dhul-Hijjah with XP, for the local badge
   outfit?: Partial<Record<'head' | 'face' | 'hold' | 'pet' | 'place' | 'sky', string>>; // worn items
   khatm?: Khatm; // the Qurʼan reading plan under way (lib/khatm.ts)
   khatms?: number; // khatms completed

@@ -1,5 +1,5 @@
 // The frame: theme, language, Telegram chrome, the four tabs, pushed screens, sheets and celebrations.
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from './store/store';
 import { Route, Tab, openDeepLink, useNav } from './store/nav';
@@ -8,17 +8,21 @@ import {
   inTelegram, lowPerf, onTelegramEvent, paintChrome, setBackButton, setFullscreen, setHaptics, setSettingsButton,
   startParam, telegramScheme, tgUser,
 } from './tg/telegram';
-import { resolveLang, setLang } from './i18n';
+import { Lang, getLang, hasLang, loadLang, resolveLang, setLang } from './i18n';
 import { TabBar } from './ui/TabBar';
 import { Celebrations } from './ui/Celebrations';
-import { SCREENS, TABS } from './screens';
-import { SheetHost } from './sheets';
-import { Onboarding } from './screens/Onboarding';
+import { ErrorBoundary } from './ui/ErrorBoundary';
+import { Fetching, fetchWhenIdle, from, whenOpened } from './ui/onDemand';
+import { SCREENS, TABS, fetchScreens } from './screens';
+import { SheetHost, fetchSheets } from './sheets';
 import { useInboxDot } from './screens/Inbox';
 import { useServerSync } from './store/serverSync';
 import { useFocusClock } from './store/focus';
 import { growthFor } from './lib/companion';
 import { warmCompanion } from './companion/warm';
+
+// Only someone new sees the first-run screens, so they are not part of the first file.
+const Onboarding = from(whenOpened(() => import('./screens/Onboarding')), 'Onboarding');
 
 const CHROME = { dark: '#070a13', light: '#eef2fa' } as const;
 
@@ -65,11 +69,58 @@ function Page({ route, top }: { route: Route; top: boolean }) {
       style={{ pointerEvents: top ? 'auto' : 'none' }}
       aria-hidden={!top}
     >
-      <Suspense fallback={null}>
-        <Component route={route as never} />
-      </Suspense>
+      {/* A screen that fails to draw says so here, and the rest of the app goes on. */}
+      <ErrorBoundary scope="screen" name={route.name}>
+        <Suspense fallback={<Fetching />}>
+          <Component route={route as never} />
+        </Suspense>
+      </ErrorBoundary>
     </motion.section>
   );
+}
+
+/**
+ * The language on screen. It is the one asked for as soon as its texts are here; while they are
+ * being fetched (the language was just changed, here or on another device) the one before stays.
+ */
+function useShownLang(wanted: Lang): Lang {
+  const [shown, setShown] = useState<Lang>(() => (hasLang(wanted) ? wanted : getLang()));
+  useEffect(() => {
+    if (shown === wanted) return;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const attempt = (n: number) => {
+      loadLang(wanted).then(
+        () => alive && setShown(wanted),
+        () => {
+          // Offline, most likely: the old language stays and this asks again, less and less often.
+          if (alive) timer = setTimeout(() => attempt(n + 1), Math.min(15_000, 1000 * 2 ** n));
+        },
+      );
+    };
+    attempt(0);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [wanted, shown]);
+  return shown;
+}
+
+/**
+ * Fetches the screens and sheets that are not in the first file, in the background, once the first
+ * screen has been drawn: by the time something is tapped it is already here.
+ */
+function useFetchTheRest(on: boolean): void {
+  useEffect(() => {
+    if (!on) return;
+    const timer = setTimeout(() => {
+      fetchSheets();
+      fetchScreens();
+      fetchWhenIdle(); // and a screen or sheet that is a file of its own
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [on]);
 }
 
 /**
@@ -106,13 +157,15 @@ function TabView({ tab, covered }: { tab: Tab; covered: boolean }) {
       style={{ pointerEvents: covered ? 'none' : 'auto' }}
       aria-hidden={covered}
     >
-      <Component />
+      <ErrorBoundary scope="tab" name={`tab:${tab}`}>
+        <Component />
+      </ErrorBoundary>
     </motion.section>
   );
 }
 
 export function App() {
-  const lang = useStore((s) => resolveLang(s.settings.lang, tgUser.lang));
+  const lang = useShownLang(useStore((s) => resolveLang(s.settings.lang, tgUser.lang)));
   const onboarded = useStore((s) => s.settings.onboarded);
   const fullscreen = useStore((s) => s.settings.fullscreen);
   const haptics = useStore((s) => s.profile.haptics);
@@ -127,6 +180,7 @@ export function App() {
   useTheme();
   useServerSync();
   useWarmCompanion(ready);
+  useFetchTheRest(ready);
   setLang(lang); // before children render, so every string comes out in the right language
 
   useEffect(() => setHaptics(haptics), [haptics]);
@@ -182,7 +236,9 @@ export function App() {
             <FocusClock />
           </>
         ) : (
-          <Onboarding />
+          <Suspense fallback={<div className="splash"><img src="/icon.svg" alt="" width={72} height={72} /></div>}>
+            <Onboarding />
+          </Suspense>
         )}
         <SheetHost />
         <Celebrations />

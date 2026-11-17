@@ -2,6 +2,7 @@
 // Telegram API. Covers the API, the webhook, the setup call, payments and the reminder cron.
 //   npm run build   (once: the Worker serves ./dist)
 //   npm run test:worker
+// The Worker listens on a port picked at random; E2E_PORT=8792 names one when others are in use.
 import { execFileSync, spawn } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
@@ -46,7 +47,7 @@ const carol = { id: 333, first_name: 'Carol', language_code: 'ru' };
 
 const mock = await startMock({ token: TOKEN });
 const dir = mkdtempSync(join(tmpdir(), 'lifepath-e2e-'));
-const port = 8790 + Math.floor(Math.random() * 200);
+const port = Number(process.env.E2E_PORT) || 8790 + Math.floor(Math.random() * 200);
 const BASE = `http://127.0.0.1:${port}`;
 const env = { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' };
 
@@ -478,6 +479,303 @@ try {
   }
   check(made2 === 5 && refused?.status === 409 && refused.json?.error === 'limit', 'at most five running challenges of your own', { made2, refused: refused?.json });
 
+  // ---------- buddy streaks ----------
+  console.log('\nbuddy streaks');
+  {
+    const dayAt = (delta) => new Date(Date.now() + delta * DAY).toISOString().slice(0, 10);
+    const [yesterday, today, tomorrow] = [dayAt(-1), dayAt(0), dayAt(1)];
+    // People of this section's own: every person may only call so often in a minute.
+    const alice = { id: 611, first_name: 'Anora', language_code: 'en', allows_write_to_pm: true };
+    const bob = { id: 612, first_name: 'Botir', language_code: 'uz', allows_write_to_pm: true };
+    const carol = { id: 613, first_name: 'Kamila', language_code: 'ru' };
+    const dave = { id: 444, first_name: 'Dave', language_code: 'en' };
+    const hello = (user, lang = 'en') => call('POST', '/api/hello', { user, body: { tz: 'UTC', lang } });
+    // The app reports the last day the person did something with its activity.
+    const active = (user, activeDay) =>
+      call('POST', '/api/activity', { user, body: { lastActiveDay: activeDay, totalXp: 0, weekXp: 0, weekStart: week, level: 7, streak: 12, activeDay } });
+    const buddiesOf = async (user) => (await call('GET', '/api/buddies', { user })).json;
+    const first = await hello(alice);
+    check(first.json?.together?.buddies === 0 && first.json.together.khatms === 0, 'hello says there is nothing to load yet', first.json?.together);
+    await hello(bob, 'uz');
+    await hello(carol, 'ru');
+    await hello(dave);
+
+    let mine = await buddiesOf(alice);
+    check(mine?.buddies.length === 0 && mine.code === null && mine.max === 5, 'nobody has a buddy to begin with', mine);
+    const invite = await call('POST', '/api/buddies/invite', { user: alice });
+    const code = invite.json?.code;
+    check(invite.status === 200 && /^[a-z0-9]{8}$/.test(code ?? ''), 'Alice gets her invite code', invite.json);
+    check((await call('POST', '/api/buddies/invite', { user: alice })).json?.code === code, 'and the same one the next time');
+    const seen = await call('GET', `/api/buddies/invite?code=${code}`, { user: bob });
+    check(seen.json?.invite.name === alice.first_name && seen.json.invite.mine === false && seen.json.invite.buddy === false, 'Bob sees whose invite it is', seen.json);
+    check((await call('GET', `/api/buddies/invite?code=${code}`, { user: alice })).json?.invite.mine === true, 'Alice sees that it is her own');
+    check((await call('GET', '/api/buddies/invite?code=zzzzzzzz', { user: bob })).status === 404, 'unknown invite: 404');
+    check((await call('GET', '/api/buddies/invite?code=../x', { user: bob })).status === 400, 'malformed invite code: 400');
+    const self = await call('POST', '/api/buddies/accept', { user: alice, body: { code } });
+    check(self.status === 409 && self.json?.error === 'self', 'nobody is their own buddy', self.json);
+    check((await active(alice, 'yesterday')).status === 400, 'an active day that is not a day: 400');
+
+    // Both were active yesterday, so the day they pair up already counts.
+    await active(alice, yesterday);
+    from = mock.calls.length;
+    const accepted = await call('POST', '/api/buddies/accept', { user: bob, body: { code, activeDay: yesterday } });
+    const pair = accepted.json?.buddy;
+    check(
+      accepted.status === 200 && pair?.name === alice.first_name && pair.streak === 1 && pair.best === 1 && pair.meDone === false && pair.theyDone === false,
+      'Bob accepts: a day both had already done counts at once',
+      accepted.json,
+    );
+    let told = sentTo(from, alice.id);
+    check(
+      told.length === 1 && told[0].params.text.includes(bob.first_name) && button(told[0])?.web_app.url.includes('open=buddies'),
+      'Alice hears that Bob accepted, with a button to her buddies',
+      told.map((c) => c.params),
+    );
+    from = mock.calls.length;
+    check((await call('POST', '/api/buddies/accept', { user: bob, body: { code } })).json?.buddy.id === pair.id, 'accepting twice keeps the one pair');
+    check(sentTo(from, alice.id).length === 0, 'and sends nothing');
+    check((await call('GET', `/api/buddies/invite?code=${code}`, { user: bob })).json?.invite.buddy === true, 'the invite now says they are buddies');
+    check((await hello(bob, 'uz')).json?.together.buddies === 1, 'and hello counts the buddy');
+
+    // Alice does today's part; Bob has not yet.
+    await active(alice, today);
+    mine = await buddiesOf(alice);
+    check(
+      mine?.buddies.length === 1 && mine.buddies[0].name === bob.first_name && mine.buddies[0].streak === 1 && mine.buddies[0].meDone === true &&
+        mine.buddies[0].theyDone === false && mine.buddies[0].canNudge === true && mine.code === code,
+      'one side done: the streak waits for the other',
+      mine,
+    );
+    const early = await call('POST', '/api/buddies/nudge', { user: bob, body: { id: pair.id } });
+    check(early.status === 409 && early.json?.error === 'not_done', 'only someone who has done their part may nudge', early.json);
+    from = mock.calls.length;
+    check((await call('POST', '/api/buddies/nudge', { user: alice, body: { id: pair.id } })).json?.ok === true, 'Alice nudges Bob');
+    told = sentTo(from, bob.id);
+    check(
+      told.length === 1 && told[0].params.text.includes(alice.first_name) && told[0].params.text.includes('seriya') && button(told[0])?.web_app.url.includes('open=buddies'),
+      'Bob gets the nudge in his language',
+      told.map((c) => c.params),
+    );
+    const again = await call('POST', '/api/buddies/nudge', { user: alice, body: { id: pair.id } });
+    check(again.status === 409 && again.json?.error === 'nudged', 'one nudge a day', again.json);
+    check((await buddiesOf(alice))?.buddies[0].nudged === true, 'and the app is told so');
+    check((await call('POST', '/api/buddies/nudge', { user: alice, body: { id: 'zzzzzzzz' } })).status === 404, 'a pair that is not yours: 404');
+
+    // Bob does his: today is shared, and it follows yesterday.
+    await active(bob, today);
+    mine = await buddiesOf(bob);
+    check(
+      mine?.buddies[0].streak === 2 && mine.buddies[0].best === 2 && mine.buddies[0].meDone && mine.buddies[0].theyDone && !mine.buddies[0].canNudge,
+      'both done: the streak grows by one',
+      mine,
+    );
+    await active(bob, today);
+    await active(alice, today);
+    check((await buddiesOf(alice))?.buddies[0].streak === 2, 'reporting the same day again changes nothing');
+    const late = await call('POST', '/api/buddies/nudge', { user: alice, body: { id: pair.id } });
+    check(late.status === 409 && late.json?.error === 'done', 'nobody is nudged about a day they have done', late.json);
+
+    // Calendars can be a day apart: Alice is already on tomorrow when Bob gets there.
+    await active(alice, tomorrow);
+    check((await buddiesOf(alice))?.buddies[0].streak === 2, 'a day only one has done is not shared yet');
+    await active(bob, tomorrow);
+    mine = await buddiesOf(bob);
+    check(mine?.buddies[0].streak === 3 && mine.buddies[0].best === 3, 'the next shared day continues the streak', mine);
+    await active(bob, dayAt(-3));
+    await active(bob, dayAt(3));
+    check((await buddiesOf(bob))?.buddies[0].streak === 3, 'days far from the server date are not believed');
+
+    // Someone the bot cannot write to is not nudged; five buddies is the most.
+    const daveAccepts = await call('POST', '/api/buddies/accept', { user: dave, body: { code } });
+    check(daveAccepts.json?.buddy.streak === 0 && daveAccepts.json.buddy.theyDone === true && daveAccepts.json.buddy.meDone === false, 'Dave becomes a buddy with nothing shared yet', daveAccepts.json);
+    const silent = await call('POST', '/api/buddies/nudge', { user: alice, body: { id: (await buddiesOf(alice))?.buddies.find((b) => b.name === 'Dave')?.id } });
+    check(silent.status === 409 && silent.json?.error === 'unreachable', 'a buddy the bot cannot write to: no nudge', silent.json);
+    await active(dave, tomorrow);
+    check((await buddiesOf(dave))?.buddies[0].streak === 1, 'a first shared day starts the streak at one');
+    let made = 0;
+    let refused = null;
+    for (let i = 0; i < 6 && !refused; i++) {
+      const r = await call('POST', '/api/buddies/accept', { user: { id: 500 + i, first_name: `Friend ${i}` }, body: { code } });
+      if (r.status === 200) made++;
+      else refused = r;
+    }
+    check(made === 3 && refused?.status === 409 && refused.json?.error === 'full', 'a person with five buddies takes no more', { made, refused: refused?.json });
+    const carolCode = (await call('POST', '/api/buddies/invite', { user: carol })).json?.code;
+    const tooMany = await call('POST', '/api/buddies/accept', { user: alice, body: { code: carolCode } });
+    check(tooMany.status === 409 && tooMany.json?.error === 'limit', 'and cannot accept another invite either', tooMany.json);
+
+    check((await call('POST', '/api/buddies/leave', { user: bob, body: { id: pair.id } })).json?.ok === true, 'Bob leaves');
+    check((await buddiesOf(bob))?.buddies.length === 0, 'the pair is gone for him');
+    check(!(await buddiesOf(alice))?.buddies.some((b) => b.id === pair.id), 'and for Alice');
+    check((await call('POST', '/api/buddies/accept', { user: alice, body: { code: carolCode } })).json?.buddy.name === carol.first_name, 'which makes room for a new buddy');
+
+    // An app that has never counted an active day still names today as the last one (the evening nudge
+    // leaves a newcomer alone). That is not a day done, whichever of the two the newcomer is.
+    const idle = { id: 615, first_name: 'Ilhom', language_code: 'en' };
+    const doer = { id: 616, first_name: 'Dilnoza', language_code: 'en' };
+    const guest = { id: 617, first_name: 'Lola', language_code: 'en' };
+    const opened = (user) =>
+      call('POST', '/api/activity', { user, body: { lastActiveDay: today, totalXp: 0, weekXp: 0, weekStart: week, level: 1, streak: 0 } });
+    for (const user of [idle, doer, guest]) await hello(user);
+    await opened(idle);
+    await opened(guest);
+    await active(doer, today);
+    const idleCode = (await call('POST', '/api/buddies/invite', { user: idle })).json?.code;
+    const withIdle = await call('POST', '/api/buddies/accept', { user: doer, body: { code: idleCode, activeDay: today } });
+    check(
+      withIdle.json?.buddy.streak === 0 && withIdle.json.buddy.meDone === true && withIdle.json.buddy.theyDone === false,
+      'whoever shared a link and has done nothing yet has not done today',
+      withIdle.json,
+    );
+    const doerCode = (await call('POST', '/api/buddies/invite', { user: doer })).json?.code;
+    const withGuest = await call('POST', '/api/buddies/accept', { user: guest, body: { code: doerCode } });
+    check(
+      withGuest.json?.buddy.streak === 0 && withGuest.json.buddy.meDone === false && withGuest.json.buddy.theyDone === true,
+      'nor has a newcomer who accepts one',
+      withGuest.json,
+    );
+    await active(idle, today);
+    check((await buddiesOf(idle))?.buddies[0].streak === 1, 'the first thing they do makes the day a shared one');
+  }
+
+  // ---------- group khatm ----------
+  console.log('\ngroup khatm');
+  {
+    const dayAt = (delta) => new Date(Date.now() + delta * DAY).toISOString().slice(0, 10);
+    const today = dayAt(0);
+    // People of this section's own, and three more readers for the last juz.
+    const alice = { id: 631, first_name: 'Omina', language_code: 'en', allows_write_to_pm: true };
+    const bob = { id: 632, first_name: 'Nodir', language_code: 'uz', allows_write_to_pm: true };
+    const carol = { id: 633, first_name: 'Sevara', language_code: 'ru' };
+    const readers = [alice, bob, ...[641, 642, 643].map((id, i) => ({ id, first_name: 'Reader ' + (i + 1) }))];
+    const juz = (user, id, n, action, day = today) => call('POST', '/api/gkhatm/juz', { user, body: { id, juz: n, action, day } });
+    check((await call('POST', '/api/gkhatm', { user: alice, body: { title: '   ' } })).status === 400, 'a khatm needs a title: 400');
+    check((await call('POST', '/api/gkhatm', { user: alice, body: { title: 'Late', due: dayAt(-5) } })).status === 400, 'a finish date in the past: 400');
+    const made = await call('POST', '/api/gkhatm', { user: alice, body: { title: '  Family   khatm ', due: dayAt(20) } });
+    const k = made.json?.khatm;
+    const kid = k?.id;
+    check(
+      made.status === 200 && /^[a-z0-9]{8}$/.test(kid ?? '') && k.title === 'Family khatm' && k.due === dayAt(20) && k.isOwner && k.joined &&
+        k.round === 1 && k.read === 0 && k.done === false && k.members.length === 1 && k.members[0].isMe && k.parts.length === 0,
+      'Alice starts a group khatm',
+      made.json,
+    );
+    const preview = await call('GET', `/api/gkhatm/one?id=${kid}`, { user: bob });
+    check(preview.json?.khatm.joined === false && preview.json.khatm.owner === alice.first_name && preview.json.khatm.isOwner === false, 'Bob sees it before joining', preview.json);
+    check((await call('GET', '/api/gkhatm/one?id=zzzzzzzz', { user: bob })).status === 404, 'unknown khatm: 404');
+    const outsider = await juz(bob, kid, 1, 'take');
+    check(outsider.status === 403 && outsider.json?.error === 'not_member', 'only members take a juz', outsider.json);
+    from = mock.calls.length;
+    const bobJoins = await call('POST', '/api/gkhatm/join', { user: bob, body: { id: kid } });
+    check(bobJoins.json?.khatm.joined === true && bobJoins.json.khatm.members.length === 2, 'Bob joins', bobJoins.json);
+    const told = sentTo(from, alice.id);
+    check(
+      told.length === 1 && told[0].params.text.includes(bob.first_name) && told[0].params.text.includes('Family khatm') && button(told[0])?.web_app.url.includes(`open=k_${kid}`),
+      'Alice hears that Bob joined, with a button to the khatm',
+      told.map((c) => c.params),
+    );
+    from = mock.calls.length;
+    check((await call('POST', '/api/gkhatm/join', { user: bob, body: { id: kid } })).json?.khatm.members.length === 2, 'joining twice changes nothing');
+    check(sentTo(from, alice.id).length === 0, 'and sends nothing');
+    check((await call('POST', '/api/hello', { user: bob, body: { tz: 'UTC', lang: 'uz' } })).json?.together.khatms === 1, 'and hello counts the khatm');
+
+    // Taking, giving back and marking.
+    check((await juz(alice, kid, 1, 'take')).json?.khatm.parts.map((p) => `${p.juz}:${p.name}:${p.mine}:${p.done}`).join() === '1:' + alice.first_name + ':true:false', 'Alice takes juz 1');
+    const clash = await juz(bob, kid, 1, 'take');
+    check(clash.status === 409 && clash.json?.error === 'taken', 'a juz has one reader', clash.json);
+    check((await juz(bob, kid, 1, 'read')).status === 409, 'and only its reader marks it');
+    const stray = await juz(bob, kid, 5, 'read');
+    check(stray.status === 409 && stray.json?.error === 'not_yours', 'a juz is taken before it is read', stray.json);
+    check((await juz(bob, kid, 31, 'take')).status === 400 && (await juz(bob, kid, 2, 'burn')).status === 400, 'there are thirty juz and four things to do with one: 400');
+    await juz(bob, kid, 2, 'take');
+    let r = await juz(alice, kid, 1, 'read');
+    check(r.json?.xp === 20 && r.json.completed === false && r.json.khatm.read === 1 && r.json.khatm.parts[0].done === true, 'marking a juz read brings 20 XP', r.json);
+    check((await juz(alice, kid, 1, 'read')).json?.xp === 0, 'marking it again brings nothing');
+    await juz(alice, kid, 3, 'take');
+    await juz(alice, kid, 4, 'take');
+    check((await juz(alice, kid, 3, 'read')).json?.xp === 20 && (await juz(alice, kid, 4, 'read')).json?.xp === 0, 'at most 40 XP a day from it');
+    r = await juz(alice, kid, 3, 'unread');
+    check(r.json?.xp === -20 && r.json.khatm.read === 2, 'taking a mark back takes its XP back', r.json);
+    check((await juz(alice, kid, 4, 'unread')).json?.xp === 0, 'a mark that brought nothing takes nothing back');
+    check((await juz(alice, kid, 3, 'read')).json?.xp === 20, 'and the day has room for it again');
+    const kept = await juz(alice, kid, 1, 'release');
+    check(kept.status === 409 && kept.json?.error === 'read', 'a juz that is read is not given back', kept.json);
+    check(!(await juz(bob, kid, 2, 'release')).json?.khatm.parts.some((p) => p.juz === 2), 'Bob gives juz 2 back');
+
+    // Members come and go.
+    const carolIn = (await call('POST', '/api/gkhatm/join', { user: carol, body: { id: kid } })).json?.khatm;
+    const carolKey = carolIn?.members.find((m) => m.isMe)?.key;
+    await juz(carol, kid, 10, 'take');
+    await juz(carol, kid, 10, 'read');
+    await juz(carol, kid, 11, 'take');
+    check((await call('POST', '/api/gkhatm/remove', { user: bob, body: { id: kid, key: carolKey } })).status === 404, 'only whoever started it removes a member');
+    const removed = await call('POST', '/api/gkhatm/remove', { user: alice, body: { id: kid, key: carolKey } });
+    check(
+      removed.json?.khatm.members.length === 2 && !removed.json.khatm.parts.some((p) => p.juz === 11) &&
+        removed.json.khatm.parts.find((p) => p.juz === 10)?.done === true && removed.json.khatm.parts.find((p) => p.juz === 10)?.name === carol.first_name,
+      'removing a member frees what they had not read and keeps what they had',
+      removed.json,
+    );
+    const aliceKey = removed.json?.khatm.members.find((m) => m.isMe)?.key;
+    check((await call('POST', '/api/gkhatm/remove', { user: alice, body: { id: kid, key: aliceKey } })).status === 409, 'not themselves, though');
+    check((await call('POST', '/api/gkhatm/leave', { user: alice, body: { id: kid } })).status === 409, 'and whoever started it does not leave: they delete it');
+    await juz(bob, kid, 12, 'take');
+    check((await call('POST', '/api/gkhatm/leave', { user: bob, body: { id: kid } })).json?.ok === true, 'Bob leaves');
+    let board = (await call('GET', `/api/gkhatm/one?id=${kid}`, { user: alice })).json?.khatm;
+    check(board?.members.length === 1 && !board.parts.some((p) => p.juz === 12), 'and his unread juz is free again', board);
+    const list = await call('GET', '/api/gkhatm', { user: alice });
+    check(list.json?.khatms.length === 1 && list.json.khatms[0].id === kid && list.json.khatms[0].read === 3, 'the khatm is on Alice’s list', list.json);
+    check((await call('GET', '/api/gkhatm', { user: bob })).json?.khatms.length === 0, 'and off Bob’s');
+
+    // The last juz completes it.
+    await call('POST', '/api/gkhatm/join', { user: bob, body: { id: kid } });
+    await juz(alice, kid, 4, 'release');
+    for (const reader of readers.slice(2)) await call('POST', '/api/gkhatm/join', { user: reader, body: { id: kid } });
+    board = (await call('GET', `/api/gkhatm/one?id=${kid}`, { user: alice })).json?.khatm;
+    const open = [];
+    for (let n = 1; n <= 30; n++) if (!board.parts.some((p) => p.juz === n && p.done)) open.push(n);
+    from = mock.calls.length;
+    let last = null;
+    for (const [i, n] of open.entries()) {
+      const reader = readers[i % readers.length];
+      await juz(reader, kid, n, 'take');
+      last = await juz(reader, kid, n, 'read');
+      if (i < open.length - 1 && last.json?.completed) check(false, `juz ${n} completed the khatm too early`, last.json);
+    }
+    // Of the five, only the first two can be written to by the bot.
+    const finisher = readers[(open.length - 1) % readers.length];
+    const others = [alice, bob].filter((u) => u !== finisher);
+    check(last?.json?.completed === true && last.json.khatm.done === true && last.json.khatm.read === 30, 'the thirtieth juz completes the khatm', last?.json);
+    const done = mock.since(from, 'sendMessage').filter((c) => c.params.text.includes('🤲'));
+    check(
+      done.length === others.length && others.every((u) => done.some((c) => c.params.chat_id === u.id)) && done[0].params.text.includes('Family khatm') && button(done[0])?.web_app.url.includes(`open=k_${kid}`),
+      'the bot tells the other members once, not the one who read the last juz',
+      done.map((c) => c.params),
+    );
+    const frozen = await juz(alice, kid, 1, 'unread');
+    check(frozen.status === 409 && frozen.json?.error === 'complete', 'a complete khatm stays as it is', frozen.json);
+    check((await call('POST', '/api/gkhatm/next', { user: bob, body: { id: kid } })).status === 404, 'only whoever started it begins the next round');
+    from = mock.calls.length;
+    const next = await call('POST', '/api/gkhatm/next', { user: alice, body: { id: kid } });
+    check(next.json?.khatm.round === 2 && next.json.khatm.parts.length === 0 && next.json.khatm.done === false && next.json.khatm.members.length === readers.length, 'the next round starts with an empty board', next.json);
+    const twice = await call('POST', '/api/gkhatm/next', { user: alice, body: { id: kid } });
+    check(twice.status === 409 && twice.json?.error === 'not_complete', 'a round that is not complete does not move on', twice.json);
+    check(mock.since(from, 'sendMessage').length === 0, 'and nothing is sent for it');
+
+    let started = 0;
+    let refused = null;
+    for (let i = 0; i < 5 && !refused; i++) {
+      const r2 = await call('POST', '/api/gkhatm', { user: carol, body: { title: `Khatm ${i}` } });
+      if (r2.status === 200) started++;
+      else refused = r2;
+    }
+    check(started === 3 && refused?.status === 409 && refused.json?.error === 'limit', 'at most three unfinished khatms of your own', { started, refused: refused?.json });
+    check((await call('POST', '/api/gkhatm/delete', { user: bob, body: { id: kid } })).status === 404, 'only whoever started it deletes it');
+    const gone = await call('POST', '/api/gkhatm/delete', { user: alice, body: { id: kid } });
+    check(gone.json?.ok === true, 'Alice deletes the khatm, its members and its juz', gone.json);
+    check((await call('GET', `/api/gkhatm/one?id=${kid}`, { user: bob })).status === 404, 'and it is gone for everyone');
+  }
+
   // ---------- story pictures ----------
   console.log('\nstories');
   const picture = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70, 0, 1, 2, 3, 0xff, 0xd9]);
@@ -620,6 +918,91 @@ try {
   check((await call('PUT', '/api/admin/access', { user: carol, body: { id: 424242, plus: true } })).status === 404, 'someone who never opened the app: 404');
   check((await call('PUT', '/api/admin/access', { user: carol, body: { id: 222 } })).status === 400, 'nothing to change: 400');
   check((await call('PUT', '/api/admin/access', { user: carol, body: { id: 222, plus: 'yes' } })).status === 400, 'a switch is on or off: 400');
+
+  // ---------- errors the app reports ----------
+  console.log('\nerrors');
+  // Dave has never said hello: a report needs a login, but nothing of the person is looked up or kept.
+  const dave = { id: 444, first_name: 'Dave', language_code: 'en' };
+  const OLD_BUILD = '261117.0423-edab962';
+  const NEW_BUILD = '261118.0900-abc1234';
+  const report = (fields = {}) => ({
+    kind: 'render',
+    message: "TypeError: Cannot read properties of undefined (reading 'title')",
+    stack: 'TypeError: Cannot read properties of undefined (reading "title")\n    at Tasks (https://lifepath.example.test/assets/daily-AbC123.js:4:120)\n    at Array.map (<anonymous>)',
+    screen: 'tasks',
+    build: OLD_BUILD,
+    platform: 'ios',
+    tg: '8.0',
+    lang: 'ru',
+    ...fields,
+  });
+  const send = (fields, user = dave) => call('POST', '/api/errors', { user, body: report(fields) });
+  check((await call('POST', '/api/errors', { body: report() })).status === 401, 'an error report needs a login');
+  const sent = await send();
+  check(sent.status === 200 && sent.json?.ok === true, 'the app reports an error', sent.json);
+  // The same error again, from another phone and another place in the app.
+  await send({ kind: 'error', screen: 'sheet:task', platform: 'android', tg: '7.10', lang: 'uz', stack: 'at Other (https://x.example/assets/other-1.js:1:1)' }, bob);
+  await send({ message: 'RangeError: Invalid time value', stack: undefined, screen: undefined, platform: undefined, tg: undefined, lang: undefined });
+  await send({ build: NEW_BUILD });
+  await send({
+    build: NEW_BUILD,
+    kind: 'promise',
+    message: `Could not read "Morning walk with Alisher" at https://lifepath.example.test/api/thing?user=123456789 ${'x'.repeat(400)}`,
+    stack: '',
+  });
+  for (const [fields, what] of [
+    [{ kind: 'crash' }, 'an unknown kind'],
+    [{ build: undefined }, 'no build'],
+    [{ build: 'not a build' }, 'a build that is not a short name'],
+    [{ message: '   ' }, 'no message'],
+    [{ message: 42 }, 'a message that is not text'],
+    [{ message: 'x'.repeat(4001) }, 'a message far too long'],
+    [{ screen: 'two words' }, 'a screen that is not a name'],
+    [{ lang: 'de' }, 'an unsupported language'],
+  ]) {
+    check((await send(fields)).status === 400, `${what}: 400`);
+  }
+
+  check((await call('GET', '/api/admin/errors')).status === 401, 'the list of errors needs a login');
+  check((await call('GET', '/api/admin/errors', { user: bob })).status === 404, 'and for anyone but an owner it does not exist');
+  const seen = await call('GET', '/api/admin/errors', { user: carol });
+  const builds = seen.json?.builds ?? [];
+  check(
+    seen.status === 200 && builds.length === 2 && builds[0].build === NEW_BUILD && builds[1].build === OLD_BUILD,
+    'the owner sees the errors, the newest build first',
+    builds.map((b) => b.build),
+  );
+  const twice = builds[1]?.errors.find((e) => e.message.startsWith('TypeError'));
+  check(
+    builds[1]?.errors.length === 2 && builds[1].count === 3 && twice?.count === 2 && twice.message === report().message,
+    'one row for a build and a message, counted each time it comes',
+    builds[1]?.errors.map((e) => [e.message, e.count]),
+  );
+  check(
+    twice?.kind === 'error' && twice.screen === 'sheet:task' && twice.platform === 'android' && twice.tg === '7.10' && twice.lang === 'uz',
+    'a row says where the latest one happened, and on what',
+    twice,
+  );
+  check(twice?.stack === 'at /assets/daily-AbC123.js:4:120', 'and keeps the top of the first stack, without the message or the address', twice?.stack);
+  check(
+    twice?.firstAt <= twice?.lastAt && twice.lastAt > Date.now() - 600_000 && seen.json.now >= twice.lastAt,
+    'with when it was first and last seen',
+    twice && [twice.firstAt, twice.lastAt, seen.json.now],
+  );
+  const bare = builds[1]?.errors.find((e) => e.message.startsWith('RangeError'));
+  check(bare?.count === 1 && bare.stack === '' && bare.screen === '' && bare.platform === '' && bare.lang === '', 'a report may come with the message alone', bare);
+  check(builds[0]?.errors.length === 2 && builds[0].count === 2 && builds[0].errors[0].kind === 'promise', 'the same message in another build is another row, and the latest comes first', builds[0]?.errors.map((e) => e.kind));
+  const cut = builds[0]?.errors[0]?.message ?? '';
+  check(
+    cut === 'Unexpected application error' && !/Alisher|example|123456789/.test(cut),
+    'the server cuts a message down itself, whatever the app sent',
+    cut,
+  );
+  check(
+    Object.keys(twice ?? {}).sort().join() === 'count,firstAt,key,kind,lang,lastAt,message,platform,screen,stack,tg',
+    'nothing in a row says who sent it',
+    Object.keys(twice ?? {}),
+  );
 
   // ---------- blocking ----------
   console.log('\nblocking');

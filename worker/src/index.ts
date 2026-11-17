@@ -3,9 +3,11 @@
 import { handlePhoto, handleSetup } from './admin';
 import { handleApi } from './api';
 import { cleanUp, runChallengeResults } from './challenges';
+import { cleanUpTogether } from './gkhatm';
 import { devAuthEnabled } from './auth';
 import { runReminders } from './cron';
 import type { Env } from './env';
+import { cleanErrors } from './errors';
 import { describe, errorResponse, json, notFound } from './http';
 import { serveStory } from './stories';
 import { handleWebhook } from './webhook';
@@ -45,6 +47,12 @@ export default {
     } catch (e) {
       console.error('challenges:', describe(e));
     }
-    if (new Date(now).getUTCMinutes() === 0) await cleanUp(env, now);
+    const at = new Date(now);
+    if (at.getUTCMinutes() === 0) {
+      await cleanUp(env, now);
+      await cleanUpTogether(env, now);
+    }
+    // Once a day: forget the errors that have not been reported again for a month.
+    if (at.getUTCMinutes() === 0 && at.getUTCHours() === 3) await cleanErrors(env, now);
   },
 } satisfies ExportedHandler<Env>;

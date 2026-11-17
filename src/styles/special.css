@@ -1,0 +1,11 @@
+.special-card { display: flex; flex-direction: column; gap: 12px; }
+.special-heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.special-heading h2 { font-size: 17px; line-height: 1.35; margin: 0; overflow-wrap: anywhere; }
+.special-icon { font-size: 29px; flex-shrink: 0; }
+.special-card p { margin: 0; color: var(--text-2); font-size: 13px; line-height: 1.55; }
+.special-card .special-count { color: var(--text); font-weight: 700; }
+.special-source, .special-hide { font-size: 11px; color: var(--text-3); align-self: flex-start; text-align: left; }
+.special-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.special-actions .btn { white-space: normal; height: auto; min-height: 36px; padding: 9px 12px; }
+.earn-bar { width: 100%; padding: 0 6px; }
+.shop-item > .t-tiny { text-align: center; white-space: normal; line-height: 1.4; }

@@ -427,7 +427,7 @@ test('wardrobe: worn outfit keeps the old sky, drops retired and other-gender it
   assert.equal(wornOutfit({ head: 'book' }, 'boy').head, 'head-none'); // an item in the wrong slot
   for (const item of ITEMS) {
     if (item.model) assert.ok(item.place, `${item.id} has a placement`);
-    if (item.price === 0) assert.equal(DEFAULT_OUTFIT[item.slot], item.id, `${item.id} is the default`);
+    if (item.price === 0 && !item.earn) assert.equal(DEFAULT_OUTFIT[item.slot], item.id, `${item.id} is the default`);
   }
 });
 

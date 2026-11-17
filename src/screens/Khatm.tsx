@@ -1,8 +1,9 @@
 // The Qurʼan khatm planner: choose how many days, then each day shows the portion that keeps the plan
 // on time. Moving the bookmark forward earns XP per page; the last page finishes the khatm.
 import { useState } from 'react';
-import { ArrowSquareOut, Check as CheckIcon, Minus, Plus } from '@phosphor-icons/react';
+import { ArrowSquareOut, Check as CheckIcon, Minus, Plus, UsersThree } from '@phosphor-icons/react';
 import { useStore } from '../store/store';
+import { useNav } from '../store/nav';
 import { PAGES, PAGE_XP_CAP, PLAN_DAYS, finishDay, isDone, juzOf, pace, portion, surahOf } from '../lib/khatm';
 import type { Khatm as KhatmPlan } from '../lib/types';
 import { dayKey } from '../lib/dates';
@@ -26,6 +27,21 @@ export function pageWhere(page: number): string {
 }
 
 export const quranPageUrl = (page: number): string => `https://quran.com/page/${Math.max(1, Math.min(PAGES, page))}`;
+
+/** The way from the person's own khatm to the ones read with others. */
+function GroupKhatmDoor() {
+  const push = useNav((s) => s.push);
+  return (
+    <Card pad={false} className="list">
+      <Row
+        icon={<UsersThree size={21} style={{ color: 'var(--gold-ink)' }} />}
+        title={t('gk.title')}
+        sub={t('gk.door.body')}
+        onTap={() => push({ name: 'gkhatm' })}
+      />
+    </Card>
+  );
+}
 
 /** Choosing the number of days: for a new khatm, or to change the plan of the one under way. */
 function PlanPicker({ current, onDone }: { current?: KhatmPlan; onDone: () => void }) {
@@ -65,7 +81,9 @@ function PlanPicker({ current, onDone }: { current?: KhatmPlan; onDone: () => vo
         <Tap className="btn ghost" style={{ marginTop: 8 }} onTap={onDone}>
           {t('common.cancel')}
         </Tap>
-      ) : null}
+      ) : (
+        <GroupKhatmDoor />
+      )}
     </Screen>
   );
 }
@@ -200,6 +218,7 @@ export function Khatm() {
           }
         />
       </Card>
+      <GroupKhatmDoor />
       <IlmulHaqCard />
     </Screen>
   );

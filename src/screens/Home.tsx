@@ -1,29 +1,37 @@
-// Home: greeting, the companion as the hero (with the hadith of the day), the next prayer, the journal's
-// question for the day, the ayah of the day, the adhkar, today's ring, shortcuts, today's focus and quick habit ticks.
-import { useCallback, useMemo, useRef } from 'react';
-import { CalendarDots, Fire, GearSix as Gear, ListChecks, Repeat, Target } from '@phosphor-icons/react';
-import { useData, useVisibleStreak } from '../store/store';
+// Home: greeting, the companion as the hero (with the hadith of the day) under a sky that follows the
+// day, and under it the cards in the person's own order: the next prayer, the journal's question, the
+// ayah of the day, the adhkar, today's ring, shortcuts, quick habit ticks, today's focus and the goals.
+// The time of day lifts one card to the top (lib/home.ts) unless that is switched off.
+import { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
+import { CalendarDots, Fire, GearSix as Gear, ListChecks, Repeat, SlidersHorizontal, Target } from '@phosphor-icons/react';
+import { useData, useStore, useVisibleStreak } from '../store/store';
 import { useNav } from '../store/nav';
 import { dayKey } from '../lib/dates';
 import { dayStats, goalsRatio, openGoals } from '../lib/stats';
-import { activeHabits, dueHabits } from '../lib/habits';
+import { activeHabits, dueHabits, isChecked } from '../lib/habits';
 import { lastActivity, loggedToday } from '../lib/progress';
 import { XP, levelInfo } from '../lib/gamify';
+import { PRAYERS, PrayerKey } from '../lib/prayer';
+import { wroteOn } from '../lib/journal';
+import { HOME_READY, HomeBlock, cardForNow, gestureFor, homeHidden, homeNow, prayerIsNear, skyPhase } from '../lib/home';
 import { haptic, lowPerf, tgUser } from '../tg/telegram';
 import { t, tn } from '../i18n';
 import { fmtShortDate, greetingKey, pct } from '../i18n/format';
-import { Avatar, Bubble, Card, Empty, IconBtn, Ring, Screen, Section, Tap } from '../ui/kit';
+import { Avatar, Bubble, Card, Empty, IconBtn, Ring, Screen, Section, Tap, cx } from '../ui/kit';
 import { GoalCard, HabitDot, PlanItem } from '../ui/parts';
 import { useEcho } from '../store/echo';
 import { useAdvisor } from '../store/advisor';
 import { CompanionThumb } from '../companion/CompanionThumb';
 import { CompanionHandle, CompanionStage, StageState } from '../companion/CompanionStage';
-import type { TapPart } from '../companion/types';
+import type { Clip, TapPart } from '../companion/types';
 import { Emoji } from '../ui/Emoji';
 import { AyahCard } from '../ui/Ayah';
-import { AdhkarCard, PrayerCard } from './Prayer';
+import { AdhkarCard, PrayerCard, useAdhkarDue, usePrayerNow } from './Prayer';
 import { FocusCard } from '../ui/FocusCard';
 import { JournalCard } from '../journal/Journal';
+import { Special } from '../ui/Special';
+import { BuddyCard, GroupKhatmCard } from '../ui/TogetherCards';
+
 
 export function Home() {
   const d = useData();
@@ -80,29 +88,18 @@ export function Home() {
     },
   ];
 
-  return (
-    <Screen>
-      <header className="hdr home">
-        <Tap onTap={() => useNav.getState().go('you')} scale={0.92} label={t('nav.you')} style={{ width: 46 }}>
-          <Avatar />
-        </Tap>
-        <div style={{ minWidth: 0 }}>
-          <div className="t-small muted">{t(greetingKey())} <Emoji e="👋" /></div>
-          <div className="t-title clip">{name}</div>
-        </div>
-        <IconBtn onTap={() => push({ name: 'settings' })} label={t('common.settings')}>
-          <Gear size={20} />
-        </IconBtn>
-      </header>
+  // ---------- the cards, each by its name ----------
 
-      <Hero streak={streak} level={lvl.level} />
+  const blocks: Partial<Record<HomeBlock, ReactNode>> = {
+    special: <Special />,
+    buddy: <BuddyCard />,
+    gkhatm: <GroupKhatmCard />,
+    prayer: <PrayerCard />,
+    journal: <JournalCard />,
+    ayah: <AyahCard />,
+    adhkar: <AdhkarCard />,
 
-      <FocusCard />
-      <PrayerCard />
-      <JournalCard />
-      {d.settings.verse ? <AyahCard /> : null}
-      <AdhkarCard />
-
+    ring: (
       <Card className="row" style={{ gap: 18 }}>
         <Ring value={stats.overall} size={128} stroke={13}>
           <div className="t-display num" style={{ fontSize: 30 }}>{pct(stats.overall)}</div>
@@ -118,7 +115,9 @@ export function Home() {
           ))}
         </div>
       </Card>
+    ),
 
+    quick: (
       <div className="quick">
         {tiles.map((tile) => (
           <Tap key={tile.label} onTap={tile.go} scale={0.95}>
@@ -130,17 +129,19 @@ export function Home() {
           </Tap>
         ))}
       </div>
+    ),
 
-      {habits.length ? (
-        <Section title={t('habits.today')} action={`${stats.habits.done} / ${stats.habits.total}`} onAction={() => push({ name: 'habits' })}>
-          <div className="hdots">
-            {habits.map((h) => (
-              <HabitDot key={h.id} habit={h} day={today} />
-            ))}
-          </div>
-        </Section>
-      ) : null}
+    habits: habits.length ? (
+      <Section title={t('habits.today')} action={`${stats.habits.done} / ${stats.habits.total}`} onAction={() => push({ name: 'habits' })}>
+        <div className="hdots">
+          {habits.map((h) => (
+            <HabitDot key={h.id} habit={h} day={today} />
+          ))}
+        </div>
+      </Section>
+    ) : null,
 
+    plan: (
       <Section title={t('home.focus')} action={t('common.seeAll')} onAction={() => push({ name: 'tasks' })}>
         {quest ? (
           <Tap onTap={() => open({ name: 'log', taskId: quest.id })} scale={0.98}>
@@ -166,21 +167,93 @@ export function Home() {
           </Empty>
         ) : null}
       </Section>
+    ),
 
-      {goals.length ? (
-        <Section title={t('home.goals')} action={t('common.seeAll')} onAction={() => push({ name: 'goals' })}>
-          {goals.slice(0, 3).map((g) => (
-            <GoalCard key={g.id} task={g} folder={folderOf(g.folderId)} />
-          ))}
-        </Section>
-      ) : null}
+    goals: goals.length ? (
+      <Section title={t('home.goals')} action={t('common.seeAll')} onAction={() => push({ name: 'goals' })}>
+        {goals.slice(0, 3).map((g) => (
+          <GoalCard key={g.id} task={g} folder={folderOf(g.folderId)} />
+        ))}
+      </Section>
+    ) : null,
+  };
+
+  // ---------- their order, and the one this moment asks for ----------
+
+  const { info, now } = usePrayerNow();
+  const adhkarDue = useAdhkarDue();
+  const settings = d.settings;
+  const shown = (id: HomeBlock) => HOME_READY.includes(id) && !homeHidden(settings, id);
+  const isPrayer = (key: string | null): key is PrayerKey => !!key && (PRAYERS as readonly string[]).includes(key);
+  const lift = cardForNow(
+    {
+      hour: new Date(now).getHours(),
+      prayerNear:
+        !!info &&
+        prayerIsNear({
+          toNext: info.next.at.getTime() - now,
+          nextIsPrayer: isPrayer(info.next.key),
+          sinceCurrent: now - info.since.getTime(),
+          currentOpen: isPrayer(info.current) && !isChecked(d.worship, info.current, info.day),
+        }),
+      adhkarDue,
+      written: wroteOn(d.pages, today),
+    },
+    shown,
+  );
+  const order = homeNow(settings, lift).filter(shown);
+
+  return (
+    <Screen>
+      <header className="hdr home">
+        <Tap onTap={() => useNav.getState().go('you')} scale={0.92} label={t('nav.you')} style={{ width: 46 }}>
+          <Avatar />
+        </Tap>
+        <div style={{ minWidth: 0 }}>
+          <div className="t-small muted">{t(greetingKey())} <Emoji e="👋" /></div>
+          <div className="t-title clip">{name}</div>
+        </div>
+        <IconBtn onTap={() => push({ name: 'settings' })} label={t('common.settings')}>
+          <Gear size={20} />
+        </IconBtn>
+      </header>
+
+      <Hero streak={streak} level={lvl.level} />
+
+      <FocusCard />
+      {order.map((id) => (
+        <Fragment key={id}>{blocks[id]}</Fragment>
+      ))}
+
+      <Tap className="home-arrange" onTap={() => push({ name: 'homecards' })} scale={0.96}>
+        <SlidersHorizontal size={16} weight="bold" />
+        {t('home.arrange')}
+      </Tap>
     </Screen>
   );
 }
 
+// ---------- the companion ----------
+
 // The companion waves once per visit to the app, not at every return to Home.
 let greeted = false;
 const TAP_MOVES = ['wave', 'cheer', 'nod'] as const;
+
+// What was just done, wherever in the app it was done, for the companion to answer when Home is next in
+// sight: a cheer for a habit, hands raised after a prayer, a book after pages of the Qurʼan.
+let deed: { clip: Clip; at: number } | null = null;
+let noticed = new Set<string>();
+useStore.subscribe((s) => {
+  for (const c of s.celebrations) {
+    if (noticed.has(c.id)) continue;
+    noticed.add(c.id);
+    const clip = gestureFor(c);
+    if (clip) deed = { clip, at: Date.now() };
+  }
+  if (noticed.size > 300) noticed = new Set(s.celebrations.map((c) => c.id));
+});
+/** How long after a deed the companion still answers it. */
+const DEED_FRESH_MS = 120_000;
 
 /**
  * The top of Home: the companion, alive, with the hadith of the day beside it, under the app's title and
@@ -197,12 +270,37 @@ function Hero({ streak, level }: { streak: number; level: number }) {
   const { today } = useAdvisor();
   const stage = useRef<CompanionHandle>(null);
   const taps = useRef(0);
+  const ready = useRef(false);
+  const { info, now } = usePrayerNow();
+  const sky = skyPhase(info ? info.current : undefined, new Date(now).getHours());
+  const worn = !!e.outfit?.sky && e.outfit.sky !== 'bg-none';
 
-  const onState = useCallback((state: StageState) => {
-    if (state !== 'ready' || greeted) return;
-    greeted = true;
-    setTimeout(() => stage.current?.play('wave'), 400);
+  /** Answers the last deed, once, if Home is in sight and the deed is still fresh. */
+  const answer = useCallback(() => {
+    if (!deed || !ready.current) return;
+    const { clip, at } = deed;
+    deed = null;
+    if (Date.now() - at <= DEED_FRESH_MS) setTimeout(() => stage.current?.play(clip), 380);
   }, []);
+  const deeds = useStore((s) => s.celebrations.length);
+  useEffect(() => {
+    if (!covered) answer();
+  }, [covered, deeds, answer]);
+
+  const onState = useCallback(
+    (state: StageState) => {
+      ready.current = state === 'ready';
+      if (state !== 'ready') return;
+      if (greeted) {
+        answer();
+        return;
+      }
+      greeted = true;
+      deed = null; // the greeting comes first; what was done before the app was opened is not news
+      setTimeout(() => stage.current?.play('wave'), 400);
+    },
+    [answer],
+  );
   const onTap = (part: TapPart) => {
     haptic('light');
     stage.current?.play(part === 'head' ? 'nod' : TAP_MOVES[taps.current++ % TAP_MOVES.length]);
@@ -210,6 +308,12 @@ function Hero({ streak, level }: { streak: number; level: number }) {
 
   return (
     <section className="card hero">
+      {/* A sky bought in the shop is drawn by the stage itself; the day's own sky then stays away. */}
+      {worn ? null : (
+        <div className={cx('hero-sky', `sky-${sky}`)} aria-hidden="true">
+          <i className="hero-orb" />
+        </div>
+      )}
       <div className="hero-stage">
         {!e.echo ? (
           <div className="hero-still">

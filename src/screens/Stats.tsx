@@ -1,8 +1,10 @@
 // Analytics: overall trend, the four stat tiles, weekly activity, and a closer look at habits, tasks and goals.
 import { useMemo, useState } from 'react';
-import { CheckCircle, Clock, Fire, TrendDown, TrendUp, Trophy } from '@phosphor-icons/react';
+import { CalendarCheck, CaretRight, CheckCircle, Clock, Fire, TrendDown, TrendUp, Trophy } from '@phosphor-icons/react';
 import { useData } from '../store/store';
 import { useNav } from '../store/nav';
+import { useWeek, weekRange, weekWords } from '../store/week';
+import { LETTER_PARTS, Week, partText, weekParts } from '../lib/week';
 import { dayKey } from '../lib/dates';
 import { dayKeyToMs } from '../lib/calendar';
 import { activeHabits, bestHabitStreak, completionRate, habitStreak, shiftDay } from '../lib/habits';
@@ -10,7 +12,7 @@ import { folderProgress } from '../lib/progress';
 import { goalsRatio, lastDays, overallSeries, totals, xpSeries } from '../lib/stats';
 import { t } from '../i18n';
 import { fmtHours, pct, weekdayMini } from '../i18n/format';
-import { Bar, Card, Chips, Empty, Header, Num, Ring, Screen, Section, cx } from '../ui/kit';
+import { Bar, Card, Chips, Empty, Header, Num, Ring, Screen, Section, Tap, cx } from '../ui/kit';
 import { BarChart, LineChart } from '../ui/charts';
 import { StatTile } from '../ui/parts';
 import { Emoji } from '../ui/Emoji';
@@ -30,11 +32,38 @@ function Trend({ delta }: { delta: number | null }) {
   );
 }
 
+/** The week so far in a line, in the words of the bot's Sunday letter. It opens the recap ("Your week"). */
+function WeekCard({ week }: { week: Week }) {
+  const open = useNav((s) => s.open);
+  const words = weekWords();
+  const line = week.empty
+    ? t('week.empty.title')
+    : weekParts(week).slice(0, LETTER_PARTS).map((part) => partText(week, part, words)).join(' · ');
+  return (
+    <Tap onTap={() => open({ name: 'week' })} scale={0.98}>
+      <Card pad={false} className="row week-card">
+        <span className="bubble" style={{ color: 'var(--blue-hi)', background: 'var(--accent-soft)' }}>
+          <CalendarCheck size={22} />
+        </span>
+        <div className="grow">
+          <div className="week-card-top">
+            <b className="t-body clip">{t('week.title')}</b>
+            <span>{weekRange(week)}</span>
+          </div>
+          <div className="week-card-line">{line}</div>
+        </div>
+        <CaretRight size={18} className="chev" weight="bold" />
+      </Card>
+    </Tap>
+  );
+}
+
 export function Stats() {
   const d = useData();
   const push = useNav((s) => s.push);
   const [view, setView] = useState<View>('overview');
   const today = dayKey();
+  const week = useWeek();
 
   const m = useMemo(() => {
     const days14 = lastDays(14, today);
@@ -91,6 +120,8 @@ export function Stats() {
       />
 
       {nothing ? <Empty icon="📊" title={t('stats.title')} body={t('stats.empty')} /> : null}
+      {/* Prayers, Qurʼan and focus make a week too, with no goal, task or habit to chart. */}
+      {nothing && !week.empty ? <WeekCard week={week} /> : null}
 
       {view === 'overview' && !nothing ? (
         <>
@@ -121,6 +152,7 @@ export function Stats() {
               <div className="t-small muted" style={{ marginBottom: 14 }}>{t('stats.weekXp', { n: m.weekXp.reduce((s, x) => s + x, 0) })}</div>
               <BarChart values={m.weekXp} labels={m.week.map((day) => weekdayMini(new Date(dayKeyToMs(day, 12)).getDay()))} highlight={m.dow} />
             </Card>
+            <WeekCard week={week} />
           </Section>
         </>
       ) : null}

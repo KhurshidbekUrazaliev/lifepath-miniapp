@@ -9,7 +9,7 @@ import { dayKey } from '../lib/dates';
 import { computeProgress, loggedToday } from '../lib/progress';
 import { XP, applyActivity, levelInfo, sparksFor, streakMultiplier, visibleStreak, xpForLog } from '../lib/gamify';
 import { TOP_STAGE, growthFor } from '../lib/companion';
-import { BuyCheck, Slot, canBuy, isOwned, itemById } from '../lib/wardrobe';
+import { BuyCheck, Slot, canBuy, earnedItems, isOwned, itemById } from '../lib/wardrobe';
 import { cleanEvidence, evidenceBonus, evidenceState, sparksForAward, sparksGranted } from '../lib/evidence';
 import { HABIT_XP, TODO_XP, isChecked, withCheck, withoutHabit } from '../lib/habits';
 import { EventBadge, earnedBadges } from '../lib/achievements';
@@ -19,6 +19,7 @@ import { newKhatm, readTo } from '../lib/khatm';
 import { addSession, focusToday, focusXp } from '../lib/focus';
 import { JOURNAL_XP, TEXT_LIMIT, TITLE_LIMIT, isBlank, isNote, liveFacts, paidOn, toggleItem } from '../lib/journal';
 import { useServer } from './server';
+import { rememberSpecial } from '../lib/special';
 
 export function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -183,6 +184,12 @@ interface State extends Data {
   /** Ticks or unticks the list item on one line of a page. */
   tickItem: (id: string, line: number) => void;
 
+  /**
+   * XP for a juz marked read in a group khatm, once the bot's server has accepted the mark (it decides
+   * how much). A mark taken back comes as a negative number, and the XP goes back.
+   */
+  payJuz: (xp: number) => void;
+
   setNudge: (patch: Partial<NudgeSettings>) => void;
   saveEcho: (input: { name: string; skin: number; hair: number; gender: 'boy' | 'girl' }) => void;
   buyItem: (itemId: string) => BuyCheck;
@@ -200,7 +207,7 @@ interface State extends Data {
   resetAll: () => void;
 }
 
-type Core = Pick<State, 'profile' | 'tasks' | 'entries' | 'folders' | 'habits' | 'checks' | 'worship' | 'pages'>;
+type Core = Pick<State, 'profile' | 'tasks' | 'entries' | 'folders' | 'habits' | 'checks' | 'worship' | 'pages' | 'plans' | 'settings'>;
 
 /** Adds XP (and Sparks) to the profile and finds the level-ups and badges that follow. */
 function award(s: Core, xp: number, patch: Partial<Profile> = {}, sparks: number = sparksFor(xp)) {
@@ -212,6 +219,12 @@ function award(s: Core, xp: number, patch: Partial<Profile> = {}, sparks: number
   if (after > before) {
     levelUp = after;
     celebrations.push({ id: uid(), kind: 'levelup', level: after });
+  }
+  if (xp > 0) profile.specialDays = rememberSpecial(profile.specialDays, dayKey(), s.settings.hijriOffset);
+  const gifts = earnedItems({ ...s, profile });
+  if (gifts.length) {
+    profile.owned = [...(profile.owned ?? []), ...gifts];
+    celebrations.push(...gifts.map((item): Celebration => ({ id: uid(), kind: 'item', item })));
   }
   const achievements = { ...profile.achievements };
   for (const id of earnedBadges({ ...s, profile })) {
@@ -601,7 +614,8 @@ export const useStore = create<State>()((set, get) => ({
     const fresh = r.khatm.best - k.best;
     const quranPages = fresh > 0 ? (s.profile.quranPages ?? 0) + fresh : s.profile.quranPages;
     if (r.xp <= 0) {
-      set({ profile: { ...s.profile, khatm: r.khatm, quranPages } });
+      const result = award(s, 0, { khatm: r.khatm, quranPages }, 0);
+      set({ profile: result.profile, celebrations: [...s.celebrations, ...result.celebrations] });
       return;
     }
     const act = activity(s.profile, today);
@@ -675,7 +689,8 @@ export const useStore = create<State>()((set, get) => ({
     if (pay) page.xp = JOURNAL_XP;
     const pages = old ? s.pages.map((p) => (p.id === page.id ? page : p)) : [...s.pages, page];
     if (!pay) {
-      set({ pages });
+      const result = finish ? award({ ...s, pages }, 0) : null;
+      set({ pages, ...(result ? { profile: result.profile, celebrations: [...s.celebrations, ...result.celebrations] } : {}) });
       return page.id;
     }
     const act = activity(s.profile, today);
@@ -706,6 +721,18 @@ export const useStore = create<State>()((set, get) => ({
       if (!page || text === page.text) return {};
       return { pages: s.pages.map((p) => (p.id === id ? { ...p, text, edited: Date.now() } : p)) };
     }),
+
+  payJuz: (xp) => {
+    const s = get();
+    if (xp < 0) {
+      set({ profile: { ...s.profile, xp: Math.max(0, s.profile.xp + xp) } });
+      return;
+    }
+    if (xp === 0) return;
+    const act = activity(s.profile, dayKey());
+    const { profile, celebrations } = award(s, xp, act.patch, 0);
+    set({ profile, celebrations: [...s.celebrations, { id: uid(), kind: 'xp', xp, from: 'quran' }, ...act.toast, ...celebrations] });
+  },
 
   setNudge: (patch) => set((s) => ({ profile: { ...s.profile, nudge: { ...s.profile.nudge, ...patch } } })),
 
@@ -760,12 +787,11 @@ export const useStore = create<State>()((set, get) => ({
           },
     ),
 
-  replaceData: (data) =>
-    set({
-      folders: data.folders, tasks: data.tasks, entries: data.entries, plans: data.plans,
-      habits: data.habits, checks: data.checks, worship: data.worship ?? {}, pages: data.pages ?? [],
-      profile: data.profile, settings: data.settings,
-    }),
+  replaceData: (data) => {
+    const next = { ...data, worship: data.worship ?? {}, pages: data.pages ?? [] };
+    const result = award(next, 0);
+    set({ ...next, profile: result.profile, celebrations: [...get().celebrations, ...result.celebrations] });
+  },
 
   resetAll: () => set((s) => ({ ...emptyData(), settings: { ...s.settings }, celebrations: [] })),
 }));

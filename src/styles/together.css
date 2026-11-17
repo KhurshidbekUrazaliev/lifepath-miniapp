@@ -1,0 +1,376 @@
+/* Together: buddy streaks and group khatms (screens/Together, Buddies and GroupKhatm, ui/TogetherCards, sheets/together). */
+
+/* ---------- the cards on Home and on the Together screen ---------- */
+
+.card.tg-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+}
+.tg-card .bar {
+  margin-top: 9px;
+}
+.tg-sub {
+  margin-top: 2px;
+}
+.tg-flame {
+  display: inline-flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  color: var(--text-3);
+  background: var(--well);
+  border: 1px solid var(--stroke);
+}
+.tg-flame b {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-2);
+}
+.tg-flame.on {
+  color: var(--orange);
+  background: rgba(255, 159, 67, 0.15);
+  background: color-mix(in srgb, var(--orange) 15%, transparent);
+  border-color: rgba(255, 159, 67, 0.36);
+  border-color: color-mix(in srgb, var(--orange) 36%, transparent);
+}
+.tg-flame.on b {
+  color: var(--text);
+}
+.tg-flame.lg {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+}
+.tg-flame.lg b {
+  font-size: 17px;
+}
+.tg-book {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  font-size: 25px;
+  background: rgba(240, 180, 60, 0.14);
+  border: 1px solid rgba(240, 180, 60, 0.3);
+}
+.tg-count {
+  flex: none;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--gold-ink);
+}
+.tg-count i {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+/* ---------- buddy streaks ---------- */
+
+.bd-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.card.bd-pair.grew {
+  border-color: rgba(255, 159, 67, 0.55);
+  border-color: color-mix(in srgb, var(--orange) 55%, transparent);
+  box-shadow: var(--shadow-card), 0 0 0 3px rgba(255, 159, 67, 0.14), inset 0 1px 0 var(--hi);
+}
+.bd-grew {
+  font-weight: 700;
+  color: var(--orange);
+}
+.bd-today {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+.bd-who {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: var(--r-sm);
+  background: var(--well);
+  border: 1px solid var(--stroke);
+}
+.bd-who-name {
+  font-weight: 700;
+}
+.bd-tick {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--stroke-2);
+  color: var(--bg);
+}
+.bd-who.done .bd-tick {
+  border-color: var(--green);
+  background: var(--green);
+}
+.bd-acts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  margin-top: -2px;
+}
+.bd-acts .btn {
+  flex: none;
+}
+.bd-leave {
+  flex: none;
+  width: auto;
+  margin-left: auto;
+  padding: 10px 2px 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.bd-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+.bd-invite .btn.primary {
+  margin-top: 6px;
+}
+.bd-invite-ic {
+  display: grid;
+  place-items: center;
+  align-self: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 22px;
+  font-size: 32px;
+  background: var(--accent-soft);
+  border: 1px solid var(--stroke);
+}
+.bd-how {
+  padding: 0 6px;
+  line-height: 1.5;
+}
+
+/* ---------- group khatm ---------- */
+
+.gk-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.gk-hero .t-small {
+  margin-top: 3px;
+}
+.gk-ring-n {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.05;
+}
+.gk-late {
+  font-weight: 600;
+  color: var(--orange);
+}
+.card.gk-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 18px 18px;
+  text-align: center;
+  border-color: rgba(240, 180, 60, 0.4);
+}
+.gk-done-ic {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 4px;
+  border-radius: 24px;
+  font-size: 38px;
+  background: rgba(240, 180, 60, 0.14);
+  border: 1px solid rgba(240, 180, 60, 0.3);
+}
+.gk-done .btn {
+  margin-top: 10px;
+}
+
+/* The board: thirty juz, five to a row. */
+.card.gk-board-card {
+  padding: 12px;
+}
+.gk-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.gk-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  height: 50px;
+  padding: 0 3px;
+  border-radius: 13px;
+  color: var(--text-2);
+  background: var(--well);
+  border: 1px dashed var(--stroke-2);
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.gk-cell b {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.gk-cell-who {
+  max-width: 100%;
+  min-height: 12px;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 12px;
+  color: var(--text-3);
+}
+.gk-cell.taken {
+  color: var(--text);
+  background: linear-gradient(180deg, var(--card-hi), var(--card-lo));
+  border: 1px solid var(--stroke-2);
+}
+.gk-cell.mine {
+  color: var(--blue-hi);
+  background: var(--accent-soft);
+  border: 1.5px solid var(--blue);
+}
+:root[data-theme='light'] .gk-cell.mine {
+  color: var(--blue-lo);
+}
+.gk-cell.read,
+.gk-cell.mineRead {
+  color: var(--gold-ink);
+  background: rgba(240, 180, 60, 0.16);
+  border: 1px solid rgba(240, 180, 60, 0.4);
+}
+.gk-cell.mineRead {
+  border: 1.5px solid var(--gold-ink);
+}
+.gk-cell.mine .gk-cell-who,
+.gk-cell.read .gk-cell-who,
+.gk-cell.mineRead .gk-cell-who {
+  color: inherit;
+  opacity: 0.86;
+}
+.gk-cell-tick {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  color: var(--bg);
+  background: var(--gold-ink);
+}
+.gk-cell.busy {
+  border: 1.5px solid var(--blue);
+  animation: gk-wait 0.9s ease-in-out infinite;
+}
+@keyframes gk-wait {
+  50% {
+    opacity: 0.45;
+  }
+}
+.gk-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 12px;
+  padding: 0 2px;
+}
+.gk-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.gk-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 4px;
+  background: var(--well);
+  border: 1px dashed var(--stroke-2);
+}
+.gk-dot.taken {
+  background: var(--card-solid);
+  border: 1px solid var(--stroke-2);
+}
+.gk-dot.mine {
+  background: var(--accent-soft);
+  border: 1.5px solid var(--blue);
+}
+.gk-dot.read {
+  background: rgba(240, 180, 60, 0.3);
+  border: 1px solid var(--gold-ink);
+}
+.gk-hint {
+  margin-top: 8px;
+  padding: 0 2px;
+  line-height: 1.45;
+}
+.gk-num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--blue-hi);
+  background: var(--accent-soft);
+}
+:root[data-theme='light'] .gk-num {
+  color: var(--blue-lo);
+}
+.gk-num.lg {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  font-size: 19px;
+}
+.gk-face {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-2);
+  background: var(--well);
+  border: 1px solid var(--stroke);
+}
+.gk-block {
+  display: block;
+}
+.card.gk-where {
+  gap: 14px;
+  padding: 14px 16px;
+}

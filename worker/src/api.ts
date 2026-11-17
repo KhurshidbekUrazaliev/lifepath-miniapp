@@ -1,11 +1,16 @@
 // The JSON API the Mini App calls (same origin, Authorization: tma <initData>).
 import { authenticate } from './auth';
 import type { Env } from './env';
+import { getAdminErrors, postError } from './errors';
 import { json, notFound, rateLimited, readJson, serverError } from './http';
 import { TEXT } from './i18n';
 import { GRANT, getAdminUsers, isAdmin, putAdminAccess, type Grant } from './panel';
 import { payloadFor, PLUS_PERIOD_S, plusView, priceStars, type Entitlement } from './plus';
 import { getChallenge, getChallenges, postChallenge, postJoin, postLeave } from './challenges';
+import { getBuddies, getBuddyInvite, postBuddyAccept, postBuddyInvite, postBuddyLeave, postBuddyNudge } from './buddies';
+import {
+  getGroupKhatm, getGroupKhatms, postGroupKhatm, postKhatmDelete, postKhatmJoin, postKhatmJuz, postKhatmLeave, postKhatmNext, postKhatmRemove,
+} from './gkhatm';
 import { getRankings, postActivity, putRankProfile } from './rankings';
 import { putReminders, reschedule } from './reminders';
 import { postStory } from './stories';
@@ -14,6 +19,11 @@ import { loadUser, rows, type Ctx } from './users';
 import { lang, timeZone } from './validate';
 
 const ENTITLEMENT = 'SELECT expires_at, renew FROM entitlements WHERE user_id = ?1';
+// How many buddies the caller has and how many group khatms they are in: the app asks for the lists
+// only when there is something on them.
+const TOGETHER = `
+  SELECT (SELECT COUNT(*) FROM buddies WHERE a = ?1 OR b = ?1) AS buddies,
+         (SELECT COUNT(*) FROM gkhatm_members WHERE user_id = ?1) AS khatms`;
 /** "Last opened" is written this often at most, so opening the app again and again writes nothing. */
 const SEEN_STEP_MS = 10 * 60 * 1000;
 
@@ -28,6 +38,7 @@ async function hello(c: Ctx): Promise<Response> {
     db.prepare(ENTITLEMENT).bind(c.auth.id),
     db.prepare("SELECT value FROM meta WHERE key = 'bot_username'"),
     db.prepare(GRANT).bind(c.auth.id),
+    db.prepare(TOGETHER).bind(c.auth.id),
   ]);
   // The reminders were scheduled in the old time zone: move them to the new one.
   if (previousTz !== null && previousTz !== user.tz) writes.push(...(await reschedule(db, user.id, user.tz, c.now)));
@@ -38,6 +49,7 @@ async function hello(c: Ctx): Promise<Response> {
   const rank = rows<{ opted_in: number; name: string | null; country: string | null }>(results[0])[0];
   const bot = rows<{ value: string }>(results[2])[0];
   const grant = rows<Grant>(results[3])[0];
+  const together = rows<{ buddies: number; khatms: number }>(results[4])[0];
   return json({
     user: { id: user.id, firstName: user.first_name, username: user.username },
     plus: plusView(rows<Entitlement>(results[1])[0], c.env, c.now, grant?.plus === 1),
@@ -46,6 +58,7 @@ async function hello(c: Ctx): Promise<Response> {
     ...(isAdmin(c.env, c.auth) && { admin: true }),
     rank: { optedIn: rank?.opted_in === 1, name: rank?.name ?? null, country: rank?.country ?? null },
     reminders: { enabled: user.reminders_enabled === 1, canMessage: user.can_message === 1 },
+    together: { buddies: together?.buddies ?? 0, khatms: together?.khatms ?? 0 },
     bot: { username: bot?.value ?? null },
     now: c.now,
   });
@@ -85,6 +98,7 @@ async function postInvoice(c: Ctx): Promise<Response> {
 
 const ROUTES = new Map<string, (c: Ctx) => Promise<Response>>([
   ['POST /api/hello', hello],
+  ['POST /api/errors', postError],
   ['PUT /api/reminders', putReminders],
   ['POST /api/activity', postActivity],
   ['GET /api/rankings', getRankings],
@@ -96,6 +110,21 @@ const ROUTES = new Map<string, (c: Ctx) => Promise<Response>>([
   ['POST /api/challenges', postChallenge],
   ['POST /api/challenges/join', postJoin],
   ['POST /api/challenges/leave', postLeave],
+  ['GET /api/buddies', getBuddies],
+  ['GET /api/buddies/invite', getBuddyInvite],
+  ['POST /api/buddies/invite', postBuddyInvite],
+  ['POST /api/buddies/accept', postBuddyAccept],
+  ['POST /api/buddies/leave', postBuddyLeave],
+  ['POST /api/buddies/nudge', postBuddyNudge],
+  ['GET /api/gkhatm', getGroupKhatms],
+  ['GET /api/gkhatm/one', getGroupKhatm],
+  ['POST /api/gkhatm', postGroupKhatm],
+  ['POST /api/gkhatm/join', postKhatmJoin],
+  ['POST /api/gkhatm/leave', postKhatmLeave],
+  ['POST /api/gkhatm/remove', postKhatmRemove],
+  ['POST /api/gkhatm/juz', postKhatmJuz],
+  ['POST /api/gkhatm/next', postKhatmNext],
+  ['POST /api/gkhatm/delete', postKhatmDelete],
   ['POST /api/story', postStory],
 ]);
 
@@ -103,6 +132,7 @@ const ROUTES = new Map<string, (c: Ctx) => Promise<Response>>([
 const ADMIN_ROUTES = new Map<string, (c: Ctx) => Promise<Response>>([
   ['GET /api/admin/users', getAdminUsers],
   ['PUT /api/admin/access', putAdminAccess],
+  ['GET /api/admin/errors', getAdminErrors],
 ]);
 
 export async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {

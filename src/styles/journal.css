@@ -1119,3 +1119,186 @@ textarea.j-text::placeholder {
   min-width: 180px;
   margin-top: 14px;
 }
+
+/* ---------- a year in colours ---------- */
+
+/* Twelve months across, thirty-one days down. A dot is a share of its column's width (and as tall as
+   it is wide), so the grid fits a 320 px phone and grows with the screen, up to a size. */
+.j-year {
+  display: grid;
+  grid-template-columns: 15px repeat(12, minmax(0, 1fr));
+  align-items: center;
+  padding: 0 4px 6px 2px;
+}
+.j-year-m {
+  padding: 4px 0 8px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+}
+.j-year-m:disabled {
+  opacity: 1;
+  color: var(--text-3);
+}
+.j-year-n {
+  font-style: normal;
+  font-size: 8.5px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--text-3);
+}
+.j-year-d {
+  display: block;
+  padding: 2px 0;
+}
+.j-year-d::before {
+  content: '';
+  display: block;
+  width: 62%;
+  max-width: 18px;
+  margin: 0 auto;
+  padding-top: min(62%, 18px);
+  border-radius: 50%;
+}
+.j-year-d.felt::before {
+  background: var(--mc);
+}
+/* Written, with no feeling chosen: filled, in no colour of its own. */
+.j-year-d.plain::before {
+  background: var(--text-3);
+}
+.j-year-d.blank::before {
+  box-shadow: inset 0 0 0 1.5px var(--stroke-2);
+}
+.j-year-d.today::before {
+  outline: 1.5px solid var(--text);
+  outline-offset: 1.5px;
+}
+.j-year-sum {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0 6px;
+  padding: 11px 0 12px;
+  border-top: 1px solid var(--stroke);
+}
+.j-year-sum > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-align: center;
+}
+.j-year-sum > div + div {
+  border-left: 1px solid var(--stroke);
+}
+.j-year-sum b {
+  font-size: 21px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.j-year-none {
+  margin: 8px 6px 0;
+  padding: 14px 10px 12px;
+  border-top: 1px solid var(--stroke);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--text-2);
+  text-align: center;
+}
+.j-year-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  margin: 0 6px;
+  padding: 9px 0 11px;
+  border-top: 1px solid var(--stroke);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.j-year-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.j-year-legend .j-year-d {
+  width: 18px;
+  padding: 0;
+}
+
+/* The year's picture, full-screen, where the phone cannot share a file: pressing and holding saves it. */
+.j-pic {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: calc(var(--safe-top) + 60px) 20px calc(var(--safe-bottom) + 22px);
+  background: rgba(5, 7, 16, 0.95);
+}
+.j-pic img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(100%, 420px);
+  max-height: calc(100vh - 190px);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  /* the app switches these off everywhere else; here they are how the picture is saved */
+  -webkit-touch-callout: default;
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+.j-pic p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  text-align: center;
+}
+.j-pic-x {
+  position: absolute;
+  top: calc(var(--safe-top) + 14px);
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ---------- taking the journal out as text ---------- */
+
+.j-out {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 18px;
+  padding: 2px 6px 0;
+}
+.j-out-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  min-height: 32px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-3);
+}

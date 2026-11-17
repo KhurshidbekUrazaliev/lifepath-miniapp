@@ -283,12 +283,19 @@ function AdhkarRow({ info, now }: { info: PrayerNow | null; now: number }) {
 }
 
 /** Home: the adhkar while they are due and not yet said today. */
-export function AdhkarCard() {
-  const show = useStore((s) => s.settings.prayerCard !== false);
+/** True while the adhkar of this part of the day are due and not yet read: when their card shows on Home. */
+export function useAdhkarDue(): boolean {
   const { info, now } = usePrayerNow();
   const session = sessionAt(info?.times ?? null, now);
   const ticked = useStore((s) => isChecked(s.worship, session, dayKey()));
-  if (!show || ticked || !adhkarDue(info, now, session)) return null;
+  return !ticked && adhkarDue(info, now, session);
+}
+
+/** Home: the adhkar of this part of the day, until they are read. Whether Home shows the card at all is Home's to say. */
+export function AdhkarCard() {
+  const { info, now } = usePrayerNow();
+  const due = useAdhkarDue();
+  if (!due) return null;
   return <AdhkarRow info={info} now={now} />;
 }
 

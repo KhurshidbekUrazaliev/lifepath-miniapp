@@ -12,7 +12,11 @@ import { parseTime } from '../lib/calendar';
 import { dayKey } from '../lib/dates';
 import { TIME_EMOJI, alertPrayers, resolveMethod } from '../lib/prayer';
 import { counters } from '../lib/challenges';
+import { reportableDay } from '../lib/together';
+import { activeDayReported } from './together';
 import { wroteOn } from '../lib/journal';
+import { letterReminder, weekLetter } from '../lib/week';
+import { weekNow, weekWords } from './week';
 import type { Settings } from '../lib/types';
 import { getLang, t } from '../i18n';
 import { requestWriteAccess } from '../tg/telegram';
@@ -34,6 +38,19 @@ interface ReminderItem {
   days?: number[];
   date?: string;
   open?: string;
+}
+
+/**
+ * The weekly letter: the week in numbers, sent once, on its Sunday evening. It is written here on the
+ * phone, so it says what the week looked like when the app was last open, and nothing changes while
+ * the app is closed. None when the letter is switched off, the week is still empty, or the moment
+ * has passed. The journal has no part in it (lib/week.ts does not read it).
+ */
+function weekLetterItem(d: Data): ReminderItem | null {
+  if (d.settings.weekLetter === false) return null;
+  const text = weekLetter(weekNow(d), weekWords());
+  const now = new Date();
+  return letterReminder(text ? `✉️ ${text}` : '', dayKey(), now.getHours() * 60 + now.getMinutes());
 }
 
 /** Everything the bot should remind this person about, in their language. */
@@ -113,6 +130,9 @@ export function buildReminders(d: Data): ReminderItem[] {
     }
     items.unshift(...evenings);
   }
+  // First in the list, so the cap below can never be what leaves it out.
+  const letter = weekLetterItem(d);
+  if (letter) items.unshift(letter);
   return items.slice(0, 60);
 }
 
@@ -157,6 +177,8 @@ async function pushReminders(d: Data): Promise<boolean> {
 
 async function pushActivity(d: Data): Promise<void> {
   const week = weekStartMs();
+  // The last day something earned XP, when that is today or yesterday: what buddy streaks count.
+  const activeDay = reportableDay(d.profile.streak.lastDay, dayKey());
   try {
     await api('POST', '/activity', {
       lastActiveDay: d.profile.streak.lastDay ?? dayKey(),
@@ -168,7 +190,9 @@ async function pushActivity(d: Data): Promise<void> {
       level: levelInfo(d.profile.xp).level,
       streak: visibleStreak(d.profile.streak, d.profile.freezes),
       counters: counters(d),
+      activeDay,
     });
+    if (activeDay) activeDayReported(activeDay);
   } catch {
     // the rankings simply stay as they were
   }
@@ -224,8 +248,20 @@ export function useServerSync(): void {
       send();
     });
 
+    // The weekly letter as the bot has it. Its words move with things the lists below do not watch (a
+    // prayer ticked, a page of Qurʼan read), so the words themselves are compared: a change that does
+    // not show in the letter sends nothing, and one that does goes out with the usual wait.
+    const letterOf = (d: Data): string => {
+      const item = d.settings.reminders ? weekLetterItem(d) : null;
+      return item ? `${item.id} ${item.text}` : '';
+    };
+    let letter = letterOf(snapshot());
+
     const off = useStore.subscribe((s, prev) => {
-      const reminders = !(
+      const letterNow = letterOf(snapshot(s));
+      const rewritten = letterNow !== letter;
+      letter = letterNow;
+      const reminders = rewritten || !(
         s.tasks === prev.tasks && s.habits === prev.habits && s.plans === prev.plans && s.entries === prev.entries &&
         s.checks === prev.checks && s.profile.nudge === prev.profile.nudge && s.settings.reminders === prev.settings.reminders &&
         s.settings.lang === prev.settings.lang && samePrayerSettings(s.settings, prev.settings) &&

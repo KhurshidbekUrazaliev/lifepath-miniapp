@@ -33,6 +33,14 @@ export interface BotText {
   challengeJoined(name: string, kind: string): string;
   /** To each member when a challenge ends. `place` is 1-based; `total` counts the members. */
   challengeOver(kind: string, place: number, total: number, winner: string, score: string): string;
+  /** Buddy streaks: to the one who shared their invite link, when a friend accepts it. */
+  buddyAccepted(name: string): string;
+  /** To a buddy who has not done today's part yet. `streak` is 0 before the first day they share. */
+  buddyNudge(name: string, streak: number): string;
+  /** Group khatm: to the one who started it, when someone joins. */
+  khatmJoined(name: string, title: string): string;
+  /** To every member when all thirty juz are read. */
+  khatmDone(title: string): string;
 }
 
 export type ChallengeKind = 'xp' | 'prayer' | 'quran' | 'focus';
@@ -69,7 +77,7 @@ export const TEXT: Record<Lang, BotText> = {
       '1. LifePath is free. LifePath Plus is an optional subscription paid for with Telegram Stars.\n' +
       '2. Plus renews every 30 days until you cancel it in Telegram (Settings → My Stars). After you cancel, Plus stays active until the end of the paid period.\n' +
       '3. For payment questions and refunds, send /paysupport.\n' +
-      '4. We store only what the app needs: your Telegram ID, name, language and time zone, the reminders you set, your score, when you last opened the app, the friend challenges you join (their members see your first name and score) and, if you join the rankings, the name and country you choose. Pictures you share to Telegram Stories are kept for one day.\n' +
+      '4. We store only what the app needs: your Telegram ID, name, language and time zone, the reminders you set, your score, when you last opened the app, the friend challenges you join (their members see your first name and score), your buddy streaks (your buddy sees your first name and whether you were active each day), the group khatms you join (their members see your first name and the juz you take and read) and, if you join the rankings, the name and country you choose. Pictures you share to Telegram Stories are kept for one day.\n' +
       '5. LifePath is provided as is, without warranties.',
     thanks: (date) => `Thank you! LifePath Plus is active until ${date}.`,
     invoiceInvalid: 'This invoice is no longer valid. Open LifePath and try again.',
@@ -89,6 +97,13 @@ export const TEXT: Record<Lang, BotText> = {
         : place === 1
           ? `🏆 The challenge “${kind}” is over, and you won with ${score}! MashaAllah.`
           : `🏁 The challenge “${kind}” is over. You placed ${place} of ${total} with ${score}. The winner is ${winner}.`,
+    buddyAccepted: (name) => `🤝 ${name} is your buddy now. A day counts when both of you do one thing in LifePath.`,
+    buddyNudge: (name, streak) =>
+      streak > 0
+        ? `🔥 ${name} has done today's part. Your turn keeps your streak of ${streak} ${streak === 1 ? 'day' : 'days'} together.`
+        : `🔥 ${name} has done today's part. Your turn starts your streak together.`,
+    khatmJoined: (name, title) => `📖 ${name} joined your khatm “${title}”.`,
+    khatmDone: (title) => `🤲 The khatm “${title}” is complete: all 30 juz are read. May Allah accept it from all of you.`,
   },
 
   uz: {
@@ -111,7 +126,7 @@ export const TEXT: Record<Lang, BotText> = {
       '1. LifePath bepul. LifePath Plus – Telegram Stars orqali toʻlanadigan ixtiyoriy obuna.\n' +
       '2. Plus obunasi Telegram sozlamalarining yulduzlar (Stars) boʻlimida bekor qilinmaguncha har 30 kunda yangilanadi. Bekor qilganingizdan keyin Plus toʻlangan muddat oxirigacha ishlaydi.\n' +
       '3. Toʻlov va uni qaytarish boʻyicha savollar uchun /paysupport buyrugʻini yuboring.\n' +
-      '4. Biz faqat ilova ishlashi uchun zarur maʼlumotlarni saqlaymiz: Telegram ID, ism, til va vaqt mintaqangiz, siz belgilagan eslatmalar, ballaringiz, ilovani oxirgi marta qachon ochganingiz, qoʻshilgan doʻstlar musobaqalari (ularning ishtirokchilari ismingiz va natijangizni koʻradi) hamda reytingga qoʻshilsangiz, oʻzingiz tanlagan ism va davlat. Telegram hikoyalariga (Stories) ulashgan rasmlaringiz bir kun saqlanadi.\n' +
+      '4. Biz faqat ilova ishlashi uchun zarur maʼlumotlarni saqlaymiz: Telegram ID, ism, til va vaqt mintaqangiz, siz belgilagan eslatmalar, ballaringiz, ilovani oxirgi marta qachon ochganingiz, qoʻshilgan doʻstlar musobaqalari (ularning ishtirokchilari ismingiz va natijangizni koʻradi), doʻst bilan seriyalaringiz (doʻstingiz ismingizni va har kuni faol boʻlgan-boʻlmaganingizni koʻradi), qoʻshilgan birgalikdagi xatmlar (ularning ishtirokchilari ismingizni hamda olgan va oʻqigan poralaringizni koʻradi) hamda reytingga qoʻshilsangiz, oʻzingiz tanlagan ism va davlat. Telegram hikoyalariga (Stories) ulashgan rasmlaringiz bir kun saqlanadi.\n' +
       '5. LifePath «qanday boʻlsa, shunday» holatda, kafolatlarsiz taqdim etiladi.',
     thanks: (date) => `Rahmat! LifePath Plus ${date}gacha faol.`,
     invoiceInvalid: 'Bu toʻlov havolasi yaroqsiz. LifePath ilovasini ochib, qaytadan urinib koʻring.',
@@ -137,6 +152,13 @@ export const TEXT: Record<Lang, BotText> = {
         : place === 1
           ? `🏆 «${kind}» musobaqasi tugadi — ${score} bilan gʻolib boʻldingiz! Mashaalloh.`
           : `🏁 «${kind}» musobaqasi tugadi. ${total} kishi ichida ${place}-oʻrin (${score}). Gʻolib: ${winner}.`,
+    buddyAccepted: (name) => `🤝 ${name} bilan endi birgalikda seriya yuritasiz. Ikkalangiz ham LifePath ilovasida kamida bitta ish qilgan kun hisobga olinadi.`,
+    buddyNudge: (name, streak) =>
+      streak > 0
+        ? `🔥 ${name} bugungi ishini qildi. Navbat sizda: ${streak} kunlik umumiy seriyangiz davom etsin.`
+        : `🔥 ${name} bugungi ishini qildi. Navbat sizda: umumiy seriyangiz boshlansin.`,
+    khatmJoined: (name, title) => `📖 ${name} «${title}» xatmingizga qoʻshildi.`,
+    khatmDone: (title) => `🤲 «${title}» xatmi yakunlandi: 30 poraning barchasi oʻqildi. Alloh barchangizdan qabul qilsin.`,
   },
 
   ru: {
@@ -159,7 +181,7 @@ export const TEXT: Record<Lang, BotText> = {
       '1. LifePath бесплатен. LifePath Plus — необязательная подписка, которая оплачивается звёздами Telegram.\n' +
       '2. Подписка Plus продлевается каждые 30 дней, пока вы не отмените её в Telegram (Настройки → Мои звёзды). После отмены Plus действует до конца оплаченного периода.\n' +
       '3. По вопросам оплаты и возврата отправьте команду /paysupport.\n' +
-      '4. Мы храним только то, что нужно для работы приложения: ваш Telegram ID, имя, язык и часовой пояс, созданные вами напоминания, ваши очки, время, когда вы последний раз открывали приложение, соревнования с друзьями, в которых вы участвуете (их участники видят ваше имя и результат), а если вы участвуете в рейтинге — выбранные вами имя и страну. Картинки, которыми вы делитесь в историях Telegram, хранятся один день.\n' +
+      '4. Мы храним только то, что нужно для работы приложения: ваш Telegram ID, имя, язык и часовой пояс, созданные вами напоминания, ваши очки, время, когда вы последний раз открывали приложение, соревнования с друзьями, в которых вы участвуете (их участники видят ваше имя и результат), ваши серии с друзьями (друг видит ваше имя и то, были ли вы активны в каждый из дней), совместные хатмы, в которых вы участвуете (их участники видят ваше имя и джузы, которые вы взяли и прочитали), а если вы участвуете в рейтинге — выбранные вами имя и страну. Картинки, которыми вы делитесь в историях Telegram, хранятся один день.\n' +
       '5. LifePath предоставляется «как есть», без гарантий.',
     thanks: (date) => `Спасибо! LifePath Plus активен до ${date}.`,
     invoiceInvalid: 'Этот счёт недействителен. Откройте LifePath и попробуйте ещё раз.',
@@ -190,6 +212,13 @@ export const TEXT: Record<Lang, BotText> = {
         : place === 1
           ? `🏆 Соревнование «${kind}» завершилось — вы победили, ${score}! МашаАллах.`
           : `🏁 Соревнование «${kind}» завершилось. Ваше место: ${place} из ${total} (${score}). Победитель: ${winner}.`,
+    buddyAccepted: (name) => `🤝 ${name} теперь ведёт серию вместе с вами. День засчитывается, когда каждый из вас сделал в LifePath хотя бы одно дело.`,
+    buddyNudge: (name, streak) =>
+      streak > 0
+        ? `🔥 ${name}: на сегодня всё сделано. Теперь ваш ход, и общая серия (${ru(streak, 'день', 'дня', 'дней')}) продолжится.`
+        : `🔥 ${name}: на сегодня всё сделано. Теперь ваш ход, и ваша общая серия начнётся.`,
+    khatmJoined: (name, title) => `📖 В вашем хатме «${title}» новый участник: ${name}.`,
+    khatmDone: (title) => `🤲 Хатм «${title}» завершён: прочитаны все 30 джузов. Да примет Аллах от всех вас.`,
   },
 };
 

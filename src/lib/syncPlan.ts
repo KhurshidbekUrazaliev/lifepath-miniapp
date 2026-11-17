@@ -114,6 +114,7 @@ export function mergeProfiles(local: Profile, remote: Profile): Profile {
     questDay: (remote.questDay ?? '') > (local.questDay ?? '') ? remote.questDay : local.questDay,
     // Wardrobe: everything either device bought stays owned; the worn outfit follows this device.
     owned: Array.from(new Set([...(remote.owned ?? []), ...(local.owned ?? [])])),
+    specialDays: Array.from(new Set([...(remote.specialDays ?? []), ...(local.specialDays ?? [])])),
     // Echo: keep the one that was named; if both were, this device wins.
     echo: local.echo?.name ? local.echo : (remote.echo ?? local.echo),
     // The khatm: the newer plan, or the furthest page of the same one.

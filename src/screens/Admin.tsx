@@ -1,9 +1,11 @@
-// The owner's panel: who uses LifePath, what level they are, and what is opened for them.
+// The owner's panel: who uses LifePath, what level they are, and what is opened for them, and what the
+// app has reported about its own errors.
 // Only the bot's owner is shown the way here, and the server refuses everyone else whatever the app says.
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import { ArrowsClockwise, CalendarCheck, Crown, LockKeyOpen, PaperPlaneTilt, SunHorizon, UserPlus, UsersThree } from '@phosphor-icons/react';
+import { ArrowsClockwise, Bug, CalendarCheck, CaretDown, Crown, LockKeyOpen, PaperPlaneTilt, SunHorizon, UserPlus, UsersThree } from '@phosphor-icons/react';
 import { api, useServer } from '../store/server';
 import { AdminAccess, AdminList, AdminSort, AdminUser, MAX_SPARKS_GIFT, hasPlus, listQuery, profileLink, seenAgo, statsAfter, withAccess } from '../lib/admin';
+import type { ErrorList, ErrorRow } from '../lib/errors';
 import { haptic, openLink, tgUser } from '../tg/telegram';
 import { t } from '../i18n';
 import { fmtLongDate, fmtNumber, fmtRelative, fmtShortDate } from '../i18n/format';
@@ -126,6 +128,8 @@ export function Admin() {
         {tile(<Crown size={22} style={{ color: 'var(--violet)' }} />, stats?.plus, t('admin.stat.plus'))}
         {tile(<LockKeyOpen size={22} style={{ color: 'var(--orange)' }} />, stats?.levelsOpen, t('admin.stat.open'))}
       </div>
+
+      <Errors round={round} />
 
       <input
         className="input"
@@ -278,6 +282,98 @@ function Person({ user: u, now, open, onOpen, onAccess }: PersonProps) {
               <PaperPlaneTilt size={16} /> {t('admin.telegram')}
             </Tap>
           ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** "Just now", "12 min ago", "3 h ago", then a day or a date. */
+function agoText(at: number, now: number): string {
+  const ago = seenAgo(at, now);
+  if (ago.unit === 'now' || ago.unit === 'never') return t('admin.errors.now');
+  if (ago.unit === 'min') return t('admin.seen.min', { n: ago.n });
+  if (ago.unit === 'hour') return t('admin.seen.hour', { n: ago.n });
+  return fmtRelative(at, now);
+}
+
+/**
+ * What the app reported about its own errors (store/report.ts): the newest build first, and for each
+ * error how often it happened, when last, on which screen and on what. A tap shows where in the code.
+ */
+function Errors({ round }: { round: number }) {
+  const [list, setList] = useState<ErrorList | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [shown, setShown] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setFailed(false);
+    api<ErrorList>('GET', '/admin/errors')
+      .then((next) => alive && setList(next))
+      .catch(() => alive && setFailed(true));
+    return () => {
+      alive = false;
+    };
+  }, [round]);
+
+  // How many different errors there are; each row says how many times it happened.
+  const count = list ? list.builds.reduce((n, b) => n + b.errors.length, 0) : 0;
+  const head = (
+    <>
+      <span className="lrow-ic"><Bug size={21} style={{ color: count ? 'var(--red)' : 'var(--green)' }} /></span>
+      <span className="grow" style={{ minWidth: 0 }}>
+        <span className="t-body" style={{ display: 'block' }}>{t('admin.errors')}</span>
+        <span className="t-small muted" style={{ display: 'block', marginTop: 2 }}>
+          {failed ? t('admin.error') : list && count === 0 ? t('admin.errors.none') : t('admin.errors.sub')}
+        </span>
+      </span>
+      {list ? <span className={cx('admin-errors-count num', count > 0 && 'some')}>{fmtNumber(count)}</span> : null}
+      {count > 0 ? <CaretDown size={18} weight="bold" className={cx('chev admin-errors-caret', open && 'up')} /> : null}
+    </>
+  );
+
+  return (
+    <Card pad={false} className="list">
+      {count > 0 ? (
+        <Tap className="admin-errors-head" onTap={() => setOpen(!open)} scale={0.985} hap="select">{head}</Tap>
+      ) : (
+        <div className="admin-errors-head">{head}</div>
+      )}
+      {open && list
+        ? list.builds.map((b) => (
+            <div key={b.build}>
+              <div className="admin-build">
+                <span className="t-small num clip" style={{ fontWeight: 700 }}>{t('about.build', { id: b.build })}</span>
+                <span className="t-tiny muted num">×{fmtNumber(b.count)}</span>
+              </div>
+              {b.errors.map((e) => (
+                <Problem key={e.key} error={e} now={list.now} open={shown === e.key} onOpen={() => setShown(shown === e.key ? null : e.key)} />
+              ))}
+            </div>
+          ))
+        : null}
+    </Card>
+  );
+}
+
+function Problem({ error: e, now, open, onOpen }: { error: ErrorRow; now: number; open: boolean; onOpen: () => void }) {
+  // Where the latest one happened: "render · tasks · ios 8.0 · ru".
+  const where = [e.kind, e.screen, [e.platform, e.tg].filter(Boolean).join(' '), e.lang].filter(Boolean).join(' · ');
+  return (
+    <div className={cx('admin-error', open && 'open')}>
+      <Tap className="lrow" onTap={onOpen} scale={0.985} hap="select">
+        <span className="grow" style={{ minWidth: 0 }}>
+          <span className="admin-error-text">{e.message}</span>
+          <span className="admin-error-where t-tiny muted">{agoText(e.lastAt, now)} · {where}</span>
+        </span>
+        <span className="admin-error-times num">×{fmtNumber(e.count)}</span>
+      </Tap>
+      {open ? (
+        <div className="admin-detail">
+          <div className="t-tiny muted">{t('admin.errors.first', { date: fmtLongDate(e.firstAt) })}</div>
+          {e.stack ? <pre className="admin-stack">{e.stack}</pre> : <div className="t-small muted">{t('admin.errors.nostack')}</div>}
         </div>
       ) : null}
     </div>

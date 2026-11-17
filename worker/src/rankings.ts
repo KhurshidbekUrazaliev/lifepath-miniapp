@@ -3,6 +3,7 @@ import { DAY_MS } from './env';
 import { badRequest, json, readJson } from './http';
 import { weekStart } from './time';
 import { ACTIVE_MEMBERSHIPS, readCounters, scoreUpdates, type Membership } from './challenges';
+import { BUDDY_DAY_DUE, activeDayStatements, nearToday } from './buddies';
 import { loadUser, rows, type Ctx } from './users';
 import { bool, day, int, oneOf, str } from './validate';
 
@@ -44,14 +45,21 @@ export async function postActivity(c: Ctx): Promise<Response> {
   const xp = body.xp === undefined ? null : int(body.xp, 'xp', 0, MAX_XP);
   // The counters friend challenges are scored on (sent by app versions that have challenges).
   const counters = body.counters === undefined ? null : readCounters(body.counters);
+  // The last day the person did something that earned XP, for buddy streaks (sent by app versions that
+  // have them). It is believed only within a day of the server's own date.
+  const reported = body.activeDay === undefined || body.activeDay === null ? null : day(body.activeDay, 'activeDay');
+  const activeDay = nearToday(reported, c.now) ? reported : null;
 
   const db = c.env.DB;
   const id = c.auth.id;
   const { user, writes, results } = await loadUser(c, {}, [
     db.prepare(SCORE).bind(id),
     ...(counters ? [db.prepare(ACTIVE_MEMBERSHIPS).bind(id, c.now)] : []),
+    ...(activeDay ? [db.prepare(BUDDY_DAY_DUE).bind(id, activeDay)] : []),
   ]);
   if (counters) writes.push(...scoreUpdates(db, rows<Membership>(results[1]), counters, id, c.now));
+  // Only when one of their pairs has not heard of this day yet, so most reports write nothing here.
+  if (activeDay && rows(results[counters ? 2 : 1]).length) writes.push(...activeDayStatements(db, id, activeDay));
   const old = rows<ScoreRow>(results[0])[0];
 
   // The weekly score counts only when the app agrees with the server on which week it is.

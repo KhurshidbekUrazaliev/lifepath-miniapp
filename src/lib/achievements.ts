@@ -2,7 +2,8 @@
 // the adhkar, the Qurʼan, focus, the journal and friend challenges. Most are worked out from the data; the two for
 // challenges are unlocked when they happen (the server keeps challenges, not the app).
 import { ACHIEVEMENTS, earnedAchievements, levelInfo } from './gamify';
-import { Checks, Entry, Folder, Habit, Page, Profile, Task } from './types';
+import { Checks, Entry, Folder, Habit, Page, Plan, Profile, Settings, Task } from './types';
+import { specialBadges } from './special';
 import { bestHabitStreak, shiftDay } from './habits';
 import { PRAYERS } from './prayerTimes';
 import { bestJournalStreak, writtenDays } from './journal';
@@ -38,6 +39,11 @@ export const BADGES: Badge[] = [
   { id: 'journal-first', icon: '📝', tone: 'violet' },
   { id: 'journal-7', icon: '✍️', tone: 'pink' },
   { id: 'journal-30', icon: '📚', tone: 'gold' },
+  { id: 'special-ramadan', icon: '🌙', tone: 'violet' },
+  { id: 'special-ten', icon: '🌅', tone: 'gold' },
+  { id: 'special-arafah', icon: '⛰️', tone: 'green' },
+  { id: 'special-ashura', icon: '💧', tone: 'blue' },
+  { id: 'special-white', icon: '🌕', tone: 'pink' },
   { id: 'challenge-join', icon: '🤝', tone: 'blue' },
   { id: 'challenge-win', icon: '🏆', tone: 'gold' },
 ];
@@ -86,7 +92,7 @@ export function bestPrayerRun(worship: Checks): number {
 
 export function earnedBadges(d: {
   profile: Profile; tasks: Task[]; entries: Entry[]; folders: Folder[]; habits: Habit[]; checks: Checks; worship: Checks;
-  pages?: Page[];
+  pages?: Page[]; plans?: Plan[]; settings?: Pick<Settings, 'hijriOffset'>;
 }): string[] {
   const ids = earnedAchievements(d.profile, d.tasks, d.entries, d.folders.length);
   const anyTick = Object.values(d.checks).some((month) => Object.values(month).some((mask) => mask !== 0));
@@ -118,5 +124,5 @@ export function earnedBadges(d: {
   if (written >= 1) ids.push('journal-first');
   if (written >= 7 && bestJournalStreak(pages) >= 7) ids.push('journal-7');
   if (written >= 30) ids.push('journal-30');
-  return ids;
+  return [...ids, ...specialBadges(d)];
 }

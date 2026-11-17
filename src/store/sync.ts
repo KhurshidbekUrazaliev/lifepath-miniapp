@@ -6,6 +6,7 @@ import {
   KeyMap, MANIFEST_KEY, Placement, chunksOf, decode, diff, encode, keysOf, manifestFor, merge, parseManifest, sameData, unlisted, usage,
 } from '../lib/cloudCodec';
 import { Data } from '../lib/stats';
+import { writeBackup } from '../lib/backup';
 import { dataChanged, emptyData, snapshot, useStore } from './store';
 
 export type SyncStatus = 'local' | 'idle' | 'syncing' | 'offline';
@@ -218,7 +219,7 @@ export function startSync(): void {
   else useSync.setState({ ready: true });
 }
 
-/** Everything as one JSON string, for a manual backup. */
+/** Everything as one JSON string, for a manual backup (lib/backup.ts writes it, and reads it back). */
 export function exportJson(): string {
-  return JSON.stringify({ app: 'lifepath-miniapp', version: 1, exportedAt: new Date().toISOString(), data: snapshot() });
+  return writeBackup(snapshot());
 }

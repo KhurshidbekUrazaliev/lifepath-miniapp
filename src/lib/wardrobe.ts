@@ -3,6 +3,8 @@
 // (see src/companion/models.json). Skies are drawn in CSS behind the 3D stage, and hijab colours
 // recolour the girl's ivory hijab (companion/scene.ts; the flat picture draws them too).
 import type { Gender } from './companion';
+import type { Checks, Page, Profile } from './types';
+import { writtenDays } from './journal';
 
 export type Slot = 'head' | 'color' | 'face' | 'neck' | 'back' | 'hold' | 'pet' | 'place' | 'sky';
 
@@ -35,7 +37,8 @@ export interface Placement {
 export interface Item {
   id: string;
   slot: Slot;
-  price: number; // Sparks; 0 = everyone owns it
+  price: number; // Sparks; 0 is free only when there is no deed to earn it
+  earn?: { by: 'fajr' | 'quran' | 'journal'; n: number };
   color: string; // swatch colours (skies, hijab colours) or the tile tint
   color2?: string;
   minStage?: number; // growth stage needed to buy: 0 little, 1 kid, 2 teen, 3 grown
@@ -104,10 +107,10 @@ export const ITEMS: Item[] = [
   { id: 'book', slot: 'hold', price: 40, color: '#1F8A8A', model: 'book', place: NEAR, emoji: '📗' },
   { id: 'football', slot: 'hold', price: 45, color: '#2D3E8F', color2: '#FFFFFF', model: 'football', place: NEAR, emoji: '⚽' },
   { id: 'tasbih', slot: 'hold', price: 50, color: '#8A5A3C', model: 'tasbih', place: NEAR, emoji: '📿' },
-  { id: 'notebook', slot: 'hold', price: 55, color: '#8B3FE0', model: 'notebook', place: NEAR, emoji: '📓' },
+  { id: 'notebook', slot: 'hold', price: 0, earn: { by: 'journal', n: 7 }, color: '#8B3FE0', model: 'notebook', place: NEAR, emoji: '📓' },
   { id: 'piyola', slot: 'hold', price: 60, color: '#2F6FD6', color2: '#FFFFFF', model: 'piyola', place: NEAR, emoji: '🍵' },
   { id: 'lantern', slot: 'hold', price: 80, color: '#D9A441', model: 'lantern', place: NEAR, emoji: '🏮' },
-  { id: 'rehal', slot: 'hold', price: 110, color: '#B5713A', color2: '#F4EBDD', model: 'rehal', place: NEAR, emoji: '📖' },
+  { id: 'rehal', slot: 'hold', price: 0, earn: { by: 'quran', n: 100 }, color: '#B5713A', color2: '#F4EBDD', model: 'rehal', place: NEAR, emoji: '📖' },
   // Pets
   { id: 'pet-none', slot: 'pet', price: 0, color: '#8B82FF', emoji: '🐾' },
   { id: 'scholar', slot: 'pet', price: 120, color: '#F3E2B8', color2: '#E0762B', model: 'scholar', place: PET, emoji: '🤓' },
@@ -121,7 +124,7 @@ export const ITEMS: Item[] = [
   { id: 'place-none', slot: 'place', price: 0, color: '#8B82FF', emoji: '⭕' },
   { id: 'base-garden', slot: 'place', price: 150, color: '#7BC86C', model: 'base-garden', place: BASE, emoji: '🌷' },
   { id: 'base-study', slot: 'place', price: 200, color: '#B98A5E', model: 'base-study', place: BASE, emoji: '📚' },
-  { id: 'base-masjid', slot: 'place', price: 220, color: '#C0392B', color2: '#E8C98A', model: 'base-masjid', place: BASE, emoji: '🕌' },
+  { id: 'base-masjid', slot: 'place', price: 0, earn: { by: 'fajr', n: 30 }, color: '#C0392B', color2: '#E8C98A', model: 'base-masjid', place: BASE, emoji: '🕌' },
   { id: 'base-bazaar', slot: 'place', price: 240, color: '#D9843B', minStage: 1, model: 'base-bazaar', place: BASE, emoji: '🍉' },
   { id: 'base-courtyard', slot: 'place', price: 250, color: '#2BB5C8', minStage: 1, model: 'base-courtyard', place: BASE, emoji: '🕌' },
   { id: 'base-mountain', slot: 'place', price: 280, color: '#6FBF73', color2: '#FFFFFF', minStage: 1, model: 'base-mountain', place: BASE, emoji: '⛰️' },
@@ -191,16 +194,40 @@ export function sparkBalance(profile: { sparks: number; owned?: string[] }, gift
 }
 
 export const isOwned = (profile: { owned?: string[] }, item: Item): boolean =>
-  item.price === 0 || (profile.owned ?? []).includes(item.id);
+  (!item.earn && item.price === 0) || (profile.owned ?? []).includes(item.id);
 
-export type BuyCheck = { ok: true } | { ok: false; reason: 'owned' | 'poor' | 'stage' | 'gender' | 'unknown' };
+export type BuyCheck = { ok: true } | { ok: false; reason: 'owned' | 'poor' | 'stage' | 'gender' | 'unknown' | 'earned' };
 
 export function canBuy(profile: { sparks: number; owned?: string[] }, itemId: string, stageIndex: number, gender?: Gender, gift = 0): BuyCheck {
   const item = itemById(itemId);
   if (!item) return { ok: false, reason: 'unknown' };
   if (isOwned(profile, item)) return { ok: false, reason: 'owned' };
+  if (item.earn) return { ok: false, reason: 'earned' };
   if (item.gender && gender && item.gender !== gender) return { ok: false, reason: 'gender' };
   if ((item.minStage ?? 0) > stageIndex) return { ok: false, reason: 'stage' };
   if (sparkBalance(profile, gift) < item.price) return { ok: false, reason: 'poor' };
   return { ok: true };
+}
+
+
+type EarnData = { profile: Pick<Profile, 'owned' | 'quranPages'>; worship: Checks; pages: Page[] };
+
+/** Progress toward a deed item. Duplicate diary pages count as one day; notes do not count. */
+export function earnProgress(d: EarnData, item: Item): { have: number; need: number } | null {
+  if (!item.earn) return null;
+  let have = 0;
+  if (item.earn.by === 'quran') have = d.profile.quranPages ?? 0;
+  else if (item.earn.by === 'journal') have = writtenDays(d.pages).size;
+  else for (const month of Object.values(d.worship)) {
+    for (let bits = (month.fajr ?? 0) & 0x7fffffff; bits; bits &= bits - 1) have++;
+  }
+  return { have, need: item.earn.n };
+}
+
+/** Only items not already owned are due, so later unticking cannot take a gift back. */
+export function earnedItems(d: EarnData): string[] {
+  return ITEMS.filter((item) => {
+    const p = earnProgress(d, item);
+    return p && p.have >= p.need && !isOwned(d.profile, item);
+  }).map((item) => item.id);
 }

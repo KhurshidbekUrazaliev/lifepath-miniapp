@@ -1,0 +1,192 @@
+/* The week's recap (the "Your week" sheet and its card on Analytics), and the sheet that restores a backup. */
+
+/* ---------- the seven days ---------- */
+
+.week-days {
+  padding: 13px 14px 12px;
+}
+.week-days-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.week-days-head b {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+.week-days-head .pillnote {
+  min-width: 0;
+}
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-top: 14px;
+}
+.week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.week-day i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--stroke-2);
+  color: #fff;
+}
+.week-day.on i {
+  border: 0;
+  background: var(--green);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--green) 55%, transparent);
+}
+/* A day that has not come is fainter than one that passed with nothing done. */
+.week-day.later i {
+  opacity: 0.45;
+}
+.week-day.today {
+  color: var(--text);
+}
+.week-day.today i {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+.week-days-foot {
+  margin-top: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-align: center;
+}
+
+/* ---------- what the companion says, and the note about the journal ---------- */
+
+.week-say {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px 12px 10px;
+}
+.week-say p {
+  margin: 3px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+.week-private {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--text-3);
+}
+.week-private svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ---------- the card on Analytics ---------- */
+
+.week-card {
+  gap: 13px;
+  padding: 13px 14px;
+}
+.week-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.week-card-top span {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.week-card-line {
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- restoring a backup ---------- */
+
+/* A backup is long and not for reading: a few small lines of it are enough to see that it is there. */
+textarea.restore-box {
+  min-height: 104px;
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 500;
+  word-break: break-all;
+}
+.restore-paste {
+  align-self: flex-start;
+}
+.restore-sum {
+  padding: 13px 8px 6px;
+}
+.restore-sum-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px 11px;
+  border-bottom: 1px solid var(--stroke);
+}
+.restore-sum-head b {
+  font-size: 15px;
+  font-weight: 700;
+}
+.restore-sum-head span {
+  font-size: 12.5px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--text-2);
+}
+.restore-sum-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  row-gap: 4px;
+  padding-top: 6px;
+}
+.restore-sum-grid > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 4px;
+  font-size: 11.5px;
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--text-2);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.restore-sum-grid b {
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.restore-mark {
+  display: grid;
+  place-items: center;
+  padding-top: 6px;
+}

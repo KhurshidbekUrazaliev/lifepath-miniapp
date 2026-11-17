@@ -32,13 +32,19 @@ export type Screen =
   | { name: 'rankings' }
   | { name: 'challenges' }
   | { name: 'challenge'; id: string }
+  | { name: 'together' }
+  // `invite` is the code of a friend's invite link: the screen then asks whether to accept it.
+  | { name: 'buddies'; invite?: string }
+  // One group khatm; without an id, the list of them.
+  | { name: 'gkhatm'; id?: string }
   | { name: 'plus' }
   | { name: 'admin' }
   | { name: 'journal'; tab?: 'diary' | 'notes' }
   // One page of the journal. Without an id it is a new one: a diary entry (about `day`, today when left
   // out) or a note; `mood` and `ask` are what the page starts with.
   | { name: 'page'; id?: string; kind?: 'note'; day?: string; mood?: Feeling; ask?: string }
-  | { name: 'lookback' };
+  | { name: 'lookback' }
+  | { name: 'homecards' };
 
 export type Sheet =
   | { name: 'add' }
@@ -56,7 +62,11 @@ export type Sheet =
   | { name: 'place' }
   | { name: 'rank' }
   | { name: 'challengeNew' }
-  | { name: 'entry'; entryId: string };
+  | { name: 'entry'; entryId: string }
+  | { name: 'restore' }
+  | { name: 'week' }
+  | { name: 'gkhatmNew' }
+  | { name: 'juz'; id: string; juz: number };
 
 export type Route = Screen & { key: string };
 
@@ -99,7 +109,8 @@ export const useNav = create<Nav>()((set, get) => ({
 
 /**
  * Opens whatever a deep link points at: "goal_<id>", "ch_<id>" (a friend challenge), "write" (a new
- * diary entry, from the journal reminder), or a screen's name.
+ * diary entry, from the journal reminder), "week" (the week's recap, from the Sunday letter), or a
+ * screen's name.
  */
 export function openDeepLink(param: string | undefined): void {
   if (!param) return;
@@ -107,8 +118,12 @@ export function openDeepLink(param: string | undefined): void {
   const [kind, id] = param.split('_');
   if (kind === 'goal' && id) nav.push({ name: 'goal', id });
   else if (kind === 'ch' && id) nav.push({ name: 'challenge', id });
+  else if (kind === 'b' && id) nav.push({ name: 'buddies', invite: id });
+  else if (kind === 'k' && id) nav.push({ name: 'gkhatm', id });
+  else if (kind === 'together' || kind === 'buddies' || kind === 'gkhatm') nav.push({ name: kind });
   else if (kind === 'write') nav.push({ name: 'page' });
   else if (kind === 'journal') nav.push({ name: 'journal' });
+  else if (kind === 'week') nav.open({ name: 'week' });
   else if (
     kind === 'habits' || kind === 'tasks' || kind === 'calendar' || kind === 'plus' || kind === 'rankings' || kind === 'goals' ||
     kind === 'prayer' || kind === 'qibla' || kind === 'adhkar' || kind === 'khatm' || kind === 'focus' || kind === 'challenges'
