@@ -722,6 +722,7 @@ export const ru: Record<string, string> = {
   'story.busy': 'Готовим…',
   'story.failed': 'Не удалось подготовить историю. Попробуйте ещё раз.',
   'story.caption': 'Расту вместе с LifePath 🌱',
+  'story.quote.caption': 'Напоминание на сегодня от LifePath 🌱',
   'story.footer': 'Расти вместе со мной в LifePath',
   'story.level': 'Уровень {n}',
   'story.level.sub': '{name}: новый уровень',

@@ -653,6 +653,7 @@ export const uz: Record<string, string> = {
   'story.busy': 'Tayyorlanmoqda…',
   'story.failed': 'Storis tayyorlanmadi. Qayta urinib koʻring.',
   'story.caption': 'LifePath bilan oʻsyapman 🌱',
+  'story.quote.caption': 'Bugungi eslatma, LifePathʼdan 🌱',
   'story.footer': 'LifePath ilovasida men bilan oʻsing',
   'story.level': '{n}-daraja',
   'story.level.sub': '{name} yangi darajaga chiqdi',

@@ -795,7 +795,15 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
 
   function still(size: number): HTMLCanvasElement | null {
     if (!model) return null;
+    // Wider than the stage draws: one frame is drawn at that size (a story picture), then the stage goes
+    // back to its own, so the picture is sharp rather than the small stage stretched.
+    const sharp = size > canvas.width;
+    const ratio = renderer.getPixelRatio();
     try {
+      if (sharp) {
+        renderer.setPixelRatio(1);
+        renderer.setSize(size, Math.round((size * viewH) / viewW), false);
+      }
       renderer.render(scene, camera);
       const out = document.createElement('canvas');
       out.width = size;
@@ -804,6 +812,12 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
       return out;
     } catch {
       return null;
+    } finally {
+      if (sharp) {
+        renderer.setPixelRatio(ratio);
+        renderer.setSize(viewW, viewH, false);
+        renderer.render(scene, camera);
+      }
     }
   }
 

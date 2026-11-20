@@ -14,6 +14,8 @@ import type { Clip, StageController, TapPart } from './types';
 export interface CompanionHandle {
   play: (clip: Clip) => boolean;
   has: (clip: Clip) => boolean;
+  /** The companion as it stands now, drawn `width` pixels wide (null until the 3D stage is ready). */
+  picture: (width: number) => HTMLCanvasElement | null;
 }
 
 interface Props {
@@ -154,6 +156,7 @@ export const CompanionStage = forwardRef<CompanionHandle, Props>(function Compan
   useImperativeHandle(ref, () => ({
     play: (clip) => ctl.current?.play(clip) ?? false,
     has: (clip) => ctl.current?.has(clip) ?? false,
+    picture: (width) => ctl.current?.still(width) ?? null,
   }), []);
 
   const skyStyle = sky.id === 'bg-none'

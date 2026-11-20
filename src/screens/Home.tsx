@@ -26,6 +26,8 @@ import { CompanionHandle, CompanionStage, StageState } from '../companion/Compan
 import type { Clip, TapPart } from '../companion/types';
 import { Emoji } from '../ui/Emoji';
 import { AyahCard } from '../ui/Ayah';
+import { QuoteStoryButton } from '../ui/QuoteStory';
+import { offerHeroShot } from '../companion/heroShot';
 import { AdhkarCard, PrayerCard, useAdhkarDue, usePrayerNow } from './Prayer';
 import { FocusCard } from '../ui/FocusCard';
 import { JournalCard } from '../journal/Journal';
@@ -301,6 +303,12 @@ function Hero({ streak, level }: { streak: number; level: number }) {
     },
     [answer],
   );
+  // While Home's stage is here, a story of the day's words draws the companion from it, fresh and sharp.
+  useEffect(() => {
+    offerHeroShot((width) => stage.current?.picture(width) ?? null);
+    return () => offerHeroShot(null);
+  }, []);
+
   const onTap = (part: TapPart) => {
     haptic('light');
     stage.current?.play(part === 'head' ? 'nod' : TAP_MOVES[taps.current++ % TAP_MOVES.length]);
@@ -347,14 +355,24 @@ function Hero({ streak, level }: { streak: number; level: number }) {
         </h1>
         <div className="t-body muted hero-tag">{t('home.tagline')}</div>
         {e.echo ? (
-          <Tap className="hero-say" onTap={() => push({ name: 'echo' })} scale={0.98}>
-            <span className="t-tiny advisor-kind">{e.echo.name} · {t('home.hadithOfDay')}</span>
-            <span className="advisor-text">{today.text}</span>
-            <span className="t-tiny faint">
-              {today.source}
-              {today.ai ? ` · ${t('advice.ai')}` : ''}
-            </span>
-          </Tap>
+          <div className="hero-say-wrap">
+            <Tap className="hero-say" onTap={() => push({ name: 'echo' })} scale={0.98}>
+              <span className="t-tiny advisor-kind">{e.echo.name} · {t('home.hadithOfDay')}</span>
+              <span className="advisor-text">{today.text}</span>
+              <span className="t-tiny faint">
+                {today.source}
+                {today.ai ? ` · ${t('advice.ai')}` : ''}
+              </span>
+            </Tap>
+            <QuoteStoryButton
+              className="hero-share"
+              make={() => ({
+                label: `${e.echo!.name} · ${t('home.hadithOfDay')}`,
+                text: today.text,
+                source: [today.source, today.ai ? t('advice.ai') : ''].filter(Boolean).join(' · '),
+              })}
+            />
+          </div>
         ) : (
           <Tap className="hero-say" onTap={() => open({ name: 'echo' })} scale={0.98}>
             <span className="t-tiny advisor-kind">{t('you.echo.meet')}</span>

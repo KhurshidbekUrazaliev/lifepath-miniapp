@@ -109,21 +109,24 @@ export function useStory() {
   const [state, setState] = useState<'idle' | 'busy' | 'failed'>('idle');
   const can = canStory && server === 'ok' && !!bot;
 
-  const share = async (make: (p: Profile) => Body) => {
+  /** Draws a picture (given where LifePath is: "t.me/<bot>"), puts it on the server and opens the story editor. */
+  const shareDrawn = async (draw: (link: string) => Promise<Blob>, caption = t('story.caption')) => {
     if (!can || state === 'busy') return;
     setState('busy');
     try {
       const appLink = `https://t.me/${bot}?startapp`;
-      const blob = await drawStory({ ...make(useStore.getState().profile), footer: t('story.footer'), link: `t.me/${bot}` });
+      const blob = await draw(`t.me/${bot}`);
       const { url } = await api<{ url: string }>('POST', '/story', blob);
-      if (!shareStory(url, `${t('story.caption')} ${appLink}`, { url: appLink, name: 'LifePath' })) throw new Error('not opened');
+      if (!shareStory(url, `${caption} ${appLink}`, { url: appLink, name: 'LifePath' })) throw new Error('not opened');
       setState('idle');
     } catch {
       haptic('error');
       setState('failed');
     }
   };
-  return { can, busy: state === 'busy', failed: state === 'failed', share };
+  const share = (make: (p: Profile) => Body) =>
+    shareDrawn((link) => drawStory({ ...make(useStore.getState().profile), footer: t('story.footer'), link }));
+  return { can, busy: state === 'busy', failed: state === 'failed', share, shareDrawn };
 }
 
 export function StoryButton({ make, className = 'btn soft' }: { make: (p: Profile) => Body; className?: string }) {

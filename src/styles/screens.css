@@ -2087,3 +2087,46 @@
   align-items: center;
   gap: 12px;
 }
+
+/* Sharing the day's words as a story: a small round button beside them. */
+.quote-story {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--text-2);
+  background: var(--glass);
+  border: 1px solid var(--stroke-2);
+}
+.quote-story.bad {
+  color: var(--orange);
+}
+.hero-say-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+}
+.hero-say-wrap .hero-say {
+  margin-top: 0;
+}
+.hero-say-wrap .faint {
+  padding-right: 26px;
+}
+.hero-share {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border-color: transparent;
+}
+/* The ayah card is a night sky in both themes. */
+.ayah-foot .quote-story {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.22);
+}

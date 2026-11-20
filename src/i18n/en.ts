@@ -677,6 +677,7 @@ export const en = {
   'story.busy': 'Preparing…',
   'story.failed': "Couldn't prepare the story. Try again.",
   'story.caption': 'Growing with LifePath 🌱',
+  'story.quote.caption': 'A reminder for today, from LifePath 🌱',
   'story.footer': 'Grow with me on LifePath',
   'story.level': 'Level {n}',
   'story.level.sub': '{name} reached a new level',

@@ -9,6 +9,17 @@ import { useStore } from '../store/store';
 import { useNav } from '../store/nav';
 import { Card, Tap, cx } from './kit';
 import { Emoji } from './Emoji';
+import { Quote, QuoteStoryButton } from './QuoteStory';
+
+/** The ayah of the day as a story: the Arabic with its ayah marks, the translation, where it is from. */
+function ayahQuote(p: Passage): Quote {
+  return {
+    label: t('verse.title'),
+    arabic: p.ayat.map((a) => `${a.ar} ${ayahEnd(Number(a.k.split(':')[1]))}`).join(' '),
+    text: translationParts(p, getLang(), true).map((x) => x.text).join(' ').replace(/[[\]]/g, ''),
+    source: passageRef(p),
+  };
+}
 
 /** The Arabic of a passage; the ayah being recited is highlighted. */
 export function AyahArabic({ p, active = -1 }: { p: Passage; active?: number }) {
@@ -144,7 +155,10 @@ export function AyahCard() {
       </Tap>
       <div className="ayah-foot">
         <span className={cx('t-tiny clip', failed ? 'ayah-error' : 'muted')}>{failed ? t('verse.audioError') : passageRef(p)}</span>
-        <ListenButton p={p} />
+        <span className="row" style={{ gap: 8 }}>
+          <QuoteStoryButton make={() => ayahQuote(p)} />
+          <ListenButton p={p} />
+        </span>
       </div>
     </Card>
   );
