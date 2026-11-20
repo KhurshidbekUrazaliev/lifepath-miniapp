@@ -76,6 +76,7 @@ export function Admin() {
       levelsOpen: patch.levels ?? user.levelsOpen,
       plusGift: patch.plus ?? user.plusGift,
       sparksGift: patch.sparks ?? user.sparksGift,
+      wardrobeOpen: patch.wardrobe ?? user.wardrobeOpen,
     };
     const put = (access: AdminAccess) =>
       setList((cur) => {
@@ -185,6 +186,7 @@ interface Patch {
   levels?: boolean;
   plus?: boolean;
   sparks?: number;
+  wardrobe?: boolean;
 }
 
 interface PersonProps {
@@ -262,6 +264,13 @@ function Person({ user: u, now, open, onOpen, onAccess }: PersonProps) {
               </span>
             </span>
             <Toggle on={u.plusGift} onChange={(plus) => onAccess(u, { plus })} label={t('admin.plus')} />
+          </div>
+          <div className="admin-switch">
+            <span className="grow">
+              <span className="t-body" style={{ display: 'block' }}>{t('admin.wardrobe')}</span>
+              <span className="t-small muted" style={{ display: 'block', marginTop: 2 }}>{t('admin.wardrobe.sub')}</span>
+            </span>
+            <Toggle on={u.wardrobeOpen} onChange={(wardrobe) => onAccess(u, { wardrobe })} label={t('admin.wardrobe')} />
           </div>
 
           <div>

@@ -892,6 +892,13 @@ try {
   check(give.status === 200 && give.json.levelsOpen === true && give.json.plusGift === false, 'the owner opens the levels for someone', give.json);
   let bobNow = await hi(bob, 'uz');
   check(bobNow?.access.levels === true && bobNow.plus.active === false, 'and their app is told', bobNow);
+  check(bobNow?.access.wardrobe === false, 'the wardrobe stays as it was until the owner opens it', bobNow?.access);
+  const robe = await call('PUT', '/api/admin/access', { user: carol, body: { id: 222, wardrobe: true } });
+  check(robe.status === 200 && robe.json.wardrobeOpen === true && robe.json.levelsOpen === true, 'the owner opens the whole wardrobe, and the levels stay open', robe.json);
+  bobNow = await hi(bob, 'uz');
+  check(bobNow?.access.wardrobe === true, 'and their app is told the wardrobe is open', bobNow?.access);
+  check((await call('GET', '/api/admin/users?q=222', { user: alice })).json?.users[0]?.wardrobeOpen === true, 'the panel lists it');
+  check((await call('PUT', '/api/admin/access', { user: carol, body: { id: 222, wardrobe: 'yes' } })).status === 400, 'a wardrobe switch that is not true or false: 400');
   await call('PUT', '/api/admin/access', { user: carol, body: { id: 222, plus: true } });
   bobNow = await hi(bob, 'uz');
   check(

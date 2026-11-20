@@ -79,7 +79,7 @@ interface Hello {
   user: { id: number; firstName: string; username: string | null };
   plus: PlusInfo;
   /** What the bot's owner opened for this person (older servers do not send it). */
-  access?: { levels: boolean; sparks?: number };
+  access?: { levels: boolean; sparks?: number; wardrobe?: boolean };
   /** Sent only to the bot's owner. */
   admin?: boolean;
   rank: RankProfile;
@@ -103,6 +103,8 @@ interface ServerState {
   levelsOpen: boolean;
   /** Sparks the owner gave on top of the earned ones. */
   sparksGift: number;
+  /** The owner opened the whole wardrobe: every item is this person's to wear. */
+  wardrobeOpen: boolean;
   /** This is the bot's owner: the app shows them the admin panel. */
   admin: boolean;
   rank: RankProfile;
@@ -159,6 +161,26 @@ const rememberLevels = (open: boolean) => {
   }
 };
 
+const WARDROBE_KEY = `lp:${tgUser.id}:wardrobe`;
+
+/** Remembered like the levels, so the wardrobe stays open while the server is being asked. */
+function cachedWardrobe(): boolean {
+  try {
+    return localStorage.getItem(WARDROBE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+const rememberWardrobe = (open: boolean) => {
+  try {
+    if (open) localStorage.setItem(WARDROBE_KEY, '1');
+    else localStorage.removeItem(WARDROBE_KEY);
+  } catch {
+    // ignore
+  }
+};
+
 const GIFT_KEY = `lp:${tgUser.id}:gift`;
 
 function cachedGift(): number {
@@ -184,6 +206,7 @@ export const useServer = create<ServerState>()((set) => ({
   plus: cachedPlus(),
   levelsOpen: cachedLevels(),
   sparksGift: cachedGift(),
+  wardrobeOpen: cachedWardrobe(),
   admin: false,
   rank: { optedIn: false, name: null, country: null },
   canMessage: false,
@@ -198,11 +221,14 @@ export const useServer = create<ServerState>()((set) => ({
       rememberPlus(h.plus);
       rememberLevels(levelsOpen);
       rememberGift(sparksGift);
+      const wardrobeOpen = h.access?.wardrobe === true;
+      rememberWardrobe(wardrobeOpen);
       set({
         status: 'ok',
         plus: h.plus,
         levelsOpen,
         sparksGift,
+        wardrobeOpen,
         admin: h.admin === true,
         rank: h.rank,
         canMessage: h.reminders.canMessage,
@@ -239,3 +265,4 @@ export const useServer = create<ServerState>()((set) => ({
 export const usePlus = (): boolean => useServer((s) => s.plus.active);
 export const useLevelsOpen = (): boolean => useServer((s) => s.levelsOpen);
 export const useSparksGift = (): number => useServer((s) => s.sparksGift);
+export const useWardrobeOpen = (): boolean => useServer((s) => s.wardrobeOpen);

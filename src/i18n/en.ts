@@ -1311,6 +1311,8 @@ export const en = {
   'admin.levels.sub': 'Wardrobe items that wait for an older companion can be bought now. They still cost Sparks.',
   'admin.plus': 'LifePath Plus as a gift',
   'admin.plus.sub': 'Unlimited areas and the smart planner, without paying.',
+  'admin.wardrobe': 'Open the whole wardrobe',
+  'admin.wardrobe.sub': 'Every item, free: no Sparks, no level, no deeds to earn it.',
   'admin.plus.paid': 'Paid until {date}',
   'admin.sparks': 'Sparks as a gift',
   'admin.sparks.sub': '{n} given so far. They are spent in the wardrobe like earned ones.',

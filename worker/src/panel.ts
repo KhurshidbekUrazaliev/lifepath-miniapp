@@ -24,9 +24,10 @@ export interface Grant {
   levels: number;
   plus: number;
   sparks: number;
+  wardrobe: number;
 }
 
-export const GRANT = 'SELECT levels, plus, sparks FROM grants WHERE user_id = ?1';
+export const GRANT = 'SELECT levels, plus, sparks, wardrobe FROM grants WHERE user_id = ?1';
 
 /** The most Sparks the owner can give one person. */
 const MAX_SPARKS = 100_000;
@@ -66,6 +67,7 @@ interface Row {
   grant_levels: number;
   grant_plus: number;
   grant_sparks: number;
+  grant_wardrobe: number;
 }
 
 /** GET /api/admin/users?q=&sort=seen|level|new&offset=0 */
@@ -88,7 +90,7 @@ export async function getAdminUsers(c: Ctx): Promise<Response> {
                 COALESCE(s.level, 0) AS level, COALESCE(s.xp, 0) AS xp, COALESCE(s.total_xp, 0) AS total_xp,
                 CASE WHEN s.week_start = ?3 THEN s.week_xp ELSE 0 END AS week_xp, COALESCE(s.streak, 0) AS streak,
                 ${PAID} AS paid_until, COALESCE(g.levels, 0) AS grant_levels, COALESCE(g.plus, 0) AS grant_plus,
-                COALESCE(g.sparks, 0) AS grant_sparks
+                COALESCE(g.sparks, 0) AS grant_sparks, COALESCE(g.wardrobe, 0) AS grant_wardrobe
          FROM users u
          LEFT JOIN scores s ON s.user_id = u.id
          LEFT JOIN entitlements e ON e.user_id = u.id
@@ -141,6 +143,7 @@ export async function getAdminUsers(c: Ctx): Promise<Response> {
     levelsOpen: r.grant_levels === 1,
     plusGift: r.grant_plus === 1,
     sparksGift: r.grant_sparks,
+    wardrobeOpen: r.grant_wardrobe === 1,
   }));
   return json({
     stats: {
@@ -159,27 +162,36 @@ export async function getAdminUsers(c: Ctx): Promise<Response> {
   });
 }
 
-/** PUT /api/admin/access { id, levels?, plus?, sparks? }: opens or closes something for one person, or sets how many Sparks they were given. */
+/** PUT /api/admin/access { id, levels?, plus?, sparks?, wardrobe? }: opens or closes something for one person, or sets how many Sparks they were given. */
 export async function putAdminAccess(c: Ctx): Promise<Response> {
   const body = await readJson(c.request);
   const id = int(body.id, 'id', 1, Number.MAX_SAFE_INTEGER);
   const levels = body.levels === undefined ? undefined : bool(body.levels, 'levels');
   const plus = body.plus === undefined ? undefined : bool(body.plus, 'plus');
   const sparks = body.sparks === undefined ? undefined : int(body.sparks, 'sparks', 0, MAX_SPARKS);
-  if (levels === undefined && plus === undefined && sparks === undefined) throw badRequest('levels, plus or sparks expected');
+  const wardrobe = body.wardrobe === undefined ? undefined : bool(body.wardrobe, 'wardrobe');
+  if (levels === undefined && plus === undefined && sparks === undefined && wardrobe === undefined) {
+    throw badRequest('levels, plus, sparks or wardrobe expected');
+  }
 
   const db = c.env.DB;
   const [person, granted] = await db.batch([db.prepare('SELECT id FROM users WHERE id = ?1').bind(id), db.prepare(GRANT).bind(id)]);
   if (!rows<{ id: number }>(person)[0]) throw notFound();
   const old = rows<Grant>(granted)[0];
-  const next = { levels: levels ?? old?.levels === 1, plus: plus ?? old?.plus === 1, sparks: sparks ?? old?.sparks ?? 0 };
+  const next = {
+    levels: levels ?? old?.levels === 1,
+    plus: plus ?? old?.plus === 1,
+    sparks: sparks ?? old?.sparks ?? 0,
+    wardrobe: wardrobe ?? old?.wardrobe === 1,
+  };
   await db
     .prepare(
-      `INSERT INTO grants (user_id, levels, plus, sparks, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
+      `INSERT INTO grants (user_id, levels, plus, sparks, wardrobe, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
        ON CONFLICT (user_id) DO UPDATE SET
-         levels = excluded.levels, plus = excluded.plus, sparks = excluded.sparks, updated_at = excluded.updated_at`,
+         levels = excluded.levels, plus = excluded.plus, sparks = excluded.sparks, wardrobe = excluded.wardrobe,
+         updated_at = excluded.updated_at`,
     )
-    .bind(id, Number(next.levels), Number(next.plus), next.sparks, c.now)
+    .bind(id, Number(next.levels), Number(next.plus), next.sparks, Number(next.wardrobe), c.now)
     .run();
-  return json({ id, levelsOpen: next.levels, plusGift: next.plus, sparksGift: next.sparks });
+  return json({ id, levelsOpen: next.levels, plusGift: next.plus, sparksGift: next.sparks, wardrobeOpen: next.wardrobe });
 }

@@ -29,6 +29,7 @@ export interface AdminUser {
   plusGift: boolean;
   /** Sparks the owner gave them, on top of the ones they earned. */
   sparksGift: number;
+  wardrobeOpen: boolean; // every wardrobe item is theirs to wear
 }
 
 export interface AdminStats {
@@ -51,7 +52,7 @@ export interface AdminList {
 }
 
 export type AdminSort = 'seen' | 'level' | 'new';
-export type AdminAccess = Pick<AdminUser, 'id' | 'levelsOpen' | 'plusGift' | 'sparksGift'>;
+export type AdminAccess = Pick<AdminUser, 'id' | 'levelsOpen' | 'plusGift' | 'sparksGift' | 'wardrobeOpen'>;
 
 /** The most Sparks one person can be given (the server refuses more). */
 export const MAX_SPARKS_GIFT = 100_000;
@@ -75,7 +76,7 @@ export function seenAgo(seenAt: number, now: number): { unit: 'never' | 'now' | 
 
 /** Puts what the server answered into the list, leaving everyone else as they were. */
 export function withAccess(users: AdminUser[], access: AdminAccess): AdminUser[] {
-  return users.map((u) => (u.id === access.id ? { ...u, levelsOpen: access.levelsOpen, plusGift: access.plusGift, sparksGift: access.sparksGift } : u));
+  return users.map((u) => (u.id === access.id ? { ...u, levelsOpen: access.levelsOpen, plusGift: access.plusGift, sparksGift: access.sparksGift, wardrobeOpen: access.wardrobeOpen } : u));
 }
 
 /** The counts at the top after a switch was flipped for one person, without asking the server again. */

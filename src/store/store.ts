@@ -765,7 +765,7 @@ export const useStore = create<State>()((set, get) => ({
   wearItem: (slot, itemId) =>
     set((s) => {
       const item = itemById(itemId);
-      if (!item || item.slot !== slot || !isOwned(s.profile, item)) return {};
+      if (!item || item.slot !== slot || !(isOwned(s.profile, item) || useServer.getState().wardrobeOpen)) return {};
       if (item.gender && item.gender !== (s.profile.echo?.gender ?? 'boy')) return {};
       return { profile: { ...s.profile, outfit: { ...(s.profile.outfit ?? {}), [slot]: itemId } } };
     }),

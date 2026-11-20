@@ -54,7 +54,7 @@ async function hello(c: Ctx): Promise<Response> {
     user: { id: user.id, firstName: user.first_name, username: user.username },
     plus: plusView(rows<Entitlement>(results[1])[0], c.env, c.now, grant?.plus === 1),
     // What the owner has opened for this person without the level it normally takes, and Sparks given to them.
-    access: { levels: grant?.levels === 1, sparks: grant?.sparks ?? 0 },
+    access: { levels: grant?.levels === 1, sparks: grant?.sparks ?? 0, wardrobe: grant?.wardrobe === 1 },
     ...(isAdmin(c.env, c.auth) && { admin: true }),
     rank: { optedIn: rank?.opted_in === 1, name: rank?.name ?? null, country: rank?.country ?? null },
     reminders: { enabled: user.reminders_enabled === 1, canMessage: user.can_message === 1 },

@@ -1267,6 +1267,8 @@ export const uz: Record<string, string> = {
   'admin.levels.sub': 'Kattaroq hamrohni kutadigan garderob buyumlarini hozirdan olish mumkin. Ular baribir uchqunga sotiladi.',
   'admin.plus': 'LifePath Plus sovgʻa sifatida',
   'admin.plus.sub': 'Cheksiz yoʻnalishlar va aqlli rejalashtiruvchi, toʻlovsiz.',
+  'admin.wardrobe': 'Butun garderobni ochish',
+  'admin.wardrobe.sub': 'Barcha buyumlar bepul: uchqun, daraja va amallar shart emas.',
   'admin.plus.paid': '{date} gacha toʻlangan',
   'admin.sparks': 'Uchqun sovgʻa qilish',
   'admin.sparks.sub': 'Hozirgacha {n} ta berilgan. Garderobda topilgan uchqunlar kabi sarflanadi.',

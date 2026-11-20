@@ -6,11 +6,11 @@ import { useStore } from '../store/store';
 import { useNav } from '../store/nav';
 import { growthName, useEcho } from '../store/echo';
 import { useAdvisor } from '../store/advisor';
-import { useLevelsOpen, useServer, useSparksGift } from '../store/server';
+import { useLevelsOpen, useServer, useSparksGift, useWardrobeOpen } from '../store/server';
 import { ATTRIBUTES, ageInDays, attrLevel } from '../lib/echo';
 import { GROWTH_IDS, GROWTH_LEVELS, TOP_STAGE } from '../lib/companion';
 import type { Advice, AdviceKind } from '../lib/advisor';
-import { ITEMS, SLOTS, Slot, canBuy, earnProgress, isOwned, itemById, sparkBalance, wornOutfit } from '../lib/wardrobe';
+import { ITEMS, Item, SLOTS, Slot, canBuy, earnProgress, isOwned, itemById, sparkBalance, wornOutfit } from '../lib/wardrobe';
 import { haptic, shareText } from '../tg/telegram';
 import { Key, t, tn } from '../i18n';
 import { fmtNumber } from '../i18n/format';
@@ -212,6 +212,9 @@ export function Shop() {
   const tryItem = itemById(trying ?? undefined);
   const preview = tryItem ? { ...worn, [tryItem.slot]: tryItem.id } : worn;
   const gift = useSparksGift();
+  const allOpen = useWardrobeOpen();
+  /** Bought, free, earned, or opened by the owner (then every item is theirs to wear). */
+  const has = (item: Item) => allOpen || isOwned(profile, item);
   const balance = sparkBalance(profile, gift);
   // Items wait for the companion to grow, unless the bot's owner opened the levels for this person.
   const lockStage = useLevelsOpen() ? TOP_STAGE : e.growth.index;
@@ -239,7 +242,7 @@ export function Shop() {
 
   const act = () => {
     if (!tryItem) return;
-    if (isOwned(profile, tryItem)) {
+    if (has(tryItem)) {
       wearItem(tryItem.slot, tryItem.id);
       haptic('success');
       stage.current?.play('nod');
@@ -254,7 +257,7 @@ export function Shop() {
     }
   };
 
-  const check = tryItem && !isOwned(profile, tryItem) ? canBuy(profile, tryItem.id, lockStage, e.gender, gift) : null;
+  const check = tryItem && !has(tryItem) ? canBuy(profile, tryItem.id, lockStage, e.gender, gift) : null;
   const blocked =
     check && !check.ok
       ? check.reason === 'earned'
@@ -300,7 +303,7 @@ export function Shop() {
 
       <div className="shop-grid">
         {items.map((item) => {
-          const owned = isOwned(profile, item);
+          const owned = has(item);
           const wearing = worn[item.slot] === item.id;
           const earned = !owned ? earnProgress({ profile, worship, pages }, item) : null;
           const locked = !owned && (item.minStage ?? 0) > lockStage;
@@ -323,7 +326,7 @@ export function Shop() {
       {tryItem && worn[tryItem.slot] !== tryItem.id ? (
         <>
           <Tap className="btn primary" onTap={act} disabled={!!blocked} hap={false}>
-            {isOwned(profile, tryItem) ? t('shop.wear') : tryItem.earn ? t('earn.deeds') : t('shop.buy', { n: tryItem.price })}
+            {has(tryItem) ? t('shop.wear') : tryItem.earn ? t('earn.deeds') : t('shop.buy', { n: tryItem.price })}
           </Tap>
           {blocked ? <div className="t-small center" style={{ color: 'var(--orange)' }}>{blocked}</div> : null}
         </>
