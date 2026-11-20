@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 5183 --strictPort",
     "typecheck": "tsc --noEmit && tsc -p worker/tsconfig.json",
-    "test": "tsx src/lib/logic.test.ts && tsx src/lib/miniapp.test.ts && tsx src/lib/home.test.ts && tsx src/lib/backup.test.ts && tsx src/lib/week.test.ts && tsx src/lib/journal-text.test.ts && tsx src/lib/together.test.ts && tsx src/lib/errors.test.ts && tsx src/lib/earn.test.ts && tsx src/lib/special.test.ts && node scripts/companion-rig.test.mjs && node scripts/companion-moves.test.mjs && tsx scripts/check-i18n.ts",
+    "test": "tsx src/lib/logic.test.ts && tsx src/lib/miniapp.test.ts && tsx src/lib/home.test.ts && tsx src/lib/backup.test.ts && tsx src/lib/week.test.ts && tsx src/lib/journal-text.test.ts && tsx src/lib/together.test.ts && tsx src/lib/errors.test.ts && tsx src/lib/earn.test.ts && tsx src/lib/special.test.ts && node scripts/companion-rig.test.mjs && node scripts/companion-moves.test.mjs && tsx src/companion/pets.test.ts && tsx scripts/check-i18n.ts",
     "test:logic": "tsx src/lib/logic.test.ts",
     "test:worker": "node worker/test/e2e.mjs",
     "worker:dev": "wrangler dev",

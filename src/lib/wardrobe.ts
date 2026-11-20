@@ -32,7 +32,12 @@ export interface Placement {
   pivot?: [number, number, number];
   offset?: [number, number, number];
   rotation?: [number, number, number];
+  /** How an animal standing by the companion moves (companion/pets.ts). */
+  motion?: PetMotion;
 }
+
+/** Each animal's way of moving: its idle, and the little things it does now and then. */
+export type PetMotion = 'hop' | 'bounce' | 'peck' | 'sway' | 'stretch' | 'rock' | 'nod';
 
 export interface Item {
   id: string;
@@ -113,13 +118,13 @@ export const ITEMS: Item[] = [
   { id: 'rehal', slot: 'hold', price: 0, earn: { by: 'quran', n: 100 }, color: '#B5713A', color2: '#F4EBDD', model: 'rehal', place: NEAR, emoji: '📖' },
   // Pets
   { id: 'pet-none', slot: 'pet', price: 0, color: '#8B82FF', emoji: '🐾' },
-  { id: 'scholar', slot: 'pet', price: 120, color: '#F3E2B8', color2: '#E0762B', model: 'scholar', place: PET, emoji: '🤓' },
-  { id: 'dove', slot: 'pet', price: 140, color: '#F5F5F5', model: 'dove', place: PET, emoji: '🕊️' },
-  { id: 'bear', slot: 'pet', price: 160, color: '#C98A4B', model: 'bear', place: PET, emoji: '🐻' },
-  { id: 'kitten', slot: 'pet', price: 180, color: '#F2A65A', model: 'kitten', place: PET, emoji: '🐱' },
-  { id: 'lamb', slot: 'pet', price: 200, color: '#F4F1EA', model: 'lamb', place: PET, emoji: '🐑' },
-  { id: 'bunny', slot: 'pet', price: 220, color: '#D9DCE3', model: 'bunny', place: PET, emoji: '🐰' },
-  { id: 'camel', slot: 'pet', price: 260, color: '#D8B27C', minStage: 1, model: 'camel', place: { ...PET, rotation: [0, -1, 0] }, emoji: '🐫' },
+  { id: 'scholar', slot: 'pet', price: 120, color: '#F3E2B8', color2: '#E0762B', model: 'scholar', place: { ...PET, motion: 'nod' }, emoji: '🤓' },
+  { id: 'dove', slot: 'pet', price: 140, color: '#F5F5F5', model: 'dove', place: { ...PET, motion: 'peck' }, emoji: '🕊️' },
+  { id: 'bear', slot: 'pet', price: 160, color: '#C98A4B', model: 'bear', place: { ...PET, motion: 'sway' }, emoji: '🐻' },
+  { id: 'kitten', slot: 'pet', price: 180, color: '#F2A65A', model: 'kitten', place: { ...PET, motion: 'stretch' }, emoji: '🐱' },
+  { id: 'lamb', slot: 'pet', price: 200, color: '#F4F1EA', model: 'lamb', place: { ...PET, motion: 'bounce' }, emoji: '🐑' },
+  { id: 'bunny', slot: 'pet', price: 220, color: '#D9DCE3', model: 'bunny', place: { ...PET, motion: 'hop' }, emoji: '🐰' },
+  { id: 'camel', slot: 'pet', price: 260, color: '#D8B27C', minStage: 1, model: 'camel', place: { ...PET, rotation: [0, -1, 0], motion: 'rock' }, emoji: '🐫' },
   // Places to stand on
   { id: 'place-none', slot: 'place', price: 0, color: '#8B82FF', emoji: '⭕' },
   { id: 'base-garden', slot: 'place', price: 150, color: '#7BC86C', model: 'base-garden', place: BASE, emoji: '🌷' },

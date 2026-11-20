@@ -8,6 +8,8 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { measureBody, partOf, restCap, type Body, type Vec3 } from './fit';
 import type { Clip, PropSpec, StageController, StageOptions, TapPart } from './types';
+import { ACT_SECONDS, PetAct, happyAct, nextAct, petPose } from './pets';
+import type { PetMotion } from '../lib/wardrobe';
 
 const LOOPING = new Set<Clip>(['idle', 'talk', 'read']);
 /** World height of a grown companion; younger stages are scaled down from it. */
@@ -486,6 +488,7 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
     action.setEffectiveWeight(0);
     action.play();
     layers.push({ action, level: 0, goal: 1, rounds });
+    if (clip === 'cheer' || clip === 'wave') petsJoinIn(0.2);
     return true;
   }
 
@@ -495,6 +498,46 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
   const propObjects = new Map<string, THREE.Object3D>();
   /** The items asked for last, each settled once it is on the companion (or could not be loaded). */
   let arriving: Promise<void>[] = [];
+
+  /** An animal by the companion: a holder at its feet that moves it (pets.ts), and what it is doing. */
+  interface Pet {
+    holder: THREE.Group;
+    kind: PetMotion;
+    base: THREE.Vector3;
+    baseQ: THREE.Quaternion;
+    phase: number;
+    act: PetAct | null;
+    actAt: number; // seconds
+    next: number; // when it does something again, seconds
+  }
+  let pets: Pet[] = [];
+  const petQ = new THREE.Quaternion();
+  const petE = new THREE.Euler();
+
+  /** Every animal does its happy act, a moment from now (each a little after the other). */
+  function petsJoinIn(delay: number): void {
+    const t = performance.now() / 1000 + delay;
+    for (const p of pets) startAct(p, happyAct(p.kind), t + Math.random() * 0.15);
+  }
+  function startAct(p: Pet, act: PetAct, at: number): void {
+    p.act = act;
+    p.actAt = at;
+    p.next = at + ACT_SECONDS[act] + 2.5 + Math.random() * 4.5;
+  }
+
+  function movePets(nowMs: number): void {
+    const t = nowMs / 1000;
+    for (const p of pets) {
+      if (p.act && t - p.actAt >= ACT_SECONDS[p.act]) p.act = null;
+      if (!p.act && t >= p.next) startAct(p, nextAct(p.kind, Math.random()), t);
+      const pose = petPose(p.kind, t, p.phase, p.act, t - p.actAt);
+      // "Toward the companion" is a turn to the left for an animal on its right, and the other way round.
+      const side = p.base.x > 0 ? -1 : 1;
+      p.holder.position.set(p.base.x, p.base.y + pose.y, p.base.z);
+      p.holder.quaternion.copy(p.baseQ).multiply(petQ.setFromEuler(petE.set(pose.pitch, pose.yaw * side, pose.roll, 'YXZ')));
+      p.holder.scale.set(pose.sxz, pose.sy, pose.sxz);
+    }
+  }
 
   /** The bone a worn item moves with: a missing neck or spine falls back to the one above it. */
   function boneFor(anchor: PropSpec['anchor']): THREE.Bone | null {
@@ -543,6 +586,30 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
         scale.setScalar((spec.size * place.unit) / longest);
       }
     }
+    if (spec.motion && spec.anchor === 'ground') {
+      // An animal stands in a holder at its feet, so that it turns, tilts and squashes about them.
+      const holder = new THREE.Group();
+      holder.position.copy(at);
+      holder.quaternion.setFromEuler(new THREE.Euler(rx, ry, rz));
+      obj.scale.copy(scale);
+      obj.quaternion.identity();
+      obj.position.copy(grip).multiply(scale).negate();
+      holder.add(obj);
+      obj.userData.holder = holder;
+      scene.add(holder);
+      const t = performance.now() / 1000;
+      pets.push({
+        holder,
+        kind: spec.motion,
+        base: holder.position.clone(),
+        baseQ: holder.quaternion.clone(),
+        phase: Math.random() * Math.PI * 2,
+        act: null,
+        actAt: 0,
+        next: t + 1.2 + Math.random() * 2.5,
+      });
+      return;
+    }
     // Where the item goes on the stage (or on the companion standing at rest)...
     const m = new THREE.Matrix4()
       .compose(at, new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), scale)
@@ -562,7 +629,9 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
     const wanted = new Set(props.map((p) => p.id));
     for (const [id, obj] of propObjects) {
       if (!wanted.has(id)) {
-        obj.removeFromParent();
+        const top = (obj.userData.holder as THREE.Object3D | undefined) ?? obj;
+        top.removeFromParent();
+        pets = pets.filter((p) => p.holder !== top);
         propObjects.delete(id);
       }
     }
@@ -663,6 +732,20 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
     const moved = Math.hypot(e.clientX - startX, e.clientY - startY);
     if (moved < 8 && performance.now() - downAt < 450) {
       pointerToNdc(e);
+      // An animal that is touched jumps (and the companion is not the one touched).
+      if (pets.length) {
+        raycaster.setFromCamera(ndc, camera);
+        const hit = raycaster.intersectObjects(pets.map((p) => p.holder), true)[0];
+        const pet = hit && pets.find((p) => {
+          let o: THREE.Object3D | null = hit.object;
+          while (o && o !== p.holder) o = o.parent;
+          return !!o;
+        });
+        if (pet) {
+          startAct(pet, happyAct(pet.kind), performance.now() / 1000);
+          return;
+        }
+      }
       const part = hitPart();
       if (part) opts.onTap?.(part);
     }
@@ -749,6 +832,7 @@ export function createStage(container: HTMLElement, opts: StageOptions): StageCo
     if (!idle && model) {
       model.scale.y = model.scale.x * (1 + Math.sin(now / 520) * 0.01); // breathing when there is no idle clip
     }
+    movePets(now);
     renderer.render(scene, camera);
   }
 
