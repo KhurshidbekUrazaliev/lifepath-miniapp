@@ -4,6 +4,11 @@ import type { FocusStats } from './types';
 
 export const FOCUS_MINUTES = [15, 25, 45, 60] as const;
 export const BREAK_MINUTES = 5;
+/** The shortest and longest focus session one can set by hand. */
+export const CUSTOM_MIN = 1;
+export const CUSTOM_MAX = 180;
+/** A length typed or stepped by hand, kept to whole minutes between CUSTOM_MIN and CUSTOM_MAX. */
+export const customMinutes = (n: number): number => (Number.isFinite(n) ? Math.max(CUSTOM_MIN, Math.min(CUSTOM_MAX, Math.round(n))) : 25);
 /** A session that counts toward no goal earns 1 XP per 5 minutes, for up to 2 hours of focus a day. */
 export const FOCUS_XP_EVERY = 5;
 export const FOCUS_XP_DAILY_MINUTES = 120;

@@ -274,9 +274,9 @@ export function Shop() {
       <Header
         title={t('shop.title')}
         right={
-          <span className="pillnote orange" style={{ height: 32, padding: '0 12px', justifySelf: 'end' }}>
+          <Tap className="pillnote orange" style={{ height: 32, padding: '0 12px', justifySelf: 'end' }} onTap={() => useNav.getState().open({ name: 'earn', about: 'sparks' })} label={t('earn.sparks.how')}>
             <Emoji e="✨" /> <Num value={balance} />
-          </span>
+          </Tap>
         }
       />
       <CompanionStage

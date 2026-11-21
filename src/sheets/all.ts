@@ -11,4 +11,5 @@ export { ChallengeSheet } from './challenge';
 
 export { RestoreSheet } from './restore';
 export { WeekSheet } from './week';
+export { EarnSheet } from './earn';
 export { JuzSheet, KhatmNewSheet } from './together';

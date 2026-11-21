@@ -61,6 +61,8 @@ export type Sheet =
   | { name: 'ayah'; id: string }
   | { name: 'place' }
   | { name: 'rank' }
+  // How XP, Sparks and the weekly rating are earned, opened at one of them.
+  | { name: 'earn'; about?: 'xp' | 'sparks' | 'rank' }
   | { name: 'challengeNew' }
   | { name: 'entry'; entryId: string }
   | { name: 'restore' }

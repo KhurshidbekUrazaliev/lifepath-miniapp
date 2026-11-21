@@ -1,7 +1,7 @@
 // Hand-drawn SVG charts: small, themed, animated.
-import { useId } from 'react';
+import { PointerEvent, useId, useState } from 'react';
 import { motion } from 'motion/react';
-import { lowPerf } from '../tg/telegram';
+import { haptic, lowPerf } from '../tg/telegram';
 import { cx } from './kit';
 import { Emoji } from './Emoji';
 
@@ -20,9 +20,19 @@ function smooth(points: [number, number][]): string {
   return d;
 }
 
-/** A glowing line over a soft fill. `values` are 0..1. */
-export function LineChart({ values, height = 86 }: { values: number[]; height?: number }) {
+/** Which of `n` evenly spread points is under a pointer at `x` across a box `width` wide. */
+export function pointAt(x: number, width: number, n: number): number {
+  if (n <= 1 || width <= 0) return 0;
+  return Math.max(0, Math.min(n - 1, Math.round((x / width) * (n - 1))));
+}
+
+/**
+ * A glowing line over a soft fill. `values` are 0..1. With `label` it can be read: a finger on it (or
+ * dragged along it) shows the day under it and its value, and lifting it leaves that day shown.
+ */
+export function LineChart({ values, height = 86, label }: { values: number[]; height?: number; label?: (i: number) => string }) {
   const id = useId().replace(/:/g, '');
+  const [pick, setPick] = useState<number | null>(null);
   const w = 300;
   const pad = 10;
   // Stretch the line over the range the values really cover, so a steady week is not a flat line at the top.
@@ -34,38 +44,70 @@ export function LineChart({ values, height = 86 }: { values: number[]; height?: 
     pad + (1 - Math.max(0, Math.min(1, (v - lo) / span))) * (height - pad * 2),
   ]);
   const line = smooth(pts);
-  const last = pts[pts.length - 1];
+  const at = pick !== null && pick < pts.length ? pts[pick] : null;
+
+  const read = (e: PointerEvent<HTMLDivElement>) => {
+    if (!label) return;
+    const box = e.currentTarget.getBoundingClientRect();
+    const i = pointAt(e.clientX - box.left, box.width, values.length);
+    if (i !== pick) {
+      setPick(i);
+      haptic('select');
+    }
+  };
+
   return (
-    <svg viewBox={`0 0 ${w} ${height}`} width="100%" height={height} preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-      <defs>
-        <linearGradient id={`f${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--blue)" stopOpacity="0.34" />
-          <stop offset="1" stopColor="var(--blue)" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id={`s${id}`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#2a5fee" />
-          <stop offset="1" stopColor="#7db0ff" />
-        </linearGradient>
-      </defs>
-      {line ? (
+    <div
+      className={cx('lchart', label && 'readable')}
+      style={{ height }}
+      onPointerDown={(e) => {
+        if (!label) return;
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        read(e);
+      }}
+      onPointerMove={(e) => {
+        if (e.buttons || e.pointerType === 'touch') read(e);
+      }}
+    >
+      <svg viewBox={`0 0 ${w} ${height}`} width="100%" height={height} preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+        <defs>
+          <linearGradient id={`f${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="var(--blue)" stopOpacity="0.34" />
+            <stop offset="1" stopColor="var(--blue)" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id={`s${id}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#2a5fee" />
+            <stop offset="1" stopColor="#7db0ff" />
+          </linearGradient>
+        </defs>
+        {line ? (
+          <>
+            <motion.path d={`${line} L${w},${height} L0,${height} Z`} fill={`url(#f${id})`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.3 }} />
+            {/* Drawn in by a sweeping clip: a pathLength dash would cut the line short, since its stroke is not scaled. */}
+            <clipPath id={`c${id}`}>
+              <motion.rect x={-8} y={-20} height={height + 40} initial={{ width: lowPerf ? w + 16 : 0 }} animate={{ width: w + 16 }} transition={{ duration: 1.1, ease: [0.22, 0.8, 0.26, 1] }} />
+            </clipPath>
+            <path
+              d={line}
+              fill="none"
+              stroke={`url(#s${id})`}
+              strokeWidth={3}
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+              clipPath={`url(#c${id})`}
+              style={lowPerf ? undefined : { filter: 'drop-shadow(0 4px 8px rgba(61,123,255,.6))' }}
+            />
+          </>
+        ) : null}
+      </svg>
+      {at && label ? (
         <>
-          <motion.path d={`${line} L${w},${height} L0,${height} Z`} fill={`url(#f${id})`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.3 }} />
-          <motion.path
-            d={line}
-            fill="none"
-            stroke={`url(#s${id})`}
-            strokeWidth={3}
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-            initial={{ pathLength: lowPerf ? 1 : 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 1.1, ease: [0.22, 0.8, 0.26, 1] }}
-            style={lowPerf ? undefined : { filter: 'drop-shadow(0 4px 8px rgba(61,123,255,.6))' }}
-          />
+          <span className="lchart-rule" style={{ left: `${(at[0] / w) * 100}%` }} />
+          <span className="lchart-dot" style={{ left: `${(at[0] / w) * 100}%`, top: at[1] }} />
+          <span className="lchart-tip" style={{ left: `${Math.max(14, Math.min(86, (at[0] / w) * 100))}%` }}>{label(pick!)}</span>
         </>
       ) : null}
-      {last ? <circle cx={last[0]} cy={last[1]} r={0} /> : null}
-    </svg>
+    </div>
   );
 }
 
@@ -75,17 +117,33 @@ interface BarChartProps {
   height?: number;
   highlight?: number; // index drawn at full strength (today)
   max?: number;
+  /** What a tapped bar says above it; without it the bars are only looked at. */
+  label?: (i: number) => string;
 }
 
-export function BarChart({ values, labels, height = 96, highlight, max }: BarChartProps) {
+export function BarChart({ values, labels, height = 96, highlight, max, label }: BarChartProps) {
   const top = Math.max(max ?? 0, ...values, 1);
+  const [pick, setPick] = useState<number | null>(null);
+  const choose = (i: number) => {
+    if (!label) return;
+    setPick((p) => (p === i ? null : i));
+    haptic('select');
+  };
   return (
     <div>
       <div style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: '1fr', alignItems: 'end', gap: 6, height }}>
         {values.map((v, i) => (
-          <div key={i} style={{ display: 'grid', justifyItems: 'center', alignItems: 'end', height: '100%' }}>
+          <div
+            key={i}
+            className={cx('cbar-col', label && 'readable', pick === i && 'picked')}
+            style={{ display: 'grid', justifyItems: 'center', alignItems: 'end', height: '100%', position: 'relative' }}
+            onClick={() => choose(i)}
+          >
+            {pick === i && label ? (
+              <span className="cbar-tip" style={{ bottom: `calc(${Math.max(6, (v / top) * 100)}% + 6px)` }}>{label(i)}</span>
+            ) : null}
             <motion.i
-              className={cx('cbar', highlight === i && 'hi', v === 0 && 'zero')}
+              className={cx('cbar', (pick === null ? highlight === i : pick === i) && 'hi', v === 0 && 'zero')}
               initial={{ height: lowPerf ? `${Math.max(6, (v / top) * 100)}%` : '6%' }}
               animate={{ height: `${Math.max(6, (v / top) * 100)}%` }}
               transition={{ duration: 0.7, delay: i * 0.035, ease: [0.22, 0.8, 0.26, 1] }}
@@ -96,7 +154,7 @@ export function BarChart({ values, labels, height = 96, highlight, max }: BarCha
       {labels ? (
         <div style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: '1fr', gap: 6, marginTop: 8 }}>
           {labels.map((l, i) => (
-            <span key={i} className={cx('t-tiny center', highlight === i ? 'accent' : 'faint')}>
+            <span key={i} className={cx('t-tiny center', (pick === null ? highlight === i : pick === i) ? 'accent' : 'faint')}>
               {l}
             </span>
           ))}

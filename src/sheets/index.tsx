@@ -29,6 +29,7 @@ type Given<K extends SheetState['name']> = Omit<Extract<SheetState, { name: K }>
 const SHEETS: { [K in SheetState['name']]: ComponentType<Given<K>> } = {
   restore: from(all, 'RestoreSheet'),
   week: from(all, 'WeekSheet'),
+  earn: from(all, 'EarnSheet'),
   gkhatmNew: from(all, 'KhatmNewSheet'),
   juz: from(all, 'JuzSheet'),
   add: from(all, 'AddSheet'),

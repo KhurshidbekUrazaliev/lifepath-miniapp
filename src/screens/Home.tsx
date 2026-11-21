@@ -3,11 +3,12 @@
 // ayah of the day, the adhkar, today's ring, shortcuts, quick habit ticks, today's focus and the goals.
 // The time of day lifts one card to the top (lib/home.ts) unless that is switched off.
 import { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
-import { CalendarDots, Fire, GearSix as Gear, ListChecks, Repeat, SlidersHorizontal, Target } from '@phosphor-icons/react';
+import { CalendarDots, Fire, GearSix as Gear, Lightning, ListChecks, Repeat, SlidersHorizontal, Target } from '@phosphor-icons/react';
 import { useData, useStore, useVisibleStreak } from '../store/store';
 import { useNav } from '../store/nav';
 import { dayKey } from '../lib/dates';
-import { dayStats, goalsRatio, openGoals } from '../lib/stats';
+import { dayStats, openGoals, overallSeries } from '../lib/stats';
+import { weekDays } from '../lib/week';
 import { activeHabits, dueHabits, isChecked } from '../lib/habits';
 import { lastActivity, loggedToday } from '../lib/progress';
 import { XP, levelInfo } from '../lib/gamify';
@@ -16,7 +17,7 @@ import { wroteOn } from '../lib/journal';
 import { HOME_READY, HomeBlock, cardForNow, gestureFor, homeHidden, homeNow, prayerIsNear, skyPhase } from '../lib/home';
 import { haptic, lowPerf, tgUser } from '../tg/telegram';
 import { t, tn } from '../i18n';
-import { fmtShortDate, greetingKey, pct } from '../i18n/format';
+import { fmtShortDate, greetingKey, pct, weekdayMini } from '../i18n/format';
 import { Avatar, Bubble, Card, Empty, IconBtn, Ring, Screen, Section, Tap, cx } from '../ui/kit';
 import { GoalCard, HabitDot, PlanItem } from '../ui/parts';
 import { useEcho } from '../store/echo';
@@ -39,11 +40,11 @@ export function Home() {
   const d = useData();
   const push = useNav((s) => s.push);
   const open = useNav((s) => s.open);
+  const goTab = useNav((s) => s.go);
   const streak = useVisibleStreak();
   const today = dayKey();
 
   const stats = useMemo(() => dayStats(d, today), [d, today]);
-  const goalsAvg = useMemo(() => goalsRatio(d), [d]);
   const goals = useMemo(() => openGoals(d), [d]);
   const habits = useMemo(() => dueHabits(activeHabits(d.habits), today), [d.habits, today]);
   const lvl = levelInfo(d.profile.xp);
@@ -66,12 +67,11 @@ export function Home() {
   const name = d.profile.name || tgUser.firstName || t('common.guest');
   const folderOf = (id: string) => d.folders.find((f) => f.id === id);
 
-  const legend: { label: string; value: string; color: string; go: () => void }[] = [
-    { label: t('home.legend.tasks'), value: `${stats.tasks.done} / ${stats.tasks.total}`, color: 'var(--blue)', go: () => push({ name: 'tasks' }) },
-    { label: t('home.legend.habits'), value: `${stats.habits.done} / ${stats.habits.total}`, color: 'var(--green)', go: () => push({ name: 'habits' }) },
-    { label: t('home.legend.xp'), value: `${Math.min(stats.xp.value, 999)} / ${stats.xp.goal}`, color: 'var(--violet)', go: () => push({ name: 'progress' }) },
-    { label: t('home.legend.goals'), value: goals.length ? pct(goalsAvg) : '–', color: 'var(--cyan)', go: () => push({ name: 'goals' }) },
-  ];
+  // This week, Monday first: how full each day was, for the bars beside the ring.
+  const week = useMemo(() => {
+    const days = weekDays(today);
+    return days.map((day, i) => ({ day, value: day > today ? null : overallSeries(d, [day])[0], dow: (i + 1) % 7 }));
+  }, [d, today]);
 
   const left = stats.tasks.total - stats.tasks.done;
   const tiles = [
@@ -107,14 +107,28 @@ export function Home() {
           <div className="t-display num" style={{ fontSize: 30 }}>{pct(stats.overall)}</div>
           <div className="t-tiny muted" style={{ maxWidth: 80, margin: '2px auto 0' }}>{t('home.ring')}</div>
         </Ring>
-        <div className="grow legend">
-          {legend.map((row) => (
-            <Tap key={row.label} className="legend-row" onTap={row.go} scale={0.97}>
-              <i style={{ background: row.color, boxShadow: `0 0 8px ${row.color}` }} />
-              <span className="t-small grow clip">{row.label}</span>
-              <span className="t-small num" style={{ fontWeight: 700 }}>{row.value}</span>
+        <div className="grow ring-week">
+          <Tap className="ring-week-head" onTap={() => goTab('stats')} scale={0.97}>
+            <span className="t-tiny muted">{t('home.week')}</span>
+          </Tap>
+          <div className="ring-bars">
+            {week.map((w) => (
+              <div key={w.day} className={cx('ring-bar', w.day === today && 'today', w.value === null && 'ahead')}>
+                <span><i style={{ height: `${Math.max(w.value ? 10 : 0, Math.round((w.value ?? 0) * 100))}%` }} /></span>
+                <b>{weekdayMini(w.dow)}</b>
+              </div>
+            ))}
+          </div>
+          <div className="ring-chips">
+            <Tap className="ring-chip" onTap={() => push({ name: 'progress' })} scale={0.95}>
+              <Fire size={15} weight="fill" style={{ color: streak > 0 ? 'var(--orange)' : 'var(--text-3)' }} />
+              <span className="num">{streak > 0 ? tn('home.streak', streak) : t('home.streak.none')}</span>
             </Tap>
-          ))}
+            <Tap className="ring-chip" onTap={() => push({ name: 'progress' })} scale={0.95}>
+              <Lightning size={15} weight="fill" style={{ color: 'var(--violet)' }} />
+              <span className="num">{t('home.todayXp', { n: Math.min(stats.xp.value, 999), goal: stats.xp.goal })}</span>
+            </Tap>
+          </div>
         </div>
       </Card>
     ),

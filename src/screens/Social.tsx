@@ -68,6 +68,9 @@ export function Rankings() {
           </Card>
           <Chips<Period> value={period} onChange={setPeriod} options={[{ id: 'week', label: t('board.week') }, { id: 'all', label: t('board.all') }]} />
           <Chips<Scope> value={scope} onChange={setScope} options={[{ id: 'global', label: `🌍 ${t('board.global')}` }, { id: 'country', label: `${flag(rank.country)} ${t('board.country')}` }]} />
+          <Tap className="earn-link" onTap={() => useNav.getState().open({ name: 'earn', about: 'rank' })} scale={0.97}>
+            {t('earn.rank.how')}
+          </Tap>
 
           {!rank.optedIn ? (
             <Card>

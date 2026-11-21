@@ -2130,3 +2130,253 @@
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.22);
 }
+
+/* Home's ring card: this week beside the ring, then the streak and today's XP. */
+.ring-week {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.ring-week-head {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+.ring-bars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  height: 66px;
+}
+.ring-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.ring-bar > span {
+  flex: 1;
+  width: 100%;
+  max-width: 14px;
+  border-radius: 7px;
+  background: var(--fill, rgba(120, 130, 160, 0.14));
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+.ring-bar > span > i {
+  width: 100%;
+  border-radius: 7px;
+  background: linear-gradient(180deg, var(--blue-hi, #6aa0ff), var(--blue, #3d7bff));
+  transition: height 0.5s ease;
+}
+.ring-bar.today > span > i {
+  box-shadow: 0 0 10px rgba(61, 123, 255, 0.55);
+}
+.ring-bar.ahead > span {
+  opacity: 0.5;
+}
+.ring-bar > b {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.ring-bar.today > b {
+  color: var(--blue-hi);
+  font-weight: 800;
+}
+.ring-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ring-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ring-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Statistics: the period switch over the trend, and stepping through past weeks. */
+.stats-period {
+  margin-top: 14px;
+}
+.week-step {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--track);
+  color: var(--text-2);
+}
+.week-step[disabled],
+.week-step[aria-disabled='true'] {
+  opacity: 0.35;
+}
+
+/* A focus length set by hand: minus, the minutes, plus. */
+.focus-custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+.focus-step {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--blue-hi);
+}
+.focus-step[disabled] {
+  opacity: 0.35;
+}
+.focus-custom-field {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 14px;
+  background: var(--track);
+}
+.focus-custom-field input {
+  width: 3.2ch;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 26px;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+.focus-custom-field input::-webkit-outer-spin-button,
+.focus-custom-field input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.focus-custom-field input:focus {
+  outline: none;
+}
+.focus-custom-field span {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+/* The lengths wrap, so "Custom" is never hidden past the edge. */
+.focus-lengths .chips {
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 4px 0 4px;
+}
+
+/* "How to earn": three parts, each a list of what gives how much. */
+.earn-part {
+  overflow: hidden;
+}
+.earn-part.here {
+  box-shadow: 0 0 0 2px var(--blue-hi), var(--shadow, none);
+}
+.earn-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  scroll-margin-top: 12px;
+}
+.earn-badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: var(--accent-soft);
+  font-size: 20px;
+}
+.earn-lines {
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px 14px;
+}
+.earn-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line, rgba(120, 130, 160, 0.14));
+}
+.earn-line.muted {
+  opacity: 0.6;
+}
+.earn-line > b {
+  flex: none;
+  font-size: 13px;
+  color: var(--blue-hi);
+  text-align: right;
+  max-width: 40%;
+}
+.earn-ic {
+  flex: none;
+  width: 22px;
+  text-align: center;
+  font-size: 16px;
+}
+.earn-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+}
+
+/* Profile: the name row and the level bar can be touched; the companion stands large under them. */
+.you-who {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+}
+.you-bar {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  text-align: left;
+}
+.you-echo {
+  overflow: hidden;
+}
+.you-echo-body {
+  padding: 4px 18px 18px;
+}
+.you-echo-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.you-echo-actions .btn {
+  flex: 1;
+}
+
+.earn-link {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue-hi);
+  padding: 2px 0;
+}

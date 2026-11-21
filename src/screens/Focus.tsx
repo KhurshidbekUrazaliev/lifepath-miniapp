@@ -2,13 +2,13 @@
 // the companion reads along. A finished session logs its minutes or earns focus XP; ending early earns
 // nothing. The timer keeps going with the app closed, and the bot can say when it is over.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Coffee, Pause, Play, Stop } from '@phosphor-icons/react';
+import { Coffee, Minus, Pause, Play, Plus, Stop } from '@phosphor-icons/react';
 import { useStore } from '../store/store';
 import { useEcho } from '../store/echo';
 import { useFocus, useNowWhile } from '../store/focus';
 import { useServer } from '../store/server';
 import type { Route } from '../store/nav';
-import { BREAK_MINUTES, FOCUS_MINUTES, clock, focusToday, remaining } from '../lib/focus';
+import { BREAK_MINUTES, CUSTOM_MAX, CUSTOM_MIN, FOCUS_MINUTES, clock, customMinutes, focusToday, remaining } from '../lib/focus';
 import { dayKey } from '../lib/dates';
 import { Key, t, tn } from '../i18n';
 import { fmtHours } from '../i18n/format';
@@ -24,6 +24,23 @@ const BREAK_COLOR = '#22C55E';
 const pick = (base: string, n: number): string => t(`${base}.${Math.floor(Math.random() * n)}` as Key);
 const say = (text: string): Speech => ({ kind: 'say', key: `${Date.now()}-${Math.random()}`, text });
 
+// The last length set by hand, kept on this phone so "Custom" opens on it next time.
+const CUSTOM_KEY = 'lp:focus:custom';
+const savedCustom = (): number => {
+  try {
+    return customMinutes(Number(localStorage.getItem(CUSTOM_KEY) ?? 30));
+  } catch {
+    return 30;
+  }
+};
+const saveCustom = (n: number) => {
+  try {
+    localStorage.setItem(CUSTOM_KEY, String(n));
+  } catch {
+    // Only a convenience.
+  }
+};
+
 export function Focus({ route }: { route: Extract<Route, { name: 'focus' }> }) {
   const e = useEcho();
   const run = useFocus((s) => s.run);
@@ -34,7 +51,15 @@ export function Focus({ route }: { route: Extract<Route, { name: 'focus' }> }) {
   const reminders = useStore((s) => s.settings.reminders);
   const canMessage = useServer((s) => s.canMessage);
   const goals = useMemo(() => tasks.filter((x) => x.progressType === 'time' && !x.completedAt), [tasks]);
-  const [minutes, setMinutes] = useState<number>(25);
+  const [preset, setPreset] = useState<string>('25');
+  const [custom, setCustom] = useState<number>(savedCustom);
+  const [typing, setTyping] = useState<string | null>(null);
+  const minutes = preset === 'custom' ? custom : Number(preset);
+  const setCustomTo = (n: number) => {
+    const v = customMinutes(n);
+    setCustom(v);
+    saveCustom(v);
+  };
   const [goal, setGoal] = useState<string>(() => (route.taskId && goals.some((g) => g.id === route.taskId) ? route.taskId : 'none'));
   const stage = useRef<CompanionHandle>(null);
   const [speech, setSpeech] = useState<Speech>(() => say(run ? t('focus.say.back') : t('focus.say.idle')));
@@ -192,13 +217,42 @@ export function Focus({ route }: { route: Extract<Route, { name: 'focus' }> }) {
           </div>
         ) : (
           <>
-            <div className="focus-pick">
+            <div className="focus-pick focus-lengths">
               <div className="t-tiny muted focus-pick-title">{t('focus.length')}</div>
               <Chips<string>
-                value={String(minutes)}
-                onChange={(v) => setMinutes(Number(v))}
-                options={FOCUS_MINUTES.map((n) => ({ id: String(n), label: t('focus.min', { n }) }))}
+                value={preset}
+                onChange={setPreset}
+                options={[...FOCUS_MINUTES.map((n) => ({ id: String(n), label: t('focus.min', { n }) })), { id: 'custom', label: t('focus.custom') }]}
               />
+              {preset === 'custom' ? (
+                <div className="focus-custom">
+                  <Tap className="focus-step" onTap={() => setCustomTo(custom - (custom > 10 ? 5 : 1))} disabled={custom <= CUSTOM_MIN} label={t('focus.custom.less')} hap="select">
+                    <Minus size={18} weight="bold" />
+                  </Tap>
+                  <label className="focus-custom-field">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={CUSTOM_MIN}
+                      max={CUSTOM_MAX}
+                      value={typing ?? String(custom)}
+                      onChange={(ev) => setTyping(ev.target.value)}
+                      onBlur={() => {
+                        if (typing !== null && typing.trim() !== '') setCustomTo(Number(typing));
+                        setTyping(null);
+                      }}
+                      onKeyDown={(ev) => {
+                        if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur();
+                      }}
+                      aria-label={t('focus.custom')}
+                    />
+                    <span>{t('focus.custom.unit')}</span>
+                  </label>
+                  <Tap className="focus-step" onTap={() => setCustomTo(custom + (custom >= 10 ? 5 : 1))} disabled={custom >= CUSTOM_MAX} label={t('focus.custom.more')} hap="select">
+                    <Plus size={18} weight="bold" />
+                  </Tap>
+                </div>
+              ) : null}
             </div>
             {goals.length ? (
               <div className="focus-pick">
