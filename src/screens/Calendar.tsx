@@ -10,7 +10,7 @@ import { dayTally, activeHabits } from '../lib/habits';
 import { dayStats } from '../lib/stats';
 import { t } from '../i18n';
 import { fmtAmount, fmtClock, fmtMonth, fmtTime, fmtWeekdayDate, weekdayShort } from '../i18n/format';
-import { Bar, Bubble, Card, Header, IconBtn, Screen, Section, Tap, cx, spring } from '../ui/kit';
+import { Bar, Bubble, Card, Header, IconBtn, Screen, Section, Tap, cx, spring, Glyph } from '../ui/kit';
 import { PlanItem } from '../ui/parts';
 import { Route } from '../store/nav';
 import { diaryOf, headline, writtenDays } from '../lib/journal';
@@ -199,7 +199,7 @@ export function Calendar({ route }: { route: Extract<Route, { name: 'calendar' }
         {agenda.length === 0 ? (
           <Tap onTap={() => open({ name: 'task', day })} scale={0.98}>
             <Card className="row" style={{ gap: 12 }}>
-              <span className="bubble sm"><Plus size={18} /></span>
+              <Glyph className="bubble sm" color="var(--blue-hi)" icon={<Plus size={18} />} />
               <span className="t-small muted">{t('cal.empty')}</span>
             </Card>
           </Tap>
@@ -224,7 +224,7 @@ export function Calendar({ route }: { route: Extract<Route, { name: 'calendar' }
           {written.map((p) => (
             <Tap key={p.id} onTap={() => push({ name: 'page', id: p.id })} scale={0.98}>
               <Card pad={false} className="item" style={{ paddingTop: 11, paddingBottom: 11 }}>
-                {p.mood ? <Face feel={p.mood} size={34} /> : <span className="bubble sm"><Notebook size={18} /></span>}
+                {p.mood ? <Face feel={p.mood} size={34} /> : <Glyph className="bubble sm" color="var(--violet)" icon={<Notebook size={18} />} />}
                 {/* A locked journal shows that the day was written, not what. */}
                 <span className="grow t-body clip">{locked ? t('cal.journal.entry') : headline(p) || (p.mood ? feelName(p.mood) : t('cal.journal.entry'))}</span>
                 <CaretRight size={18} weight="bold" className="chev" />
@@ -234,7 +234,7 @@ export function Calendar({ route }: { route: Extract<Route, { name: 'calendar' }
           {written.length === 0 ? (
             <Tap onTap={() => push({ name: 'page', day })} scale={0.98}>
               <Card className="row" style={{ gap: 12 }}>
-                <span className="bubble sm"><PencilSimpleLine size={18} /></span>
+                <Glyph className="bubble sm" color="var(--blue-hi)" icon={<PencilSimpleLine size={18} />} />
                 <span className="t-small muted">{t('cal.journal.write')}</span>
               </Card>
             </Tap>

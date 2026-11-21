@@ -11,7 +11,7 @@ import { provenXp } from '../lib/stats';
 import { haptic, openInvoice } from '../tg/telegram';
 import { t, tn } from '../i18n';
 import { fmtLongDate, fmtNumber } from '../i18n/format';
-import { Card, Chips, Empty, Header, IconBtn, Row, Screen, Tap, cx } from '../ui/kit';
+import { Card, Chips, Empty, Header, IconBtn, Row, Screen, Tap, cx, Glyph } from '../ui/kit';
 import { Emoji } from '../ui/Emoji';
 
 type Period = 'week' | 'all';
@@ -80,7 +80,7 @@ export function Rankings() {
             </Card>
           ) : (
             <Card className="row" style={{ gap: 14 }}>
-              <span className="bubble" style={{ background: 'var(--accent-soft)' }}><Emoji e="🏅" /></span>
+              <Glyph className="bubble" color="var(--gold)" icon="🏅" />
               <div className="grow">
                 <div className="t-body">{board?.me ? `#${board.me.rank}` : '–'} · {t('board.rank')}</div>
                 <div className="t-small muted">
@@ -180,7 +180,7 @@ export function Plus() {
       <Card pad={false} className="list">
         {benefits.map((b) => (
           <div className="lrow" key={b.title} style={{ paddingTop: 14, paddingBottom: 14 }}>
-            <span className="bubble" style={{ color: b.color, background: `${b.color}24`, borderColor: `${b.color}3a` }}>{typeof b.icon === 'string' ? <Emoji e={b.icon} /> : b.icon}</span>
+            <Glyph className="bubble" color={b.color} icon={b.icon} />
             <span className="grow">
               <span className="t-body" style={{ display: 'block' }}>{b.title}</span>
               <span className="t-small muted" style={{ display: 'block' }}>{b.body}</span>
@@ -191,7 +191,7 @@ export function Plus() {
 
       {plus.active ? (
         <Card className="row" style={{ gap: 14 }}>
-          <span className="bubble" style={{ background: 'var(--accent-soft)' }}><Emoji e="✅" /></span>
+          <Glyph className="bubble" color="var(--green)" icon="✅" />
           <div className="grow">
             <div className="t-body">{state === 'thanks' ? t('plus.thanks') : t('plus.active')}</div>
             {plus.expiresAt ? (

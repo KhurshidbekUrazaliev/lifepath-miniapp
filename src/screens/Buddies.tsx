@@ -166,7 +166,7 @@ function InviteCard({ code, onClose }: { code: string; onClose: () => void }) {
 
   return (
     <Card className="bd-invite">
-      <span className="bd-invite-ic"><Emoji e="🤝" /></span>
+      <span className="bd-invite-ic glyph"><Emoji e="🤝" /></span>
       <div className="t-title">{t('bd.inv.title', { name })}</div>
       <div className="t-small muted">{t('bd.inv.body')}</div>
       <div className="t-tiny faint">{t('bd.privacy')}</div>

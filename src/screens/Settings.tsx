@@ -12,7 +12,7 @@ import { addToHomeScreen, canAddToHome, canFullscreen, haptic, openLink, tgUser 
 import { LangSetting, ThemeSetting } from '../lib/types';
 import { getLang, t, tn } from '../i18n';
 import { fmtTime, pct, weekdayShort } from '../i18n/format';
-import { Avatar, Bar, Card, Field, Header, Row, Screen, Section, Segmented, Tap, Toggle, cx } from '../ui/kit';
+import { Avatar, Bar, Card, Field, Header, Row, Screen, Section, Segmented, Tap, Toggle, cx, Glyph } from '../ui/kit';
 import { confirmSheet } from '../sheets/confirm';
 import { RemindersSwitch } from './Inbox';
 import { RECITERS, SAMPLE_AYAH, reciterOf } from '../content/reciters';
@@ -106,9 +106,7 @@ export function Settings() {
       </Card>
 
       <Card className="row" style={{ gap: 14 }}>
-        <span className="bubble" style={{ color: sync.status === 'offline' ? 'var(--orange)' : 'var(--blue-hi)', background: 'var(--accent-soft)' }}>
-          {sync.status === 'offline' || sync.status === 'local' ? <CloudSlash size={21} /> : <Cloud size={21} />}
-        </span>
+        <Glyph className="bubble" color={sync.status === 'offline' ? 'var(--orange)' : 'var(--blue-hi)'} icon={sync.status === 'offline' || sync.status === 'local' ? <CloudSlash size={21} /> : <Cloud size={21} />} />
         <div className="grow">
           <div className="t-body">{t('settings.sync')}</div>
           <div className="t-small muted">{syncLabel(sync.status, sync.lastSyncedAt)}</div>

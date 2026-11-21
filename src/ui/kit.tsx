@@ -1,5 +1,5 @@
 // Small building blocks shared by every screen.
-import { CSSProperties, ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { CSSProperties, ReactElement, ReactNode, cloneElement, isValidElement, useEffect, useId, useRef, useState } from 'react';
 import { animate, motion, useReducedMotion } from 'motion/react';
 import { CaretLeft, CaretRight, Check as CheckIcon, GearSix as Gear } from '@phosphor-icons/react';
 import { Haptic, haptic, lowPerf, tgUser } from '../tg/telegram';
@@ -317,14 +317,41 @@ export function Num({ value, format }: { value: number; format?: (n: number) => 
   );
 }
 
+// ---------- the glowing icon tile ----------
+
+type IconProps = { style?: CSSProperties; size?: number; weight?: string; fill?: string; color?: string };
+
+/**
+ * The look every icon holder shares: a rounded square tinted by the icon's colour, the icon drawn in
+ * thin glowing lines. The colour is read off the icon (`style.color`, or `color`), so callers keep
+ * passing icons as they always have; a Phosphor icon is redrawn in its outline weight.
+ */
+export function glow(icon: ReactNode, fallback = 'var(--blue-hi)'): { icon: ReactNode; style: CSSProperties } {
+  if (!isValidElement(icon)) return { icon, style: { '--g': fallback } as CSSProperties };
+  const el = icon as ReactElement<IconProps>;
+  const p = el.props;
+  const color = p.style?.color ?? p.color ?? fallback;
+  // Phosphor icons take a size; emoji and other spans do not, and are left as they are.
+  const phosphor = typeof p.size === 'number' && typeof el.type !== 'string';
+  const drawn = phosphor ? cloneElement(el, { weight: 'regular', fill: 'currentColor', style: { ...p.style, color: undefined } }) : icon;
+  return { icon: drawn, style: { '--g': color } as CSSProperties };
+}
+
+/** An icon on its glowing tile. */
+export function Glyph({ icon, color, className, size }: { icon: ReactNode; color?: string; className?: string; size?: number }) {
+  // Emoji keep their own colours, so their tile is tinted gently in a neutral grey unless asked otherwise.
+  const g = glow(icon, color ?? (isValidElement(icon) && typeof (icon.props as IconProps).size === 'number' ? undefined : 'var(--glyph-plain)'));
+  return (
+    <span className={cx('glyph', className)} style={{ ...g.style, ...(color ? { '--g': color } : null), ...(size ? { width: size, height: size } : null) } as CSSProperties}>
+      {typeof g.icon === 'string' ? <Emoji e={g.icon} /> : g.icon}
+    </span>
+  );
+}
+
 // ---------- rows, bubbles, empty ----------
 
 export function Bubble({ icon, color, size }: { icon: ReactNode; color?: string; size?: 'sm' | 'lg' }) {
-  return (
-    <span className={cx('bubble', size)} style={color ? { background: `${color}26`, borderColor: `${color}40` } : undefined}>
-      {typeof icon === 'string' ? <Emoji e={icon} /> : icon}
-    </span>
-  );
+  return <Glyph icon={icon} color={color} className={cx('bubble', size)} />;
 }
 
 interface RowProps {
@@ -341,7 +368,7 @@ interface RowProps {
 export function Row({ icon, title, sub, value, right, onTap, danger }: RowProps) {
   const body = (
     <>
-      {icon ? <span className="lrow-ic">{icon}</span> : null}
+      {icon ? <Glyph icon={icon} className="lrow-ic" /> : null}
       <span className="grow">
         <span className="t-body" style={{ display: 'block', color: danger ? 'var(--red)' : undefined }}>
           {title}

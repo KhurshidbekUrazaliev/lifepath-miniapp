@@ -18,7 +18,7 @@ import { HOME_READY, HomeBlock, cardForNow, gestureFor, homeHidden, homeNow, pra
 import { haptic, lowPerf, tgUser } from '../tg/telegram';
 import { t, tn } from '../i18n';
 import { fmtShortDate, greetingKey, pct, weekdayMini } from '../i18n/format';
-import { Avatar, Bubble, Card, Empty, IconBtn, Ring, Screen, Section, Tap, cx } from '../ui/kit';
+import { Avatar, Bubble, Card, Empty, Glyph, IconBtn, Ring, Screen, Section, Tap, cx } from '../ui/kit';
 import { GoalCard, HabitDot, PlanItem } from '../ui/parts';
 import { useEcho } from '../store/echo';
 import { useAdvisor } from '../store/advisor';
@@ -138,7 +138,7 @@ export function Home() {
         {tiles.map((tile) => (
           <Tap key={tile.label} onTap={tile.go} scale={0.95}>
             <Card pad={false} className="quick-tile">
-              <span className="quick-ic" style={{ color: tile.color, background: `${tile.color}24` }}>{tile.icon}</span>
+              <Glyph icon={tile.icon} color={tile.color} className="quick-ic" />
               <span className="t-small" style={{ fontWeight: 700 }}>{tile.label}</span>
               <span className="t-tiny muted clip" style={{ maxWidth: '100%' }}>{tile.sub}</span>
             </Card>

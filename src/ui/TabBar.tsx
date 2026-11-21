@@ -16,7 +16,7 @@ function TabButton({ id, dot }: { id: Tab; dot?: boolean }) {
   return (
     <button type="button" className={cx('tab', on && 'on')} aria-label={labels[id]} aria-current={on ? 'page' : undefined} onClick={() => go(id)}>
       <motion.span style={{ display: 'grid' }} animate={{ scale: on ? 1.08 : 1, y: on ? -1 : 0 }} transition={{ type: 'spring', stiffness: 500, damping: 26 }}>
-        <Glyph size={26} weight={on ? 'fill' : 'duotone'} />
+        <Glyph size={26} weight={on ? 'regular' : 'light'} className="tab-ic" />
       </motion.span>
       {dot ? <i className="tab-dot" /> : null}
     </button>

@@ -94,7 +94,7 @@ function CardRow({ id, shown, onToggle, onDrop }: { id: HomeBlock; shown: boolea
       <span className="hc-handle" onPointerDown={(e) => drag.start(e)} role="button" aria-label={t('homecards.move', { name: nameOf(id) })}>
         <DotsSixVertical size={20} weight="bold" />
       </span>
-      <span className="hc-ic"><Emoji e={ICON[id]} /></span>
+      <span className="hc-ic glyph"><Emoji e={ICON[id]} /></span>
       <span className="grow" style={{ minWidth: 0, opacity: shown ? 1 : 0.5 }}>
         <span className="t-body" style={{ display: 'block' }}>{nameOf(id)}</span>
         {has(hint) ? <span className="t-small muted" style={{ display: 'block', marginTop: 1 }}>{t(hint as Key)}</span> : null}

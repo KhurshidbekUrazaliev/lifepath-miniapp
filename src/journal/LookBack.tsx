@@ -13,7 +13,7 @@ import {
 } from '../lib/journal';
 import { locale, t, tn } from '../i18n';
 import { fmtMonth, weekdayMini } from '../i18n/format';
-import { Card, Header, Screen, Segmented, Tap, cx } from '../ui/kit';
+import { Card, Header, Screen, Segmented, Tap, cx, Glyph } from '../ui/kit';
 import { CompanionThumb } from '../companion/CompanionThumb';
 import { haptic } from '../tg/telegram';
 import { Face } from './Feel';
@@ -177,9 +177,7 @@ function LookBackBody() {
             <CompanionThumb size={64} />
           </div>
         ) : (
-          <span className="bubble" style={{ color: 'var(--violet)', background: 'var(--accent-soft)' }}>
-            <Sparkle size={22} weight="fill" />
-          </span>
+          <Glyph className="bubble" color="var(--violet)" icon={<Sparkle size={22} weight="fill" />} />
         )}
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="t-tiny advisor-kind">{echo.echo ? t('lb.noticed', { name: echo.echo.name }) : t('lb.noticed.plain')}</div>

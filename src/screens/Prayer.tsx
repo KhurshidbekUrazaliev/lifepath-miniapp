@@ -141,7 +141,7 @@ export function PrayerCard() {
     return (
       <Tap onTap={() => push({ name: 'prayer' })} scale={0.98}>
         <Card pad={false} className="prayer-card">
-          <span className="prayer-ic"><Emoji e="🕌" /></span>
+          <span className="prayer-ic glyph"><Emoji e="🕌" /></span>
           <span className="grow" style={{ minWidth: 0 }}>
             <span className="t-body" style={{ display: 'block', fontWeight: 700 }}>{t('prayer.title')}</span>
             <span className="t-small muted">{t('place.setup.short')}</span>
@@ -163,7 +163,7 @@ export function PrayerCard() {
   return (
     <Tap onTap={() => push({ name: 'prayer' })} scale={0.98}>
       <Card pad={false} className="prayer-card">
-        <span className="prayer-ic"><Emoji e={TIME_EMOJI[info.next.key]} /></span>
+        <span className="prayer-ic glyph"><Emoji e={TIME_EMOJI[info.next.key]} /></span>
         <span className="grow" style={{ minWidth: 0 }}>
           <span className="t-tiny prayer-kind">{t('prayer.next')}{fastNote ? ` · ${fastNote}` : ''}</span>
           <span className="prayer-line">
@@ -231,7 +231,7 @@ export function Prayer() {
 
       <Tap onTap={() => push({ name: 'qibla' })} scale={0.98}>
         <Card pad={false} className="prayer-card">
-          <span className="prayer-ic"><Emoji e="🕋" /></span>
+          <span className="prayer-ic glyph"><Emoji e="🕋" /></span>
           <span className="grow" style={{ minWidth: 0 }}>
             <span className="t-body" style={{ display: 'block', fontWeight: 700 }}>{t('qibla.title')}</span>
             <span className="t-small muted">{t('qibla.card', { deg: Math.round(qiblaBearing(place.lat, place.lon)), km: fmtNumber(Math.round(kmToKaaba(place.lat, place.lon))) })}</span>
@@ -267,7 +267,7 @@ function AdhkarRow({ info, now }: { info: PrayerNow | null; now: number }) {
   return (
     <Tap onTap={() => push({ name: 'adhkar', session })} scale={0.98}>
       <Card pad={false} className="prayer-card">
-        <span className="prayer-ic"><Emoji e={session === 'am' ? '🌅' : '🌙'} /></span>
+        <span className="prayer-ic glyph"><Emoji e={session === 'am' ? '🌅' : '🌙'} /></span>
         <span className="grow" style={{ minWidth: 0 }}>
           <span className="t-body" style={{ display: 'block', fontWeight: 700 }}>{t(session === 'am' ? 'adhkar.amTitle' : 'adhkar.pmTitle')}</span>
           {ticked ? (
@@ -314,7 +314,7 @@ function KhatmRow() {
   return (
     <Tap onTap={() => push({ name: 'khatm' })} scale={0.98}>
       <Card pad={false} className="prayer-card">
-        <span className="prayer-ic"><Emoji e="📖" /></span>
+        <span className="prayer-ic glyph"><Emoji e="📖" /></span>
         <span className="grow" style={{ minWidth: 0 }}>
           <span className="t-body" style={{ display: 'block', fontWeight: 700 }}>{t('khatm.title')}</span>
           <span className="t-small muted">{sub}</span>

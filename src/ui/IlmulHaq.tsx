@@ -14,7 +14,7 @@ export function IlmulHaqCard() {
   return (
     <Tap onTap={openIlmulHaq} scale={0.98}>
       <Card pad={false} className="prayer-card">
-        <span className="prayer-ic"><Emoji e="💬" /></span>
+        <span className="prayer-ic glyph"><Emoji e="💬" /></span>
         <span className="grow" style={{ minWidth: 0 }}>
           <span className="t-body" style={{ display: 'block', fontWeight: 700 }}>{t('ilmulhaq.title')}</span>
           <span className="t-small muted">{t('ilmulhaq.body')}</span>

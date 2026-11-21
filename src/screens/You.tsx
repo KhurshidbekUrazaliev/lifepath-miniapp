@@ -12,7 +12,7 @@ import { BADGES } from '../lib/achievements';
 import { shareText, tgUser } from '../tg/telegram';
 import { Key, t, tn } from '../i18n';
 import { fmtNumber } from '../i18n/format';
-import { Avatar, Bar, Card, Header, Num, Row, Screen, Tap } from '../ui/kit';
+import { Avatar, Bar, Card, Header, Num, Row, Screen, Tap, Glyph } from '../ui/kit';
 import { StatTile } from '../ui/parts';
 import { CompanionHandle, CompanionStage } from '../companion/CompanionStage';
 import { haptic } from '../tg/telegram';
@@ -109,7 +109,7 @@ export function You() {
       ) : (
         <Tap onTap={() => open({ name: 'echo' })} scale={0.98}>
           <Card className="row echo-card" style={{ gap: 14 }}>
-            <span className="bubble lg" style={{ background: 'var(--accent-soft)' }}><Emoji e="🌱" /></span>
+            <Glyph className="bubble lg" color="var(--green)" icon="🌱" />
             <div className="grow">
               <div className="t-body">{t('you.echo.meet')}</div>
               <div className="t-small muted">{t('you.echo.meet.body')}</div>

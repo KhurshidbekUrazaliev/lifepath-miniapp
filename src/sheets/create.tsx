@@ -10,7 +10,7 @@ import { openGoals } from '../lib/stats';
 import { haptic } from '../tg/telegram';
 import { Key, t } from '../i18n';
 import { weekdayMini } from '../i18n/format';
-import { Bubble, DayStrip, EmojiPick, Field, Segmented, Swatches, Tap, cx } from '../ui/kit';
+import { Bubble, DayStrip, EmojiPick, Field, Segmented, Swatches, Tap, cx, Glyph } from '../ui/kit';
 import { Sheet } from '../ui/Sheet';
 import { confirmSheet } from './confirm';
 import { useNewArea } from '../screens/Goals';
@@ -104,7 +104,7 @@ export function AddSheet({ onClose }: { onClose: () => void }) {
       <div className="col tight">
         {options.map((o) => (
           <Tap key={o.title} className="card item" onTap={o.go} scale={0.98}>
-            <span className="bubble" style={{ color: o.color, background: `${o.color}24`, borderColor: `${o.color}3a` }}>{o.icon}</span>
+            <Glyph className="bubble" color={o.color} icon={o.icon} />
             <span className="grow">
               <span className="t-body" style={{ display: 'block' }}>{o.title}</span>
               <span className="t-small muted" style={{ display: 'block' }}>{o.hint}</span>

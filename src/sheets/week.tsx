@@ -9,7 +9,7 @@ import { dayKey } from '../lib/dates';
 import { dayKeyToMs } from '../lib/calendar';
 import { t, tn } from '../i18n';
 import { fmtHours, fmtNumber, weekdayMini } from '../i18n/format';
-import { Card, Empty, cx } from '../ui/kit';
+import { Card, Empty, cx, Glyph } from '../ui/kit';
 import { Sheet } from '../ui/Sheet';
 import { StatTile, streakText } from '../ui/parts';
 import { Emoji } from '../ui/Emoji';
@@ -88,9 +88,7 @@ export function WeekSheet({ onClose }: { onClose: () => void }) {
                 <CompanionThumb size={64} />
               </div>
             ) : (
-              <span className="bubble" style={{ color: 'var(--violet)', background: 'var(--accent-soft)' }}>
-                <Sparkle size={22} weight="fill" />
-              </span>
+              <Glyph className="bubble" color="var(--violet)" icon={<Sparkle size={22} weight="fill" />} />
             )}
             <div className="grow" style={{ minWidth: 0 }}>
               <div className="t-tiny advisor-kind">{echo.echo ? t('lb.noticed', { name: echo.echo.name }) : t('lb.noticed.plain')}</div>

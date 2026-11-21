@@ -10,7 +10,7 @@ import { EVIDENCE_WINDOW_DAYS, MIN_SUMMARY_CHARS, cleanEvidence, evidenceBonus, 
 import { haptic, openLink } from '../tg/telegram';
 import { t, tn } from '../i18n';
 import { fmtAmount, fmtNumber, fmtRelative } from '../i18n/format';
-import { Bar, Card, CheckTap, Field, Tap, Toggle, cx } from '../ui/kit';
+import { Bar, Card, CheckTap, Field, Tap, Toggle, cx, Glyph } from '../ui/kit';
 import { Sheet } from '../ui/Sheet';
 import { confirmSheet } from './confirm';
 import { Emoji } from '../ui/Emoji';
@@ -106,7 +106,7 @@ export function LogSheet({ sheet, onClose }: { sheet: Extract<SheetState, { name
       }
     >
       <div className="row" style={{ gap: 12 }}>
-        <span className="bubble" style={folder ? { background: `${folder.color}26`, borderColor: `${folder.color}40` } : undefined}><Emoji e={folder?.icon ?? '🎯'} /></span>
+        <Glyph className="bubble" color={folder?.color} icon={folder?.icon ?? '🎯'} />
         <div className="grow">
           <div className="t-body clip">{task.title}</div>
           <div className="t-small muted">{t('goal.left', { amount: fmtAmount(p.remaining, task.unit, task.progressType) })}</div>

@@ -70,7 +70,7 @@ export function Habits() {
         <>
           <Card className="row" style={{ gap: 0, padding: '14px 16px' }}>
             <div className="row grow" style={{ gap: 12 }}>
-              <span className="flame-ic">
+              <span className="flame-ic glyph">
                 <Fire size={26} fill="currentColor" />
               </span>
               <div>

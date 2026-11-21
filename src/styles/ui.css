@@ -1059,3 +1059,96 @@ select.input {
 .cbar-col.readable {
   cursor: pointer;
 }
+
+
+/* ---------- the glowing icon tile (kit.tsx Glyph) ----------
+   A rounded square tinted by the icon's colour (--g), with the icon drawn in thin lines that glow. */
+
+:root {
+  --glyph-top: #262a37;
+  --glyph-bottom: #14161e;
+  --glyph-rim: rgba(255, 255, 255, 0.07);
+  --glyph-tint: 20%;
+  --glyph-glow: 85%;
+  --glyph-plain: #8b93a7;
+  --glyph-line: 58%;
+}
+:root[data-theme='light'] {
+  --glyph-top: #ffffff;
+  --glyph-bottom: #f1f4fa;
+  --glyph-rim: rgba(255, 255, 255, 0.9);
+  --glyph-tint: 13%;
+  --glyph-glow: 55%;
+  --glyph-plain: #98a1b5;
+  --glyph-line: 100%;
+}
+.glyph {
+  --g: var(--glyph-plain);
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: var(--g);
+}
+/* Doubled, so it wins over each holder's own older background in the later style files. */
+.glyph.glyph {
+  border-radius: 30%;
+  background: linear-gradient(155deg, color-mix(in srgb, var(--g) var(--glyph-tint), var(--glyph-top)) 0%, color-mix(in srgb, var(--g) 4%, var(--glyph-bottom)) 100%);
+  border: 0;
+  box-shadow:
+    inset 0 1px 0 var(--glyph-rim),
+    inset 0 0 0 1px color-mix(in srgb, var(--g) 22%, transparent),
+    0 6px 14px -8px color-mix(in srgb, var(--g) 60%, transparent);
+}
+.glyph > svg {
+  /* Bright lines on the dark tile (the colour mixed toward white), the colour itself on the light one. */
+  color: color-mix(in srgb, var(--g) var(--glyph-line), #fff);
+  filter: drop-shadow(0 0 2.5px color-mix(in srgb, var(--g) var(--glyph-glow), transparent)) drop-shadow(0 0 7px color-mix(in srgb, var(--g) 35%, transparent));
+}
+:root[data-perf='low'] .glyph > svg {
+  /* Bright lines on the dark tile (the colour mixed toward white), the colour itself on the light one. */
+  color: color-mix(in srgb, var(--g) var(--glyph-line), #fff);
+  filter: none;
+}
+/* Sizes of the holders that became tiles. */
+.lrow-ic.glyph {
+  width: 36px;
+  height: 36px;
+}
+.lrow-ic.glyph > svg {
+  width: 20px;
+  height: 20px;
+}
+.tile-ic.glyph {
+  width: 42px;
+  height: 42px;
+  margin-bottom: 6px;
+}
+.tile-ic.glyph > svg {
+  width: 24px;
+  height: 24px;
+}
+.tile-ic.glyph > span {
+  font-size: 21px !important;
+}
+
+/* The tab bar in the same thin glowing lines: the open tab lit in the accent, the others quiet. */
+.tab.on {
+  color: var(--blue-hi);
+}
+.tab.on .tab-ic {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--blue-hi) 85%, transparent)) drop-shadow(0 0 9px color-mix(in srgb, var(--blue-hi) 40%, transparent));
+}
+:root[data-perf='low'] .tab.on .tab-ic {
+  filter: none;
+}
+
+/* The emoji holders that took the tile, each in the colour of what it holds. */
+.prayer-ic.glyph { --g: var(--gold); }
+.flame-ic.glyph { --g: var(--orange); }
+.ch-ic.glyph,
+.ch-kind-ic.glyph,
+.ch-hero-ic.glyph,
+.ch-result-ic.glyph,
+.target-ic.glyph,
+.bd-invite-ic.glyph,
+.toast-ic.glyph { --g: var(--blue-hi); }

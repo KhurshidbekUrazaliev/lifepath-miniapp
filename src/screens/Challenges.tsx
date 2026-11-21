@@ -40,7 +40,7 @@ function ChallengeRow({ c, now }: { c: Challenge; now: number }) {
   const me = myPlace(c);
   return (
     <Tap className="lrow" onTap={() => push({ name: 'challenge', id: c.id })} scale={0.985}>
-      <span className="ch-ic"><Emoji e={KIND_EMOJI[c.kind]} /></span>
+      <span className="ch-ic glyph"><Emoji e={KIND_EMOJI[c.kind]} /></span>
       <span className="grow" style={{ minWidth: 0 }}>
         <span className="t-body clip" style={{ display: 'block' }}>{kindName(c.kind)}</span>
         <span className="t-small muted clip" style={{ display: 'block' }}>{statusLine(c, now)} · {tn('ch.members', c.members.length)}</span>
@@ -176,7 +176,7 @@ export function ChallengeScreen({ route }: { route: { id: string } }) {
         <>
           <Card className="ch-hero">
             <div className="row" style={{ gap: 14 }}>
-              <span className="ch-hero-ic"><Emoji e={KIND_EMOJI[c.kind]} /></span>
+              <span className="ch-hero-ic glyph"><Emoji e={KIND_EMOJI[c.kind]} /></span>
               <div className="grow" style={{ minWidth: 0 }}>
                 <div className="t-title clip">{kindName(c.kind)}</div>
                 <div className="t-small muted clip">
@@ -196,7 +196,7 @@ export function ChallengeScreen({ route }: { route: { id: string } }) {
 
           {c.ended && me ? (
             <Card className="ch-result">
-              <span className="ch-result-ic"><Emoji e={me.rank === 1 ? '🏆' : '🏁'} /></span>
+              <span className="ch-result-ic glyph"><Emoji e={me.rank === 1 ? '🏆' : '🏁'} /></span>
               <div className="t-h">{me.rank === 1 ? t('ch.won') : t('ch.placed', { rank: me.rank, total: c.members.length })}</div>
               {me.rank !== 1 && c.members[0] ? <div className="t-small muted">{t('ch.winner', { name: c.members[0].name })}</div> : null}
               <StoryButton make={(p) => storyCards.challenge(p, c, me)} />

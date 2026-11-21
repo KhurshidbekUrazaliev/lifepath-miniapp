@@ -16,7 +16,7 @@ export function FocusCard() {
   return (
     <Tap onTap={() => push({ name: 'focus' })} scale={0.98}>
       <Card pad={false} className="prayer-card">
-        <span className="prayer-ic"><Emoji e={run.mode === 'break' ? '🍵' : '🎯'} /></span>
+        <span className="prayer-ic glyph"><Emoji e={run.mode === 'break' ? '🍵' : '🎯'} /></span>
         <span className="grow" style={{ minWidth: 0 }}>
           <span className="t-body" style={{ display: 'block', fontWeight: 700 }}>{label}</span>
           <span className="t-small muted num">

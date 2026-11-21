@@ -10,7 +10,7 @@ import { haptic, openLink, tgUser } from '../tg/telegram';
 import { t } from '../i18n';
 import { fmtLongDate, fmtNumber, fmtRelative, fmtShortDate } from '../i18n/format';
 import { dayKeyToMs } from '../lib/calendar';
-import { Card, Chips, Empty, Header, IconBtn, Num, Screen, Tap, Toggle, cx } from '../ui/kit';
+import { Card, Chips, Empty, Header, IconBtn, Num, Screen, Tap, Toggle, cx, Glyph } from '../ui/kit';
 import { StatTile } from '../ui/parts';
 
 /** "Here now", "12 min ago", "3 h ago", then a day or a date. */
@@ -331,7 +331,7 @@ function Errors({ round }: { round: number }) {
   const count = list ? list.builds.reduce((n, b) => n + b.errors.length, 0) : 0;
   const head = (
     <>
-      <span className="lrow-ic"><Bug size={21} style={{ color: count ? 'var(--red)' : 'var(--green)' }} /></span>
+      <Glyph className="lrow-ic" icon={<Bug size={21} style={{ color: count ? 'var(--red)' : 'var(--green)' }} />} />
       <span className="grow" style={{ minWidth: 0 }}>
         <span className="t-body" style={{ display: 'block' }}>{t('admin.errors')}</span>
         <span className="t-small muted" style={{ display: 'block', marginTop: 2 }}>

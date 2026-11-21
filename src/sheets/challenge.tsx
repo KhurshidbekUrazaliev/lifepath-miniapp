@@ -47,7 +47,7 @@ export function ChallengeSheet({ onClose }: { onClose: () => void }) {
         <div className="ch-kinds">
           {CHALLENGE_KINDS.map((k) => (
             <Tap key={k} className={cx('ch-kind', k === kind && 'on')} onTap={() => setKind(k)} hap="select" scale={0.97}>
-              <span className="ch-kind-ic"><Emoji e={KIND_EMOJI[k]} /></span>
+              <span className="ch-kind-ic glyph"><Emoji e={KIND_EMOJI[k]} /></span>
               <span className="t-body">{kindName(k)}</span>
               <span className="t-tiny muted">{t(`ch.how.${k}` as Key)}</span>
             </Tap>

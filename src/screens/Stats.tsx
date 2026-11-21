@@ -12,7 +12,7 @@ import { folderProgress } from '../lib/progress';
 import { goalsRatio, lastDays, overallSeries, totals, xpSeries } from '../lib/stats';
 import { t } from '../i18n';
 import { dayLabel, fmtHours, fmtShortDate, pct, weekdayMini } from '../i18n/format';
-import { Bar, Card, Chips, Empty, Header, Num, Ring, Screen, Section, Segmented, Tap, cx } from '../ui/kit';
+import { Bar, Card, Chips, Empty, Header, Num, Ring, Screen, Section, Segmented, Tap, cx, Glyph } from '../ui/kit';
 import { BarChart, LineChart } from '../ui/charts';
 import { StatTile } from '../ui/parts';
 import { Emoji } from '../ui/Emoji';
@@ -45,9 +45,7 @@ function WeekCard({ week }: { week: Week }) {
   return (
     <Tap onTap={() => open({ name: 'week' })} scale={0.98}>
       <Card pad={false} className="row week-card">
-        <span className="bubble" style={{ color: 'var(--blue-hi)', background: 'var(--accent-soft)' }}>
-          <CalendarCheck size={22} />
-        </span>
+        <Glyph className="bubble" color="var(--blue-hi)" icon={<CalendarCheck size={22} />} />
         <div className="grow">
           <div className="week-card-top">
             <b className="t-body clip">{t('week.title')}</b>

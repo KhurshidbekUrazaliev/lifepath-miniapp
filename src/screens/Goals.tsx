@@ -64,7 +64,7 @@ export function Goals() {
       <Header title={t('goals.title')} />
 
       <Card className="row" style={{ gap: 16 }}>
-        <span className="target-ic"><Emoji e="🎯" /></span>
+        <span className="target-ic glyph"><Emoji e="🎯" /></span>
         <div className="grow">
           <div className="t-display num" style={{ fontSize: 28 }}><Num value={active.length} /></div>
           <div className="t-small muted">{tn('goals.active', active.length)}</div>

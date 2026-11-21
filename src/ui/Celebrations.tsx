@@ -102,7 +102,7 @@ function Toast({ c, onDone }: { c: Celebration; onDone: () => void }) {
       exit={{ opacity: 0, y: -14, scale: 0.94 }}
       transition={spring}
     >
-      <span className="toast-ic">{typeof d.icon === 'string' ? <Emoji e={d.icon} /> : d.icon}</span>
+      <span className="toast-ic glyph">{typeof d.icon === 'string' ? <Emoji e={d.icon} /> : d.icon}</span>
       <span style={{ minWidth: 0 }}>
         <span className="t-body clip" style={{ display: 'block' }}>{d.title}</span>
         {d.sub ? <span className="t-small muted clip" style={{ display: 'block' }}>{d.sub}</span> : null}

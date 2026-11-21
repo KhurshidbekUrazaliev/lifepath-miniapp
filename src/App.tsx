@@ -32,6 +32,8 @@ function useTheme(): void {
     const apply = () => {
       const theme = setting === 'auto' ? telegramScheme() : setting;
       document.documentElement.dataset.theme = theme;
+      // Slow phones skip the icons' glow (ui.css .glyph).
+      document.documentElement.dataset.perf = lowPerf ? 'low' : 'ok';
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', CHROME[theme]);
       paintChrome(CHROME[theme]);
       try {

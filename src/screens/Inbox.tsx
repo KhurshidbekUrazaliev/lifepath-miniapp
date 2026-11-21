@@ -12,7 +12,7 @@ import { activeHabits, dayTally } from '../lib/habits';
 import { badgeById } from '../lib/achievements';
 import { Key, t, tn } from '../i18n';
 import { fmtAmount, fmtRelative } from '../i18n/format';
-import { Card, Empty, Header, Screen, Section, Tap, Toggle } from '../ui/kit';
+import { Card, Empty, Header, Screen, Section, Tap, Toggle, Glyph } from '../ui/kit';
 import { Hex } from '../ui/charts';
 import { PlanItem } from '../ui/parts';
 import { Emoji } from '../ui/Emoji';
@@ -89,7 +89,7 @@ export function Inbox() {
 
       <Card>
         <div className="row" style={{ gap: 14 }}>
-          <span className="bubble" style={{ background: 'var(--accent-soft)', color: 'var(--blue-hi)' }}><BellRinging size={21} /></span>
+          <Glyph className="bubble" color="var(--blue-hi)" icon={<BellRinging size={21} />} />
           <div className="grow">
             <div className="t-body">{t('inbox.reminders')}</div>
             <div className="t-small muted">{d.settings.reminders ? t('inbox.reminders.on') : t('inbox.reminders.off')}</div>

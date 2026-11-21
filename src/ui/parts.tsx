@@ -10,7 +10,7 @@ import { useStore } from '../store/store';
 import { useNav } from '../store/nav';
 import { t, tn } from '../i18n';
 import { dayTimeLabel, fmtClock, fmtProgress, fmtShortDate, pct } from '../i18n/format';
-import { Bar, Bubble, Card, CheckTap, Tap, cx } from './kit';
+import { Bar, Bubble, Card, CheckTap, Glyph, Tap, cx } from './kit';
 import { Emoji } from './Emoji';
 
 export function useFolderOf(): (taskId?: string) => { task?: Task; folder?: Folder } {
@@ -140,7 +140,7 @@ export function HabitDot({ habit, day }: { habit: Habit; day: string }) {
 export function StatTile({ icon, value, label, onTap }: { icon: ReactNode; value: ReactNode; label: string; onTap?: () => void }) {
   const body = (
     <Card pad={false} className="tile">
-      <span className="tile-ic">{icon}</span>
+      <Glyph icon={icon} className="tile-ic" />
       <span className="tile-val num">{value}</span>
       <span className="t-tiny muted">{label}</span>
     </Card>

@@ -73,7 +73,7 @@ export function Together() {
         {race ? (
           <Tap onTap={() => push({ name: 'challenge', id: race.id })} scale={0.98}>
             <Card className="tg-card">
-              <span className="ch-ic"><Emoji e={KIND_EMOJI[race.kind]} /></span>
+              <span className="ch-ic glyph"><Emoji e={KIND_EMOJI[race.kind]} /></span>
               <div className="grow">
                 <div className="t-body clip">{kindName(race.kind)}</div>
                 <div className="t-small muted clip">

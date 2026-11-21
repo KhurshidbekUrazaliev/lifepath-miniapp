@@ -12,7 +12,7 @@ import { Entry, Task } from '../lib/types';
 import { openLink } from '../tg/telegram';
 import { t, tn } from '../i18n';
 import { fmtAmount, fmtProgress, fmtRelative, fmtShortDate, fmtTime, pct, weekdayMini } from '../i18n/format';
-import { Bubble, Card, CheckTap, Header, IconBtn, Ring, Row, Screen, Section, Tap, cx } from '../ui/kit';
+import { Bubble, Card, CheckTap, Header, IconBtn, Ring, Row, Screen, Section, Tap, cx, Glyph } from '../ui/kit';
 import { PlanItem } from '../ui/parts';
 import { confirmSheet } from '../sheets/confirm';
 
@@ -228,7 +228,7 @@ export function Goal({ route }: { route: Extract<Route, { name: 'goal' }> }) {
           {task.resources.map((r) => (
             <div className="lrow" key={r.id}>
               <Tap className="grow row" style={{ gap: 12 }} onTap={() => r.url && openLink(r.url)} scale={0.99} hap={r.url ? 'light' : false}>
-                <span className="lrow-ic" style={{ color: r.url ? 'var(--blue-hi)' : 'var(--text-3)' }}><ArrowSquareOut size={18} /></span>
+                <Glyph className="lrow-ic" color={r.url ? 'var(--blue-hi)' : 'var(--glyph-plain)'} icon={<ArrowSquareOut size={18} />} />
                 <span className="grow t-body clip">{r.title}</span>
               </Tap>
               <Tap className="chev" style={{ width: 32, height: 32, display: 'grid', placeItems: 'center' }} onTap={() => removeResource(task.id, r.id)} label={t('common.delete')} scale={0.85}>

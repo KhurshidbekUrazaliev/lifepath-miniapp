@@ -15,7 +15,7 @@ import {
 import { HIJRI_MONTHS, hijriDate } from '../lib/hijri';
 import { Key, getLang, t, tn } from '../i18n';
 import { dayLabel, fmtClock, fmtLongDate, fmtMonth, fmtWeekdayDate, weekdayMini, weekdayShort } from '../i18n/format';
-import { Card, Empty, Header, IconBtn, Screen, Segmented, Tap, cx } from '../ui/kit';
+import { Card, Empty, Header, IconBtn, Screen, Segmented, Tap, cx, Glyph } from '../ui/kit';
 import { Emoji } from '../ui/Emoji';
 import { Face, FeelBar, feelName } from './Feel';
 import { Private } from './Private';
@@ -519,9 +519,7 @@ function NoteRow({ page }: { page: Page }) {
   return (
     <Tap onTap={() => push({ name: 'page', id: page.id })} scale={0.98}>
       <Card pad={false} className="item">
-        <span className="bubble" style={{ color, background: `${color}24`, borderColor: `${color}40` }}>
-          <Note size={22} />
-        </span>
+        <Glyph className="bubble" color={color} icon={<Note size={22} />} />
         <span className="grow" style={{ minWidth: 0 }}>
           <span className="t-body clip" style={{ display: 'block' }}>{headline(page) || t('p.note')}</span>
           <span className="t-small muted clip" style={{ display: 'block' }}>{excerpt(page, 90) || noteDate(page)}</span>
