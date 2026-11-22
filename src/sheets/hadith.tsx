@@ -7,6 +7,7 @@ import { getLang, t } from '../i18n';
 import { openLink } from '../tg/telegram';
 import { Card, Tap } from '../ui/kit';
 import { Sheet } from '../ui/Sheet';
+import { dailyHadithFull } from '../store/daily';
 
 type Full = Record<string, { en: string; ru: string; ar: string }>;
 let cache: Full | null = null;
@@ -27,9 +28,11 @@ export function HadithSheet({ n, onClose }: { n: number; onClose: () => void }) 
 
   const lang = getLang();
   const short = HADITHS.find((h) => h.n === n);
-  const text = full?.[String(n)];
-  // There is no Uzbek edition: Uzbek readers get the shortened AI translation, as in the bot.
-  const translation = lang === 'uz' ? short?.uz : text?.[lang] || short?.[lang];
+  // The server's random hadith of the day brings its own full texts; the app's own come from the file.
+  const daily = dailyHadithFull(n);
+  const text = daily ? { en: daily.en, ru: daily.ru, ar: daily.ar ?? '' } : full?.[String(n)];
+  // There is no Uzbek edition: Uzbek readers get an AI translation, as in the bot.
+  const translation = lang === 'uz' ? daily?.uz ?? short?.uz : text?.[lang] || short?.[lang];
 
   return (
     <Sheet
@@ -46,7 +49,7 @@ export function HadithSheet({ n, onClose }: { n: number; onClose: () => void }) 
         <Card>
           <div className="hadith-ar" dir="rtl" lang="ar">{text.ar}</div>
         </Card>
-      ) : !full && !failed ? (
+      ) : !daily && !full && !failed ? (
         <Card><div className="t-small muted center">{t('hadith.loading')}</div></Card>
       ) : null}
       {translation ? (

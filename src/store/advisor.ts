@@ -4,25 +4,28 @@ import { Advice, AdviceContext, AdviceKind, dayNumber, pickAdvice } from '../lib
 import { hijriDate, isRamadan } from '../lib/hijri';
 import { getLang } from '../i18n';
 import { useStore } from './store';
+import { useDailyHadith } from './daily';
 
 export function adviceContext(hijriOffset = 0): AdviceContext {
   const now = new Date();
   return { lang: getLang(), hour: now.getHours(), weekday: now.getDay(), ramadan: isRamadan(hijriDate(now, hijriOffset)) };
 }
 
-/** `next(kind)` gives a new piece of advice each call; `today` is the day's first hadith. */
+/** `next(kind)` gives a new piece of advice each call; `today` is the hadith of the day. */
 export function useAdvisor() {
   const offset = useStore((s) => s.settings.hijriOffset ?? 0);
   const taps = useRef<Record<AdviceKind, number>>({ hadith: 1, hikmah: 0, motivation: 0 });
+  // The server's random hadith of the day when it has come in this language; the list's otherwise.
+  const daily = useDailyHadith(getLang());
   return useMemo(() => {
     const ctx = adviceContext(offset);
     const day = dayNumber();
     return {
-      today: pickAdvice('hadith', ctx, day, 0),
+      today: daily ?? pickAdvice('hadith', ctx, day, 0),
       next(kind: AdviceKind): Advice {
         const n = taps.current[kind]++;
         return pickAdvice(kind, adviceContext(offset), day, n);
       },
     };
-  }, [offset]);
+  }, [offset, daily?.key, daily?.text]);
 }

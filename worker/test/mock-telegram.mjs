@@ -13,6 +13,8 @@ import { pathToFileURL } from 'node:url';
 export async function startMock({ token, port = 0, log = false } = {}) {
   /** @type {{ method: string, params: any, at: number }[]} */
   const calls = [];
+  /** @type {string[]} The paths asked of the Quran and hadith stand-ins. */
+  const sources = [];
   /** @type {Map<string, (params: any) => ({ status?: number, body: any } | undefined)>} */
   const overrides = new Map();
   let counter = 0;
@@ -37,7 +39,14 @@ export async function startMock({ token, port = 0, log = false } = {}) {
         res.writeHead(status, { 'content-type': 'application/json' });
         res.end(JSON.stringify(body));
       };
-      const match = /^\/bot([^/]+)\/([A-Za-z]+)$/.exec(new URL(req.url ?? '/', 'http://mock').pathname);
+      const path = new URL(req.url ?? '/', 'http://mock').pathname;
+      // Stand-ins for Quran.com and the hadith collection that the ayah and hadith of the day come from.
+      if (path.startsWith('/quran/') || path.startsWith('/hadith/')) {
+        sources.push(path);
+        const found = source(path);
+        return found ? reply(200, found) : reply(404, { message: 'Not Found' });
+      }
+      const match = /^\/bot([^/]+)\/([A-Za-z]+)$/.exec(path);
       if (!match) return reply(404, { ok: false, error_code: 404, description: 'Not Found' });
       if (token && match[1] !== token) return reply(401, { ok: false, error_code: 401, description: 'Unauthorized' });
 
@@ -67,6 +76,7 @@ export async function startMock({ token, port = 0, log = false } = {}) {
   return {
     url: `http://127.0.0.1:${address.port}`,
     calls,
+    sources,
     /** Calls of one method made since `from` (an earlier calls.length). */
     since: (from, method) => calls.slice(from).filter((call) => !method || call.method === method),
     /** Answer a method yourself: return { status, body } from `fn`, or undefined for the default answer. */
@@ -79,6 +89,31 @@ export async function startMock({ token, port = 0, log = false } = {}) {
         server.close(() => resolve(undefined));
       }),
   };
+}
+
+const AYAH = {
+  verse: {
+    verse_key: '2:286',
+    text_uthmani: 'لَا يُكَلِّفُ ٱللَّهُ نَفْسًا إِلَّا وُسْعَهَا',
+    page_number: 49,
+    translations: [
+      { resource_id: 20, text: 'Allah does not burden a soul beyond that it can bear.<sup foot_note=1>1</sup>' },
+      { resource_id: 79, text: 'Аллах не возлагает на человека сверх его возможностей.' },
+      { resource_id: 55, text: 'Alloh hech bir jonni toqatidan tashqari narsaga taklif qilmas. O`zi' },
+    ],
+  },
+};
+const HADITH = {
+  rus: 'Сообщается со слов Абу Хурайры, что Пророк ﷺ сказал: «Поистине, эта религия легка, и никто не будет состязаться с ней»',
+  eng: 'Narrated Abu Huraira:The Prophet (ﷺ) said, "Religion is very easy and whoever overburdens himself in his religion will not be able to continue in that way."',
+  ara: 'عَنْ أَبِي هُرَيْرَةَ عَنِ النَّبِيِّ صلى الله عليه وسلم قَالَ إِنَّ الدِّينَ يُسْرٌ',
+};
+
+/** What the stand-in sources answer: one ayah, and the same short hadith under every number. */
+function source(path) {
+  if (path === '/quran/verses/random') return AYAH;
+  const m = /^\/hadith\/editions\/(rus|eng|ara)-bukhari\/(\d+)\.json$/.exec(path);
+  return m ? { hadiths: [{ hadithnumber: Number(m[2]), text: HADITH[m[1]] }] } : null;
 }
 
 /** A Telegram-style error answer. */

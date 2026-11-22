@@ -7,6 +7,7 @@ import { Lang, getLang, t } from '../i18n';
 import { toggleRecitation, useRecitation } from '../store/recitation';
 import { useStore } from '../store/store';
 import { useNav } from '../store/nav';
+import { useDailyPassage } from '../store/daily';
 import { Card, Tap, cx } from './kit';
 import { Emoji } from './Emoji';
 import { Quote, QuoteStoryButton } from './QuoteStory';
@@ -136,7 +137,7 @@ function MosqueArt() {
 /** Home's card: today's passage in Arabic with a short translation; a tap opens all of it. */
 export function AyahCard() {
   const open = useNav((s) => s.open);
-  const p = passageOfDay(dayKey());
+  const p = useDailyPassage() ?? passageOfDay(dayKey());
   const failed = useRecitation((s) => s.id === p.key && s.status === 'error');
   const long = p.ayat.reduce((n, a) => n + a.ar.length, 0) > 190;
   return (

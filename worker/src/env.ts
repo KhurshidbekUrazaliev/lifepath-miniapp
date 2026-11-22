@@ -22,6 +22,14 @@ export interface Env {
   APP_URL?: string;
   TELEGRAM_API?: string;
 
+  /** Cloudflare Workers AI: writes the Uzbek of the hadith of the day (daily.ts). */
+  AI?: Ai;
+  /** "0" leaves the AI out (the tests); the hadith of the day then has no Uzbek. */
+  DAILY_AI?: string;
+  /** Where the ayah and the hadith of the day come from; the tests point these at a stand-in. */
+  QURAN_API?: string;
+  HADITH_API?: string;
+
   /** "1" only in .dev.vars: turns on the `dev` auth scheme, and only on local hosts. */
   DEV_AUTH?: string;
 }

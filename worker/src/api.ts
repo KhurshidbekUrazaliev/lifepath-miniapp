@@ -14,6 +14,7 @@ import {
 import { getRankings, postActivity, putRankProfile } from './rankings';
 import { putReminders, reschedule } from './reminders';
 import { postStory } from './stories';
+import { getDaily } from './daily';
 import { tg } from './telegram';
 import { loadUser, rows, type Ctx } from './users';
 import { lang, timeZone } from './validate';
@@ -126,6 +127,7 @@ const ROUTES = new Map<string, (c: Ctx) => Promise<Response>>([
   ['POST /api/gkhatm/next', postKhatmNext],
   ['POST /api/gkhatm/delete', postKhatmDelete],
   ['POST /api/story', postStory],
+  ['GET /api/daily', getDaily],
 ]);
 
 /** The owner's panel. Anyone who is not in ADMINS gets the same 404 as for an address that does not exist. */

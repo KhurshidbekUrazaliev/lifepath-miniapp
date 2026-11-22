@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useStore, snapshot } from './store';
 import { useFocus } from './focus';
 import { api, useServer } from './server';
+import { fetchDaily } from './daily';
 import { Data, provenXp } from '../lib/stats';
 import { activeHabits, shiftDay } from '../lib/habits';
 import { levelInfo, visibleStreak } from '../lib/gamify';
@@ -246,7 +247,13 @@ export function useServerSync(): void {
     void useServer.getState().hello(timeZone(), getLang()).then(() => {
       want = { reminders: true, activity: true };
       send();
+      void fetchDaily(getLang());
     });
+    // Back in the app on a new day, or with a part still missing: ask for the day's ayah and hadith.
+    const onShow = () => {
+      if (!document.hidden) void fetchDaily(getLang());
+    };
+    document.addEventListener('visibilitychange', onShow);
 
     // The weekly letter as the bot has it. Its words move with things the lists below do not watch (a
     // prayer ticked, a page of Qurʼan read), so the words themselves are compared: a change that does
@@ -282,6 +289,7 @@ export function useServerSync(): void {
     return () => {
       off();
       offFocus();
+      document.removeEventListener('visibilitychange', onShow);
       clearTimeout(timer);
     };
   }, []);

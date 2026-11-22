@@ -8,12 +8,13 @@ import { getLang, t } from '../i18n';
 import { openLink } from '../tg/telegram';
 import { playRecitation, useRecitation } from '../store/recitation';
 import { useStore } from '../store/store';
+import { dailyPassageByKey } from '../store/daily';
 import { Card, Chips, Tap } from '../ui/kit';
 import { Sheet } from '../ui/Sheet';
 import { AyahArabic, AyahTranslation, ListenButton } from '../ui/Ayah';
 
 export function AyahSheet({ id, onClose }: { id: string; onClose: () => void }) {
-  const p = passageByKey(id) ?? passageOfDay(dayKey());
+  const p = dailyPassageByKey(id) ?? passageByKey(id) ?? passageOfDay(dayKey());
   const lang = getLang();
   const reciter = reciterOf(useStore((s) => s.settings.reciter));
   const setSettings = useStore((s) => s.setSettings);

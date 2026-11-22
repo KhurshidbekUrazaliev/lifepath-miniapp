@@ -54,7 +54,7 @@ const env = { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' };
 execFileSync('npx', ['wrangler', 'd1', 'migrations', 'apply', 'lifepath', '--local', '--persist-to', dir], { env, stdio: 'pipe' });
 
 // The owners of the test bot: Alice by her username, Carol by her id.
-const vars = { BOT_TOKEN: TOKEN, WEBHOOK_SECRET, SETUP_KEY, DEV_AUTH: '1', TELEGRAM_API: mock.url, APP_URL, PLUS_STARS: '150', ADMINS: '@alice,333' };
+const vars = { BOT_TOKEN: TOKEN, WEBHOOK_SECRET, SETUP_KEY, DEV_AUTH: '1', TELEGRAM_API: mock.url, APP_URL, PLUS_STARS: '150', ADMINS: '@alice,333', DAILY_AI: '0', QURAN_API: `${mock.url}/quran`, HADITH_API: `${mock.url}/hadith` };
 const dev = spawn(
   'npx',
   [
@@ -1010,6 +1010,29 @@ try {
     'nothing in a row says who sent it',
     Object.keys(twice ?? {}),
   );
+
+  // ---------- the ayah and hadith of the day ----------
+  console.log('\nayah and hadith of the day');
+  const utcToday = new Date().toISOString().slice(0, 10);
+  check((await call('GET', '/api/daily?day=2020-01-01', { user: alice })).status === 400, 'a day long gone: 400');
+  check((await call('GET', '/api/daily?day=utcToday', { user: alice })).status === 400, 'not a day: 400');
+  check((await call('GET', `/api/daily?day=${utcToday}`)).status === 401, 'the day needs sign-in');
+  const asked = mock.sources.length;
+  const first = await call('GET', `/api/daily?day=${utcToday}`, { user: alice });
+  const d = first.json;
+  check(
+    first.status === 200 && d?.day === utcToday && d.ayah?.k === '2:286' && d.ayah.en === 'Allah does not burden a soul beyond that it can bear.' && d.ayah.uz.endsWith('Oʻzi') && d.ayah.page === 49,
+    'the first ask fetches the ayah, without the footnote marks and with the Uzbek ʻ',
+    d?.ayah,
+  );
+  check(
+    d?.hadith?.n > 0 && d.hadith.ru.includes('«') && d.hadith.en.startsWith('Narrated Abu Huraira: ') && d.hadith.ar && d.hadith.uz === undefined,
+    'and a short hadith in three languages (no Uzbek with the AI off)',
+    d?.hadith,
+  );
+  check(mock.sources.length - asked === 4, 'one ask of each source', mock.sources.slice(asked));
+  const again = await call('GET', `/api/daily?day=${utcToday}`, { user: bob });
+  check(JSON.stringify(again.json) === JSON.stringify(d) && mock.sources.length - asked === 4, 'everyone gets the same pair, kept from the first ask');
 
   // ---------- blocking ----------
   console.log('\nblocking');

@@ -33,6 +33,9 @@
   ],
 
   // Reminders are sent by a cron that runs every minute.
+  // Writes the Uzbek of the hadith of the day, once a day (worker/src/daily.ts), within the free allowance.
+  "ai": { "binding": "AI", "remote": true },
+
   "triggers": { "crons": ["* * * * *"] },
 
   // The app's public address (the Mini App URL set in @BotFather).
