@@ -16,6 +16,29 @@ export const nativePlatform: string = Capacitor.getPlatform();
 
 if (isNative && typeof document !== 'undefined') document.documentElement.classList.add('native');
 
+/**
+ * The newest Android build (android/app/build.gradle versionCode) on GitHub Releases. The app itself
+ * is loaded from the site, so most changes need no new APK; a change to the Android side does, and
+ * raising this tells the phones that have an older one.
+ */
+export const LATEST_ANDROID_BUILD = 2;
+export const APK_URL = 'https://github.com/KhurshidbekUrazaliev/lifepath-miniapp/releases/latest';
+
+/** This phone's Android build number, or 0 outside the app (or before it is known). */
+export async function androidBuild(): Promise<number> {
+  if (!isNative) return 0;
+  try {
+    return Number((await App.getInfo()).build) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+// The offline copy (public/sw.js): only in the phone app, which is loaded from the site.
+if (isNative && typeof navigator !== 'undefined' && 'serviceWorker' in navigator && location.protocol === 'https:' && !/^localhost$/.test(location.hostname)) {
+  void navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+}
+
 // ---------- start, back button ----------
 
 /** Once at start: the hardware back button steps back through the app, and leaves it at the root. */

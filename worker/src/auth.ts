@@ -1,6 +1,7 @@
 // Who is calling the API: Telegram Mini App initData, or the dev scheme on a local host.
 import type { Env } from './env';
 import { serverError, unauthorized } from './http';
+import { appSessionUser } from './app';
 
 export interface AuthUser {
   id: number;
@@ -113,6 +114,9 @@ export async function authenticate(request: Request, env: Env, url: URL, nowMs: 
       throw serverError();
     }
     user = await verifyInitData(value, env.BOT_TOKEN, nowMs);
+  } else if (scheme === 'app') {
+    // The Android app: a session made when the user signed in through the bot (app.ts).
+    user = await appSessionUser(env, value, nowMs);
   } else if (scheme === 'dev' && devAuthEnabled(env, url)) {
     user = decodeDevUser(value);
   }

@@ -1042,6 +1042,41 @@ try {
   await webhook(member('member'));
   check((await call('POST', '/api/hello', { user: bob, body: { tz: 'UTC', lang: 'uz' } })).json?.reminders.canMessage === true, 'unblocking is remembered');
 
+  // ---------- the Android app ----------
+  console.log('\nandroid app');
+  // A user of her own: the others have used up much of their minute's requests by now.
+  const zara = { id: 555, first_name: 'Zara', username: 'zara', language_code: 'en', allows_write_to_pm: true };
+  const login = await call('POST', '/api/app/login');
+  check(login.status === 200 && /^[A-Za-z0-9_-]{24}$/.test(login.json?.code) && login.json?.bot === 'lifepath_test_bot', 'a sign-in code and the bot to open', login.json);
+  const code = login.json.code;
+  check((await call('GET', `/api/app/login?code=${code}`)).json?.status === 'waiting', 'waiting until the bot is started');
+  check((await call('GET', '/api/app/login?code=bad')).status === 400, 'a malformed code: 400');
+  from = mock.calls.length;
+  await webhook(message(zara, { text: `/start login_${code}` }));
+  check(sentTo(from, 555).length === 1 && !button(sentTo(from, 555)[0]), 'the bot says the app is signed in', sentTo(from, 555)[0]?.params);
+  const got = await call('GET', `/api/app/login?code=${code}`);
+  check(got.json?.status === 'ok' && /^[A-Za-z0-9_-]{43}$/.test(got.json?.token), 'the app collects its token', got.json);
+  check((await call('GET', `/api/app/login?code=${code}`)).json?.status === 'expired', 'the token is handed out once');
+  from = mock.calls.length;
+  await webhook(message(bob, { text: `/start login_${code}` }));
+  check(sentTo(from, 222).length === 1, 'a used code gets the "expired" reply');
+  const app = `app ${got.json.token}`;
+  const appHi = await call('POST', '/api/hello', { auth: app, body: { tz: 'UTC', lang: 'en' } });
+  check(appHi.status === 200 && appHi.json?.user?.id === 555, 'the token signs the app in as Zara', appHi.json?.user);
+  check((await call('POST', '/api/hello', { auth: `app ${'x'.repeat(43)}`, body: { tz: 'UTC', lang: 'en' } })).status === 401, 'an unknown token: 401');
+  check((await call('GET', '/api/kv/keys', { auth: app })).json?.keys?.length === 0, 'the shared copy starts empty');
+  check((await call('POST', '/api/kv/set', { auth: app, body: { items: { m: '{"v":1}', f0: 'abc', st: 's' } } })).status === 200, 'saving to the shared copy');
+  check((await call('POST', '/api/kv/set', { auth: app, body: { items: { j0: 'diary' } } })).status === 400, 'journal keys are refused');
+  check((await call('POST', '/api/kv/set', { auth: app, body: { items: { f1: 'x'.repeat(4097) } } })).status === 400, 'values over 4096 characters are refused');
+  const kv = await call('POST', '/api/kv/get', { auth: app, body: { keys: ['m', 'f0', 'p0'] } });
+  check(kv.json?.items?.m === '{"v":1}' && kv.json.items.f0 === 'abc' && Object.keys(kv.json.items).length === 2, 'reading back; a missing key is left out', kv.json);
+  check((await call('GET', '/api/kv/keys', { user: zara })).json?.keys?.length === 3, 'the Mini App sees the same copy');
+  check((await call('GET', '/api/kv/keys', { user: bob })).json?.keys?.length === 0, 'nobody else does');
+  await call('POST', '/api/kv/remove', { auth: app, body: { keys: ['st'] } });
+  check((await call('GET', '/api/kv/keys', { auth: app })).json?.keys?.sort().join() === 'f0,m', 'removing a key');
+  check((await call('POST', '/api/app/logout', { auth: app })).status === 200, 'signing out');
+  check((await call('GET', '/api/kv/keys', { auth: app })).status === 401, 'the token no longer works');
+
   // ---------- front end ----------
   console.log('\nfront end');
   const page = await fetch(`${BASE}/`);

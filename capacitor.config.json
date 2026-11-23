@@ -24,5 +24,10 @@
       "smallIcon": "ic_stat_lifepath",
       "iconColor": "#8E6BF2"
     }
+  },
+  "server": {
+    "url": "https://lifepath.khurshidbekdev.workers.dev",
+    "androidScheme": "https",
+    "errorPath": "offline.html"
   }
 }

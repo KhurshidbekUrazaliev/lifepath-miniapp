@@ -17,6 +17,7 @@ import {
 } from './telegram';
 import { canonicalTimeZone, localParts } from './time';
 import { blockedStatement, chatUserStatement, rows } from './users';
+import { appLogin } from './app';
 
 /**
  * Someone whose subscription already renews by itself, with more than this left, is not charged
@@ -177,6 +178,13 @@ async function textMessage(message: TgMessage, from: TgUser, env: Env, appUrl: s
   // Anything that is not a known command gets the help text.
   let text = t.help;
   let button = openButton(t.open, appUrl);
+  if (command === '/start' && argument.startsWith('login_')) {
+    // Signing in to the Android app (app.ts). The user must be saved first: the session points at them.
+    await chatUserStatement(env.DB, from, now).run();
+    const ok = await appLogin(env, argument.slice(6), from, now);
+    await send(env, message.chat.id, ok ? t.appSignedIn : t.appLoginExpired);
+    return;
+  }
   if (command === '/start') {
     text = t.start((from.first_name ?? '').slice(0, 64));
     button = openButton(t.open, appUrl, OPEN_RE.test(argument) ? argument : null);

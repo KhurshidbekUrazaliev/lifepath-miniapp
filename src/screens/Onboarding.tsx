@@ -7,9 +7,10 @@ import { buildDemo } from '../store/demo';
 import { TEMPLATES, templateById } from '../lib/templates';
 import { FREE_FOLDER_LIMIT } from '../lib/plus';
 import { EVERY_DAY } from '../lib/habits';
-import { haptic, tgUser } from '../tg/telegram';
+import { haptic, isNative, tgUser } from '../tg/telegram';
 import { Key, t } from '../i18n';
 import { Tap, cx } from '../ui/kit';
+import { SignInButton } from '../native/SignIn';
 import { HABIT_IDEAS, IDEA_GROUPS } from '../sheets/create';
 import { Emoji } from '../ui/Emoji';
 
@@ -117,6 +118,8 @@ export function Onboarding() {
         {step === 0 ? (
           <>
             <Tap className="btn primary" onTap={() => setStep(1)}>{t('onb.start')}</Tap>
+            {/* The phone app: someone who already uses LifePath in Telegram brings everything over. */}
+            {isNative ? <SignInButton className="btn soft" /> : null}
             <Tap className="btn ghost" onTap={demo}>{t('onb.demo')}</Tap>
           </>
         ) : step === 1 ? (

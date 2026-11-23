@@ -12,6 +12,10 @@ export interface BotText {
   open: string;
   start(name: string): string;
   help: string;
+  /** The Android app was signed in through /start login_<code>. */
+  appSignedIn: string;
+  /** That code was unknown, already used or too old. */
+  appLoginExpired: string;
   /** `contact` is SUPPORT_CONTACT and may be empty. */
   paysupport(contact: string): string;
   terms: string;
@@ -58,6 +62,8 @@ const num = (n: number, sep: string): string => String(n).replace(/\B(?=(\d{3})+
 
 export const TEXT: Record<Lang, BotText> = {
   en: {
+    appSignedIn: '✅ You are signed in to the LifePath app. Go back to the app: it carries on by itself.',
+    appLoginExpired: 'This sign-in link is no longer valid. In the LifePath app, tap “Sign in with Telegram” again.',
     open: 'Open LifePath',
     start: (name) =>
       `Hi${name ? `, ${name}` : ''}! Welcome to LifePath.\n\n` +
@@ -107,6 +113,8 @@ export const TEXT: Record<Lang, BotText> = {
   },
 
   uz: {
+    appSignedIn: '✅ LifePath ilovasiga kirdingiz. Ilovaga qayting: u oʻzi davom etadi.',
+    appLoginExpired: 'Bu kirish havolasi endi yaroqsiz. LifePath ilovasida «Telegram orqali kirish»ni yana bosing.',
     open: 'LifePath ilovasini ochish',
     start: (name) =>
       `Assalomu alaykum${name ? `, ${name}` : ''}! LifePath ilovasiga xush kelibsiz.\n\n` +
@@ -162,6 +170,8 @@ export const TEXT: Record<Lang, BotText> = {
   },
 
   ru: {
+    appSignedIn: '✅ Вы вошли в приложение LifePath. Вернитесь в приложение: оно продолжит само.',
+    appLoginExpired: 'Эта ссылка для входа больше не действует. В приложении LifePath снова нажмите «Войти через Telegram».',
     open: 'Открыть LifePath',
     start: (name) =>
       `Здравствуйте${name ? `, ${name}` : ''}! Добро пожаловать в LifePath.\n\n` +

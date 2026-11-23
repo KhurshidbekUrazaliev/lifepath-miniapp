@@ -26,6 +26,7 @@ import { openIlmulHaq } from '../ui/IlmulHaq';
 import { useLock } from '../journal/lock';
 import { copyBackup, useJournalOut } from '../journal/out';
 import { House } from '@phosphor-icons/react';
+import { AccountCard, UpdateCard } from '../native/SignIn';
 
 const deviceZone = (): string => {
   try {
@@ -104,6 +105,9 @@ export function Settings() {
           </form>
         ) : null}
       </Card>
+
+      {isNative ? <UpdateCard /> : null}
+      {isNative ? <AccountCard /> : null}
 
       <Card className="row" style={{ gap: 14 }}>
         <Glyph className="bubble" color={sync.status === 'offline' ? 'var(--orange)' : 'var(--blue-hi)'} icon={sync.status === 'offline' || sync.status === 'local' ? <CloudSlash size={21} /> : <Cloud size={21} />} />

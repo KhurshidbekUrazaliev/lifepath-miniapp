@@ -1,5 +1,6 @@
 // The JSON API the Mini App calls (same origin, Authorization: tma <initData>).
 import { authenticate } from './auth';
+import { getAppLogin, getKvKeys, postAppLogin, postAppLogout, postKvGet, postKvRemove, postKvSet } from './app';
 import type { Env } from './env';
 import { getAdminErrors, postError } from './errors';
 import { json, notFound, rateLimited, readJson, serverError } from './http';
@@ -128,6 +129,11 @@ const ROUTES = new Map<string, (c: Ctx) => Promise<Response>>([
   ['POST /api/gkhatm/delete', postKhatmDelete],
   ['POST /api/story', postStory],
   ['GET /api/daily', getDaily],
+  ['POST /api/app/logout', postAppLogout],
+  ['GET /api/kv/keys', getKvKeys],
+  ['POST /api/kv/get', postKvGet],
+  ['POST /api/kv/set', postKvSet],
+  ['POST /api/kv/remove', postKvRemove],
 ]);
 
 /** The owner's panel. Anyone who is not in ADMINS gets the same 404 as for an address that does not exist. */
@@ -139,6 +145,9 @@ const ADMIN_ROUTES = new Map<string, (c: Ctx) => Promise<Response>>([
 
 export async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
   const key = `${request.method} ${url.pathname}`;
+  // Signing in to the Android app comes before there is anyone to authenticate.
+  if (key === 'POST /api/app/login') return postAppLogin(request, env, Date.now());
+  if (key === 'GET /api/app/login') return getAppLogin(request, env, url, Date.now());
   const open = ROUTES.get(key);
   const owners = open ? undefined : ADMIN_ROUTES.get(key);
   const handler = open ?? owners;

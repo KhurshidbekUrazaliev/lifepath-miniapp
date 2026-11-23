@@ -257,7 +257,8 @@ export function useServerSync(): void {
       if (isNative && what.reminders) void pushPhone(snapshot());
       if (useServer.getState().status !== 'ok') return;
       const d = snapshot();
-      if (what.reminders) void pushReminders(d);
+      // The phone shows its own notifications; only the Mini App has the bot send them.
+      if (what.reminders && !isNative) void pushReminders(d);
       if (what.activity) void pushActivity(d);
     };
     const schedule = (reminders: boolean, activity: boolean, ms: number) => {

@@ -2,7 +2,9 @@
 // buddy streaks, group khatms, story pictures and Plus.
 // Everything else works without it, so every call here is allowed to fail quietly.
 import { create } from 'zustand';
-import { inTelegram, initData, tgUser } from '../tg/telegram';
+import { inTelegram, initData, isNative, tgUser } from '../tg/telegram';
+import { appToken, dropToken } from '../native/account';
+import { startShared } from './sync';
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string) {
@@ -12,6 +14,9 @@ export class ApiError extends Error {
 
 function authHeader(): string | null {
   if (inTelegram) return `tma ${initData}`;
+  // The phone app, once signed in through the bot (native/account.ts).
+  const token = isNative ? appToken() : null;
+  if (token) return `app ${token}`;
   if (import.meta.env.DEV) {
     // Local development against `wrangler dev` (the Worker only accepts this when DEV_AUTH=1).
     const json = JSON.stringify({ id: 1001, first_name: 'Dev', username: 'dev', language_code: 'en' });
@@ -223,6 +228,12 @@ export const useServer = create<ServerState>()((set) => ({
       rememberGift(sparksGift);
       const wardrobeOpen = h.access?.wardrobe === true;
       rememberWardrobe(wardrobeOpen);
+      if (isNative) {
+        // Signed in on the phone: the name and @username come from the server, as Telegram gives them in the Mini App.
+        tgUser.id = h.user.id;
+        tgUser.firstName = h.user.firstName;
+        tgUser.username = h.user.username ?? undefined;
+      }
       set({
         status: 'ok',
         plus: h.plus,
@@ -231,11 +242,16 @@ export const useServer = create<ServerState>()((set) => ({
         wardrobeOpen,
         admin: h.admin === true,
         rank: h.rank,
-        canMessage: h.reminders.canMessage,
+        // On the phone, reminders are the phone's notifications (serverSync.ts keeps this in step).
+        ...(isNative ? {} : { canMessage: h.reminders.canMessage }),
         botUsername: h.bot.username,
         together: h.together ?? null,
       });
-    } catch {
+      // The shared copy of the data, which the Mini App and the phone app both keep in step (store/sync.ts).
+      startShared();
+    } catch (e) {
+      // A phone whose session the server no longer knows signs out quietly; its data stays.
+      if (isNative && e instanceof ApiError && e.status === 401) dropToken();
       set({ status: 'off' });
     }
   },

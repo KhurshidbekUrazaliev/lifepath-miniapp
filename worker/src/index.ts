@@ -2,6 +2,7 @@
 // Everything else is the built front end, served as static assets.
 import { handlePhoto, handleSetup } from './admin';
 import { handleApi } from './api';
+import { cleanAppLogins } from './app';
 import { cleanUp, runChallengeResults } from './challenges';
 import { cleanUpTogether } from './gkhatm';
 import { devAuthEnabled } from './auth';
@@ -51,6 +52,7 @@ export default {
     if (at.getUTCMinutes() === 0) {
       await cleanUp(env, now);
       await cleanUpTogether(env, now);
+      await cleanAppLogins(env, now);
     }
     // Once a day: forget the errors that have not been reported again for a month.
     if (at.getUTCMinutes() === 0 && at.getUTCHours() === 3) await cleanErrors(env, now);
