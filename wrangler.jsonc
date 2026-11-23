@@ -39,12 +39,14 @@
   "workers_dev": true,
   "preview_urls": false,
 
-  // Secrets (BOT_TOKEN, WEBHOOK_SECRET, SETUP_KEY) are set with `wrangler secret put`.
+  // Secrets (BOT_TOKEN, WEBHOOK_SECRET, SETUP_KEY, VAPID_PRIVATE) are set with `wrangler secret put`.
   "vars": {
     "PLUS_STARS": "150",
     "SUPPORT_CONTACT": "",
     "APP_URL": "https://lifepath.khurshidbekdev.workers.dev",
-    "TELEGRAM_API": "https://api.telegram.org"
+    "TELEGRAM_API": "https://api.telegram.org",
+    // The public half of the web push key (worker/src/push.ts). The private half is the VAPID_PRIVATE secret.
+    "VAPID_PUBLIC": "BOBQfan-F8NxJQWoVbyBqQyUr83AUwXdik3giNHbfVEHpGPpGFmxF9MtmQXk3gvETS3ItY57Z7W4vAuVPVlIpII"
   },
 
   "observability": { "enabled": true }

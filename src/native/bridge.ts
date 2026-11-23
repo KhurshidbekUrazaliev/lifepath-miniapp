@@ -150,6 +150,15 @@ export async function askNotifications(): Promise<boolean> {
   }
 }
 
+/** 'prompt' when the phone has never asked about notifications yet. */
+export async function notificationPermission(): Promise<string> {
+  try {
+    return (await LocalNotifications.checkPermissions()).display;
+  } catch {
+    return 'denied';
+  }
+}
+
 export async function notificationsAllowed(): Promise<boolean> {
   try {
     return (await LocalNotifications.checkPermissions()).display === 'granted';

@@ -13,6 +13,10 @@ import { pathToFileURL } from 'node:url';
 export async function startMock({ token, port = 0, log = false } = {}) {
   /** @type {{ method: string, params: any, at: number }[]} */
   const calls = [];
+  /** @type {{ path: string, headers: Record<string, any>, body: Buffer }[]} What the push service stand-in got. */
+  const pushes = [];
+  /** @type {Map<string, number>} Status the push stand-in answers for a path (201 otherwise). */
+  const pushStatus = new Map();
   /** @type {string[]} The paths asked of the Quran and hadith stand-ins. */
   const sources = [];
   /** @type {Map<string, (params: any) => ({ status?: number, body: any } | undefined)>} */
@@ -40,6 +44,12 @@ export async function startMock({ token, port = 0, log = false } = {}) {
         res.end(JSON.stringify(body));
       };
       const path = new URL(req.url ?? '/', 'http://mock').pathname;
+      // A stand-in for a browser's push service (worker/src/push.ts posts the notifications here).
+      if (path.startsWith('/push/') && req.method === 'POST') {
+        pushes.push({ path, headers: req.headers, body: raw });
+        res.writeHead(pushStatus.get(path) ?? 201);
+        return res.end();
+      }
       // Stand-ins for Quran.com and the hadith collection that the ayah and hadith of the day come from.
       if (path.startsWith('/quran/') || path.startsWith('/hadith/')) {
         sources.push(path);
@@ -77,6 +87,8 @@ export async function startMock({ token, port = 0, log = false } = {}) {
     url: `http://127.0.0.1:${address.port}`,
     calls,
     sources,
+    pushes,
+    pushStatus,
     /** Calls of one method made since `from` (an earlier calls.length). */
     since: (from, method) => calls.slice(from).filter((call) => !method || call.method === method),
     /** Answer a method yourself: return { status, body } from `fn`, or undefined for the default answer. */

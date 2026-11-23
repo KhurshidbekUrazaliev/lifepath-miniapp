@@ -12,6 +12,8 @@ export interface Env {
   BOT_TOKEN?: string;
   WEBHOOK_SECRET?: string;
   SETUP_KEY?: string;
+  /** The private half of the web push key (base64url, 32 bytes): see push.ts. */
+  VAPID_PRIVATE?: string;
 
   /** Who owns the bot and may open the panel: Telegram ids and @usernames, separated by commas (see panel.ts). */
   ADMINS?: string;
@@ -21,6 +23,8 @@ export interface Env {
   SUPPORT_CONTACT?: string;
   APP_URL?: string;
   TELEGRAM_API?: string;
+  /** The public half of the web push key (base64url, 65 bytes uncompressed). */
+  VAPID_PUBLIC?: string;
 
   /** Where the ayah of the day comes from; the tests point this at a stand-in. */
   QURAN_API?: string;

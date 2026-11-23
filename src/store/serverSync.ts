@@ -21,7 +21,8 @@ import { weekNow, weekWords } from './week';
 import type { Settings } from '../lib/types';
 import { getLang, t } from '../i18n';
 import { inTelegram, isNative, requestWriteAccess } from '../tg/telegram';
-import { notificationsAllowed } from '../native/bridge';
+import { askNotifications, notificationPermission, notificationsAllowed } from '../native/bridge';
+import { refreshPush } from './webPush';
 import { applyOnPhone, askExactAlarms, plan, type PhonePrayers } from '../native/notify';
 import { planTitle } from '../ui/parts';
 
@@ -171,14 +172,15 @@ async function pushReminders(d: Data): Promise<boolean> {
       items: d.settings.reminders ? buildReminders(d) : [],
       prayer: d.settings.reminders ? prayerReminders(d.settings) : { enabled: false },
     });
-    useServer.setState({ canMessage: res.canMessage });
+    // In the phone app canMessage says whether the phone shows notifications (pushPhone sets it).
+    if (!isNative) useServer.setState({ canMessage: res.canMessage });
     return true;
   } catch {
     return false;
   }
 }
 
-/** The phone app: the same reminders, as the phone's own notifications. Nothing leaves the phone. */
+/** The phone app: the same reminders, as the phone's own notifications, worked out on the phone. */
 async function pushPhone(d: Data): Promise<void> {
   const on = d.settings.reminders;
   const prayer = on ? prayerReminders(d.settings) : { enabled: false };
@@ -227,6 +229,8 @@ export async function enableReminders(): Promise<'ok' | 'denied' | 'off'> {
     useStore.getState().setSettings({ reminders: true });
     await askExactAlarms();
     await pushPhone(snapshot());
+    // The bot sends them too, when it may write to the user.
+    if (useServer.getState().status === 'ok') void pushReminders(snapshot());
     return 'ok';
   }
   if (useServer.getState().status !== 'ok') return 'off';
@@ -240,7 +244,8 @@ export async function enableReminders(): Promise<'ok' | 'denied' | 'off'> {
 
 export function disableReminders(): void {
   useStore.getState().setSettings({ reminders: false });
-  void (isNative ? pushPhone(snapshot()) : pushReminders(snapshot()));
+  if (isNative) void pushPhone(snapshot());
+  if (useServer.getState().status === 'ok') void pushReminders(snapshot());
 }
 
 const PRAYER_KEYS = ['prayerAlerts', 'prayerAlertList', 'prayerBefore', 'jumuah', 'place', 'prayerMethod', 'asr'] as const;
@@ -258,8 +263,8 @@ export function useServerSync(): void {
       if (isNative && what.reminders) void pushPhone(snapshot());
       if (useServer.getState().status !== 'ok') return;
       const d = snapshot();
-      // The phone shows its own notifications; only the Mini App has the bot send them.
-      if (what.reminders && !isNative) void pushReminders(d);
+      // The bot sends them as well, wherever the app runs (the phone app shows its own too).
+      if (what.reminders) void pushReminders(d);
       if (what.activity) void pushActivity(d);
     };
     const schedule = (reminders: boolean, activity: boolean, ms: number) => {
@@ -267,10 +272,15 @@ export function useServerSync(): void {
       clearTimeout(timer);
       timer = setTimeout(send, ms);
     };
-    void useServer.getState().hello(timeZone(), getLang()).then(() => {
+    // The phone app with reminders on (set in Telegram, say) that never asked to show notifications: ask now, once.
+    const askOnce = isNative && useStore.getState().settings.reminders
+      ? notificationPermission().then((p) => (p === 'prompt' || p === 'prompt-with-rationale' ? askNotifications() : false))
+      : Promise.resolve(false);
+    void Promise.all([useServer.getState().hello(timeZone(), getLang()), askOnce]).then(() => {
       want = { reminders: true, activity: true };
       send();
       void fetchDaily();
+      if (useServer.getState().status === 'ok') void refreshPush();
     });
     // Back in the app on a new day, or with a part still missing: ask for the day's ayah and hadith.
     const onShow = () => {

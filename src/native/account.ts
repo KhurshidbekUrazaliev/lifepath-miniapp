@@ -87,6 +87,9 @@ export function cancelSignIn(): void {
 
 /** Signs out on this phone. The data on the phone stays; it is no longer shared. */
 export async function signOut(): Promise<void> {
+  // This device stops getting the reminders of the person signing out.
+  const { disablePush } = await import('../store/webPush');
+  await disablePush();
   const token = appToken();
   if (token) await fetch('/api/app/logout', { method: 'POST', headers: { Authorization: `app ${token}` } }).catch(() => undefined);
   try {

@@ -1,4 +1,5 @@
 // The JSON API the Mini App calls (same origin, Authorization: tma <initData>).
+import { deletePush, getPushKey, putPush } from './push';
 import { authenticate } from './auth';
 import { getAppLogin, getKvKeys, postAppLogin, postAppLogout, postKvGet, postKvRemove, postKvSet } from './app';
 import type { Env } from './env';
@@ -102,6 +103,9 @@ const ROUTES = new Map<string, (c: Ctx) => Promise<Response>>([
   ['POST /api/hello', hello],
   ['POST /api/errors', postError],
   ['PUT /api/reminders', putReminders],
+  ['GET /api/push/key', getPushKey],
+  ['PUT /api/push', putPush],
+  ['DELETE /api/push', deletePush],
   ['POST /api/activity', postActivity],
   ['GET /api/rankings', getRankings],
   ['PUT /api/rankings/profile', putRankProfile],

@@ -15,6 +15,7 @@ import { fmtTime, pct, weekdayShort } from '../i18n/format';
 import { Avatar, Bar, Card, Field, Header, Row, Screen, Section, Segmented, Tap, Toggle, cx, Glyph } from '../ui/kit';
 import { confirmSheet } from '../sheets/confirm';
 import { RemindersSwitch } from './Inbox';
+import { disablePush, enablePush, usePush } from '../store/webPush';
 import { RECITERS, SAMPLE_AYAH, reciterOf } from '../content/reciters';
 import { stopRecitation, toggleRecitation, useRecitation } from '../store/recitation';
 import { AsrSchool, METHOD_MENU, PRAYERS, alertPrayers, hijriOf, isMethod, methodName, resolveMethod } from '../lib/prayer';
@@ -437,6 +438,37 @@ export function Reciters() {
   );
 }
 
+/** The website and the iPhone home-screen app: the reminders as this device's own notifications too. */
+function DevicePush({ onProblem }: { onProblem: (message: string) => void }) {
+  const { state, busy } = usePush();
+  const server = useServer((s) => s.status);
+  const reminders = useStore((s) => s.settings.reminders);
+  const setSettings = useStore((s) => s.setSettings);
+  if (state === 'unsupported' || server !== 'ok') return null;
+  if (state === 'home') return <Row title={t('push.device')} sub={t('push.home')} />;
+  return (
+    <Row
+      title={t('push.device')}
+      sub={t('push.device.hint')}
+      right={
+        <Toggle
+          on={state === 'on'}
+          label={t('push.device')}
+          onChange={async (next) => {
+            if (busy) return;
+            onProblem('');
+            if (!next) return void disablePush();
+            const result = await enablePush();
+            if (result === 'ok') {
+              if (!reminders) setSettings({ reminders: true });
+            } else onProblem(t(result === 'denied' ? 'push.denied' : 'push.failed'));
+          }}
+        />
+      }
+    />
+  );
+}
+
 export function Notifications() {
   const profile = useStore((s) => s.profile);
   const settings = useStore((s) => s.settings);
@@ -453,6 +485,7 @@ export function Notifications() {
       <Header title={t('settings.notifications')} noGear />
       <Card pad={false} className="list">
         <Row title={t(isNative ? 'app.notif.bot' : 'notif.bot')} sub={t(isNative ? 'app.notif.bot.hint' : 'notif.bot.hint')} right={<RemindersSwitch onProblem={setProblem} />} />
+        <DevicePush onProblem={setProblem} />
         <Row
           title={t('notif.nudge')}
           sub={t('notif.nudge.hint')}

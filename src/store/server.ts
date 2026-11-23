@@ -29,7 +29,7 @@ function authHeader(): string | null {
  * Calls the server. The body is sent as JSON, or as it is when it is a file (a Blob, such as a picture).
  * With `keepalive` the call is finished even if the page closes or reloads meanwhile (an error report).
  */
-export async function api<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown, keepalive = false): Promise<T> {
+export async function api<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown, keepalive = false): Promise<T> {
   const auth = authHeader();
   if (!auth) throw new ApiError(0, 'outside_telegram');
   const file = body instanceof Blob ? body : null;

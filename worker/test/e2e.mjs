@@ -4,7 +4,7 @@
 //   npm run test:worker
 // The Worker listens on a port picked at random; E2E_PORT=8792 names one when others are in use.
 import { execFileSync, spawn } from 'node:child_process';
-import { createHmac } from 'node:crypto';
+import { createECDH, createDecipheriv, createHmac, createPublicKey, generateKeyPairSync, hkdfSync, randomBytes, verify } from 'node:crypto';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
@@ -18,6 +18,10 @@ const WEBHOOK_SECRET = 'e2e-webhook-secret';
 const SETUP_KEY = 'e2e-setup-key';
 const APP_URL = 'https://lifepath.example.test';
 const DAY = 86_400_000;
+
+// The site's web push key, made for this run.
+const vapidJwk = generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).privateKey.export({ format: 'jwk' });
+const VAPID_PUBLIC = Buffer.concat([Buffer.of(4), Buffer.from(vapidJwk.x, 'base64url'), Buffer.from(vapidJwk.y, 'base64url')]).toString('base64url');
 
 if (!existsSync('dist/index.html')) {
   console.error('Build the front end first: npm run build');
@@ -54,7 +58,7 @@ const env = { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' };
 execFileSync('npx', ['wrangler', 'd1', 'migrations', 'apply', 'lifepath', '--local', '--persist-to', dir], { env, stdio: 'pipe' });
 
 // The owners of the test bot: Alice by her username, Carol by her id.
-const vars = { BOT_TOKEN: TOKEN, WEBHOOK_SECRET, SETUP_KEY, DEV_AUTH: '1', TELEGRAM_API: mock.url, APP_URL, PLUS_STARS: '150', ADMINS: '@alice,333', QURAN_API: `${mock.url}/quran` };
+const vars = { BOT_TOKEN: TOKEN, WEBHOOK_SECRET, SETUP_KEY, DEV_AUTH: '1', TELEGRAM_API: mock.url, APP_URL, PLUS_STARS: '150', ADMINS: '@alice,333', QURAN_API: `${mock.url}/quran`, VAPID_PUBLIC, VAPID_PRIVATE: vapidJwk.d };
 const dev = spawn(
   'npx',
   [
@@ -280,6 +284,84 @@ try {
   await cron(target + 7 * DAY + 1000);
   check(sentTo(from, 111).length === 0, 'turning reminders off removes them');
   check(sentTo(from, 222).length === 0, 'a slot missed by hours is dropped, not sent late');
+
+  // ---------- web push ----------
+  console.log('\nweb push');
+  {
+    // Pia, so that Alice stays under the per-user rate limit for the tests that follow.
+    const pia = { id: 701, first_name: 'Pia', language_code: 'en', allows_write_to_pm: true };
+    await call('POST', '/api/hello', { user: pia, body: { tz: 'UTC', lang: 'en' } });
+    // A browser: its own key pair and auth secret, as PushManager.subscribe() would make them.
+    const browser = createECDH('prime256v1');
+    browser.generateKeys();
+    const secret = randomBytes(16);
+    const keys = { p256dh: browser.getPublicKey().toString('base64url'), auth: secret.toString('base64url') };
+    const endpoint = `${mock.url}/push/pia-phone`;
+    const goneEndpoint = `${mock.url}/push/pia-old`;
+    mock.pushStatus.set('/push/pia-old', 410);
+
+    /** Undoes RFC 8291 with Node's own crypto, independent of the Worker's code. */
+    const open = (body) => {
+      const salt = body.subarray(0, 16);
+      const idlen = body[20];
+      const server = body.subarray(21, 21 + idlen);
+      const sealed = body.subarray(21 + idlen);
+      const ikm = Buffer.from(hkdfSync('sha256', browser.computeSecret(server), secret, Buffer.concat([Buffer.from('WebPush: info\0'), browser.getPublicKey(), server]), 32));
+      const cek = Buffer.from(hkdfSync('sha256', ikm, salt, Buffer.from('Content-Encoding: aes128gcm\0'), 16));
+      const nonce = Buffer.from(hkdfSync('sha256', ikm, salt, Buffer.from('Content-Encoding: nonce\0'), 12));
+      const d = createDecipheriv('aes-128-gcm', cek, nonce);
+      d.setAuthTag(sealed.subarray(sealed.length - 16));
+      const plain = Buffer.concat([d.update(sealed.subarray(0, sealed.length - 16)), d.final()]);
+      if (plain[plain.length - 1] !== 2) throw new Error('no last-record mark');
+      return JSON.parse(plain.subarray(0, plain.length - 1).toString('utf8'));
+    };
+    /** Checks the VAPID header: the site's key, signed for the push service's origin. */
+    const signed = (header) => {
+      const m = /^vapid t=([^,]+), k=(.+)$/.exec(header ?? '');
+      if (!m || m[2] !== VAPID_PUBLIC) return false;
+      const [h, c, s] = m[1].split('.');
+      const claims = JSON.parse(Buffer.from(c, 'base64url').toString());
+      const key = createPublicKey({ key: { kty: 'EC', crv: 'P-256', x: vapidJwk.x, y: vapidJwk.y }, format: 'jwk' });
+      return claims.aud === mock.url && claims.exp > Date.now() / 1000 &&
+        verify('sha256', Buffer.from(`${h}.${c}`), { key, dsaEncoding: 'ieee-p1363' }, Buffer.from(s, 'base64url'));
+    };
+
+    check((await call('GET', '/api/push/key', { user: pia })).json?.key === VAPID_PUBLIC, 'the public key is handed out');
+    check((await call('PUT', '/api/push', { user: pia, body: { endpoint: 'https://evil.example.com/x', keys } })).status === 400, 'an address that is not a push service is refused');
+    check((await call('PUT', '/api/push', { user: pia, body: { endpoint, keys: { ...keys, auth: 'short' } } })).status === 400, 'a bad key is refused');
+    check((await call('PUT', '/api/push', { user: pia, body: { endpoint, keys } })).status === 200, 'a browser subscribes');
+    await call('PUT', '/api/push', { user: pia, body: { endpoint: goneEndpoint, keys } });
+
+    const slot2 = Math.ceil(Date.now() / 60_000) * 60_000 + 45 * 60_000;
+    const at2 = new Date(slot2);
+    await call('PUT', '/api/reminders', {
+      user: pia,
+      body: { enabled: true, tz: 'UTC', lang: 'en', items: [{ id: 'h_push', text: '💧 Drink water', hour: at2.getUTCHours(), minute: at2.getUTCMinutes(), days: every, open: 'habits' }] },
+    });
+    let pushFrom = mock.pushes.length;
+    from = mock.calls.length;
+    await cron(slot2 + 1000);
+    const got = mock.pushes.slice(pushFrom).filter((p) => p.path === '/push/pia-phone');
+    check(sentTo(from, 701).length === 1, 'the bot still sends its message');
+    check(got.length === 1, 'the browser gets the reminder too', mock.pushes.slice(pushFrom).map((p) => p.path));
+    let message = null;
+    try {
+      message = got[0] && open(got[0].body);
+    } catch (e) {
+      message = String(e);
+    }
+    check(message?.title === '💧 Drink water' && message.open === 'habits' && message.tag === 'h_push', 'it decrypts to the reminder and its link', message);
+    check(got[0]?.headers['content-encoding'] === 'aes128gcm' && got[0]?.headers.ttl === '7200', 'sent as aes128gcm with a time to live', got[0]?.headers);
+    check(signed(got[0]?.headers.authorization), 'signed with the site key for that push service', got[0]?.headers.authorization);
+    check(mock.pushes.slice(pushFrom).some((p) => p.path === '/push/pia-old'), 'the old browser was tried');
+
+    check((await call('DELETE', '/api/push', { user: pia, body: { endpoint } })).status === 200, 'a browser unsubscribes');
+    pushFrom = mock.pushes.length;
+    from = mock.calls.length;
+    await cron(slot2 + DAY + 1000);
+    check(sentTo(from, 701).length === 1 && mock.pushes.length === pushFrom, 'next day: the bot only; the 410 and the unsubscribed browser are gone', mock.pushes.slice(pushFrom).map((p) => p.path));
+    await call('PUT', '/api/reminders', { user: pia, body: { enabled: false, tz: 'UTC', lang: 'en', items: [] } });
+  }
 
   // ---------- prayer reminders ----------
   console.log('\nprayer reminders');

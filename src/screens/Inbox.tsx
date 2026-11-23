@@ -32,7 +32,10 @@ export function useInboxDot(): boolean {
 
 /** The reminders switch, shared with Settings. Shows why it could not be turned on. */
 export function RemindersSwitch({ onProblem }: { onProblem: (message: string) => void }) {
-  const on = useStore((s) => s.settings.reminders);
+  // In the phone app the switch is on only when the phone may also show them: off, a tap asks again.
+  const wanted = useStore((s) => s.settings.reminders);
+  const shown = useServer((s) => !isNative || s.canMessage);
+  const on = wanted && shown;
   const [busy, setBusy] = useState(false);
   return (
     <Toggle

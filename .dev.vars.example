@@ -16,3 +16,8 @@ ADMINS=@dev
 
 TELEGRAM_API=http://127.0.0.1:8799
 APP_URL=http://localhost:5183
+
+# Web push (worker/src/push.ts): a key pair for local runs. Make one with
+#   node -e "const j=require('crypto').generateKeyPairSync('ec',{namedCurve:'prime256v1'}).privateKey.export({format:'jwk'});console.log('VAPID_PUBLIC='+Buffer.concat([Buffer.of(4),Buffer.from(j.x,'base64url'),Buffer.from(j.y,'base64url')]).toString('base64url')+'\nVAPID_PRIVATE='+j.d)"
+# In production VAPID_PUBLIC is in wrangler.jsonc and VAPID_PRIVATE is a secret:
+#   npx wrangler secret put VAPID_PRIVATE
