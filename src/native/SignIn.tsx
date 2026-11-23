@@ -1,11 +1,11 @@
 // The phone app's link to Telegram: sign in through the bot, so the data, rankings and friends of the
 // Mini App are here too (native/account.ts). Shown in the phone app and in a browser, never in Telegram.
 import { useEffect, useState } from 'react';
-import { AndroidLogo, DownloadSimple, SignOut, SpinnerGap, TelegramLogo } from '@phosphor-icons/react';
+import { AndroidLogo, DeviceMobile, DownloadSimple, Export, SignOut, SpinnerGap, TelegramLogo } from '@phosphor-icons/react';
 import { t } from '../i18n';
 import { useServer } from '../store/server';
 import { useSync } from '../store/sync';
-import { openLink, tgUser } from '../tg/telegram';
+import { onHomeScreen, onIOS, openLink, tgUser } from '../tg/telegram';
 import { Card, Glyph, Tap } from '../ui/kit';
 import { appToken, cancelSignIn, signIn, signOut, useSignIn } from './account';
 import { APK_URL, BOT_URL, LATEST_ANDROID_BUILD, androidBuild } from './bridge';
@@ -104,8 +104,31 @@ export function UpdateCard() {
   );
 }
 
+/** On an iPhone there is no app to download: the site goes on the home screen instead. */
+function IOSHint() {
+  return (
+    <div className="row t-small muted" style={{ gap: 10, alignItems: 'flex-start', lineHeight: 1.45 }}>
+      <Export size={18} style={{ flex: 'none', marginTop: 1, color: 'var(--blue-hi)' }} />
+      <span>{t('web.ios.hint')}</span>
+    </div>
+  );
+}
+
 /** The two other ways to use LifePath, for the browser (the first screen and Settings). */
 export function GetTheApp() {
+  // Already on the home screen: only Telegram is left to offer.
+  if (onIOS && onHomeScreen) return null;
+  if (onIOS) {
+    return (
+      <div style={{ display: 'grid', gap: 10 }}>
+        <IOSHint />
+        <Tap className="btn soft sm" onTap={() => openLink(BOT_URL)}>
+          <TelegramLogo size={17} weight="fill" />
+          Telegram
+        </Tap>
+      </div>
+    );
+  }
   return (
     <div className="row" style={{ gap: 10 }}>
       <Tap className="btn soft sm" style={{ flex: 1 }} onTap={() => (window.location.href = APK_URL)}>
@@ -120,8 +143,20 @@ export function GetTheApp() {
   );
 }
 
-/** Settings in a browser: the phone app and the Mini App. */
+/** Settings in a browser: the phone app and the Mini App (on an iPhone, the home screen). */
 export function GetAppCard() {
+  if (onIOS && onHomeScreen) return null;
+  if (onIOS) {
+    return (
+      <Card>
+        <div className="row" style={{ gap: 14, marginBottom: 12 }}>
+          <Glyph className="bubble" color="var(--blue-hi)" icon={<DeviceMobile size={21} />} />
+          <div className="grow t-body">{t('web.ios')}</div>
+        </div>
+        <GetTheApp />
+      </Card>
+    );
+  }
   return (
     <Card>
       <div className="row" style={{ gap: 14, marginBottom: 12 }}>

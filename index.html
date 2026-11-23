@@ -8,6 +8,14 @@
     <meta name="format-detection" content="telephone=no" />
     <title>LifePath</title>
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <!-- Added to a home screen (Safari "Add to Home Screen", Chrome "Install app"): its icon, its name,
+         and a full screen without the browser's bars. The icons come from scripts/web-icons.mjs. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="LifePath" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <!-- Telegram asks for this script in <head>, before any other script. -->
     <script src="https://telegram.org/js/telegram-web-app.js?65"></script>
     <script>
@@ -22,6 +30,12 @@
           theme = ui.theme === 'dark' || ui.theme === 'light' ? ui.theme : auto === 'light' ? 'light' : 'dark';
         } catch (e) {}
         document.documentElement.dataset.theme = theme;
+        // Opened from the home screen: the page runs under the status bar, so it keeps clear of it.
+        try {
+          if (navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)) {
+            document.documentElement.classList.add('standalone');
+          }
+        } catch (e) {}
       })();
     </script>
     <style>

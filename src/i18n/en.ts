@@ -1258,6 +1258,8 @@ export const en = {
   'web.android': 'Get the Android app',
   'web.android.hint': 'Install it on your phone; your data comes along when you sign in.',
   'web.telegram': 'Open in Telegram',
+  'web.ios': 'Put LifePath on your home screen',
+  'web.ios.hint': 'In Safari, tap Share, then “Add to Home Screen”. It opens full screen, like an app.',
   'app.signin.empty': 'Your data shows up here after LifePath has been opened once in Telegram. Open it there, then come back. Starting afresh is fine too.',
   'app.lang.auto': 'Match the device',
   'app.theme.auto': 'Match the device',

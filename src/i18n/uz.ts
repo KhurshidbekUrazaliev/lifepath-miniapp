@@ -1214,6 +1214,8 @@ export const uz: Record<string, string> = {
   'web.android': 'Android ilovasini yuklab olish',
   'web.android.hint': 'Telefoningizga oʻrnating: Telegram orqali kirsangiz, maʼlumotlaringiz ham oʻtadi.',
   'web.telegram': 'Telegramda ochish',
+  'web.ios': 'LifePathni bosh ekranga qoʻying',
+  'web.ios.hint': 'Safari brauzerida «Ulashish» (Share / Поделиться) tugmasini bosing, soʻng «Add to Home Screen» (На экран «Домой») ni tanlang. Ilova kabi butun ekranda ochiladi.',
   'app.signin.empty': 'Maʼlumotlaringiz LifePath Telegramda bir marta ochilgandan keyin shu yerga keladi. Uni Telegramda oching, soʻng qayting. Yangidan boshlasangiz ham boʻladi.',
   'app.lang.auto': 'Qurilma kabi',
   'app.theme.auto': 'Qurilma kabi',

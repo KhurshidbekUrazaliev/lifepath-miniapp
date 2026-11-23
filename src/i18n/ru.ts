@@ -1343,6 +1343,8 @@ export const ru: Record<string, string> = {
   'web.android': 'Скачать приложение для Android',
   'web.android.hint': 'Установите его на телефон: войдите через Telegram, и ваши данные будут там.',
   'web.telegram': 'Открыть в Telegram',
+  'web.ios': 'LifePath на экране «Домой»',
+  'web.ios.hint': 'В Safari нажмите «Поделиться», затем «На экран «Домой»». Откроется на весь экран, как приложение.',
   'app.signin.empty': 'Ваши данные появятся здесь, когда LifePath хотя бы раз откроется в Telegram. Откройте его там и вернитесь. Можно и начать заново.',
   'app.lang.auto': 'Как на устройстве',
   'app.theme.auto': 'Как на устройстве',

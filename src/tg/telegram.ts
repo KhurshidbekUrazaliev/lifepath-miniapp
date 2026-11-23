@@ -48,6 +48,14 @@ export const platform: string = inTelegram ? String(wa.platform ?? 'unknown') : 
 export { isNative };
 /** An ordinary browser: neither Telegram nor the phone app. It signs in through the bot, as the phone app does. */
 export const inBrowser: boolean = !inTelegram && !isNative;
+/** An iPhone or iPad browser (iPadOS calls itself a Mac, but has a touch screen). */
+export const onIOS: boolean =
+  typeof navigator !== 'undefined' &&
+  (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+/** Opened from the home screen (Safari "Add to Home Screen" or an installed web app). */
+export const onHomeScreen: boolean =
+  typeof window !== 'undefined' &&
+  ((navigator as Navigator & { standalone?: boolean }).standalone === true || !!window.matchMedia?.('(display-mode: standalone)').matches);
 export const isMobile: boolean = platform === 'ios' || platform === 'android' || platform === 'android_x';
 
 /** Deep-link parameter: t.me/<bot>?startapp=<param>, or ?open=<param> on buttons the bot sends. */

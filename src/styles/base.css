@@ -16,6 +16,11 @@
   --kb: 0px; /* on-screen keyboard height, set from JS while a sheet has focus */
 }
 
+/* Opened from a home screen (index.html sets the class): under the status bar, so keep clear of the notch. */
+html.standalone:not(.native) {
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
 /* The phone app draws behind the status and navigation bars; Capacitor reports their size. */
 html.native {
   --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
