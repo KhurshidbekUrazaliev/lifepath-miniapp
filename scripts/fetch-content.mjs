@@ -3,7 +3,8 @@
 //
 // Sources are the ones the IlmulHaq bot uses, so both quote the same words:
 //   Qur'an: api.quran.com (Uthmani script; Sahih International = 20, Abu Adel = 79 (ru), Muhammad Sodiq = 55 (uz))
-//   Hadith: the hadith-api collection on jsDelivr (Sahih al-Bukhari, sunnah.com numbering; eng, rus, ara)
+//   Hadith: the hadith-api collection on jsDelivr (Sahih al-Bukhari and Sahih Muslim; eng, rus, ara)
+// Only the hadith: node scripts/fetch-content.mjs --hadith
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,12 +24,27 @@ export const AYAHS = [
   '29:6', '53:39', '99:7', '11:115', '2:45', '20:25', '20:26', '94:7', '94:8', '103:1', '103:2', '103:3',
 ];
 
-// Hadith the companion quotes (Sahih al-Bukhari, sunnah.com numbers). The short forms shown in the
-// speech bubble live in src/content/hadith.ts; this file keeps the full texts for the "read in full" view.
+// Hadith the companion quotes: Sahih al-Bukhari by its sunnah.com number, Sahih Muslim as
+// "muslim:<hadith-api number>". The short forms shown in the speech bubble live in
+// src/content/hadith.ts; this file keeps the full texts for the "read in full" view.
 export const HADITHS = [
-  1, 8, 13, 15, 16, 38, 39, 69, 71, 528, 645, 1145, 1417, 1901, 1903, 2072, 4937, 5009, 5027, 5641,
-  6011, 6014, 6018, 6021, 6035, 6064, 6094, 6114, 6116, 6125, 6307, 6405, 6407, 6412, 6416, 6464, 6465,
-  6474, 6490, 6514, 7376, 7405, 7563,
+  1, 8, 13, 15, 16, 38, 39, 69, 71, 528, 645, 1145, 1417, 1901, 1903, 2072, 4937, 5009, 5027, 5641, 6011,
+  6014, 6018, 6021, 6035, 6064, 6094, 6114, 6116, 6125, 6307, 6405, 6407, 6412, 6416, 6464, 6465, 6474, 6490,
+  6514, 7376, 7405, 7563, 10, 35, 56, 2446, 1302, 1426, 1442, 1476, 1899, 1923, 1957, 2017, 2067, 2074, 2076,
+  2320, 2387, 2443, 2447, 2457, 2472, 2528, 2566, 2591, 2682, 2692, 2697, 3046, 3194, 3250, 3257, 3318, 3467,
+  3483, 3445, 3673, 4522, 5033, 5090, 5304, 5352, 5353, 5392, 5678, 5688, 5728, 5984, 6133, 6168, 6236, 6288,
+  6340, 6446, 6439, 6479, 6487, 6488, 6508, 7120, 7179, 73, 2766, 450, 5971, 3461, 1429, 2442, 1240, 5376,
+  6117, 6024, 52, 6502,
+  'muslim:152', 'muslim:290', 'muslim:372', 'muslim:534', 'muslim:550', 'muslim:912', 'muslim:1083',
+  'muslim:1528', 'muslim:1688', 'muslim:1771', 'muslim:1823', 'muslim:1824', 'muslim:1973', 'muslim:1976',
+  'muslim:2123', 'muslim:6572', 'muslim:2426', 'muslim:2758', 'muslim:2755', 'muslim:3289', 'muslim:3643',
+  'muslim:3648', 'muslim:5587', 'muslim:5883', 'muslim:6514', 'muslim:6519', 'muslim:6534', 'muslim:6540',
+  'muslim:6543', 'muslim:6552', 'muslim:6580', 'muslim:6588', 'muslim:6592', 'muslim:6599', 'muslim:6602',
+  'muslim:6690', 'muslim:6688', 'muslim:6811', 'muslim:6927', 'muslim:6932', 'muslim:6953', 'muslim:6973',
+  'muslim:7121', 'muslim:7229', 'muslim:7417', 'muslim:7477', 'muslim:7481', 'muslim:136', 'muslim:6758',
+  'muslim:6749', 'muslim:176', 'muslim:196', 'muslim:265', 'muslim:2346', 'muslim:4223', 'muslim:4899',
+  'muslim:6948', 'muslim:7500', 'muslim:6774', 'muslim:5601', 'muslim:1493', 'muslim:578', 'muslim:194',
+  'muslim:5055', 'muslim:6853',
 ];
 
 async function getJson(url, tries = 3) {
@@ -98,22 +114,32 @@ async function quran() {
 const tidy = (t) => (t || '').replace(/`/g, "'").replace(/(?<=[a-z)]):(?=[A-Z"“'])/g, ': ').trim();
 
 async function hadith() {
-  const out = {};
-  for (const n of HADITHS) {
-    const [en, ru, ar] = await Promise.all(
-      ['eng', 'rus', 'ara'].map((ed) => getJson(`${HADITH_API}/${ed}-bukhari/${n}.min.json`).then((j) => j?.hadiths?.[0]?.text ?? '')),
-    );
-    out[n] = { en: tidy(en), ru: tidy(ru), ar: (ar || '').trim() };
-    process.stdout.write('.');
+  // Each edition whole, once (a few MB each), rather than hundreds of small requests.
+  const books = [...new Set(HADITHS.map((id) => (typeof id === 'number' ? 'bukhari' : id.split(':')[0])))];
+  const editions = {};
+  for (const book of books) {
+    for (const ed of ['eng', 'rus', 'ara']) {
+      const j = await getJson(`${HADITH_API}/${ed}-${book}.min.json`);
+      editions[`${ed}-${book}`] = new Map((j?.hadiths ?? []).map((h) => [Number(h.hadithnumber), h.text ?? '']));
+      process.stdout.write('.');
+    }
   }
   process.stdout.write('\n');
+  const out = {};
+  for (const id of HADITHS) {
+    const [book, n] = typeof id === 'number' ? ['bukhari', id] : [id.split(':')[0], Number(id.split(':')[1])];
+    const text = (ed) => editions[`${ed}-${book}`].get(n) ?? '';
+    out[id] = { en: tidy(text('eng')), ru: tidy(text('rus')), ar: text('ara').trim() };
+  }
   return out;
 }
 
 mkdirSync(OUT, { recursive: true });
-const q = await quran();
-writeFileSync(join(OUT, 'quran.json'), JSON.stringify(q));
-console.log(`quran.json: ${q.surahs.length} surahs, ${q.ayat.length} ayat, juz pages ${q.juzStart.join(',')}`);
+if (!process.argv.includes('--hadith')) {
+  const q = await quran();
+  writeFileSync(join(OUT, 'quran.json'), JSON.stringify(q));
+  console.log(`quran.json: ${q.surahs.length} surahs, ${q.ayat.length} ayat, juz pages ${q.juzStart.join(',')}`);
+}
 const h = await hadith();
 writeFileSync(join(OUT, 'hadith-full.json'), JSON.stringify(h));
 console.log(`hadith-full.json: ${Object.keys(h).length} hadith`);

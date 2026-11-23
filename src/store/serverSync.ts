@@ -270,11 +270,11 @@ export function useServerSync(): void {
     void useServer.getState().hello(timeZone(), getLang()).then(() => {
       want = { reminders: true, activity: true };
       send();
-      void fetchDaily(getLang());
+      void fetchDaily();
     });
     // Back in the app on a new day, or with a part still missing: ask for the day's ayah and hadith.
     const onShow = () => {
-      if (!document.hidden) void fetchDaily(getLang());
+      if (!document.hidden) void fetchDaily();
       // A new day moves the one-off reminders (journal, nudge, prayer times) a day on.
       if (!document.hidden && isNative) schedule(true, false, 500);
     };

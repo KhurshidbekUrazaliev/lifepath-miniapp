@@ -1,6 +1,6 @@
 // What the companion says when asked for advice. Pure: the day and the moment decide the order,
 // so every day opens with a different quote and each tap moves on to the next one.
-import { HADITHS, Hadith, HadithTag, HADITH_BOOK, hadithLink } from '../content/hadith';
+import { HADITHS, Hadith, HadithTag, hadithId, hadithSource, hadithUrl } from '../content/hadith';
 import { HIKMAH, MOTIVATION } from '../content/wisdom';
 
 export type AdviceKind = 'hadith' | 'hikmah' | 'motivation';
@@ -8,7 +8,7 @@ export type AdviceLang = 'en' | 'uz' | 'ru';
 
 export interface Advice {
   kind: AdviceKind;
-  key: string; // stable id, e.g. "hadith:6464"
+  key: string; // stable id, e.g. "hadith:6464" or "hadith:muslim:6592"
   text: string;
   ar?: string; // Arabic original (proverbs)
   source?: string; // "Sahih al-Bukhari 6464"
@@ -50,10 +50,10 @@ export function hadithOrder(ctx: AdviceContext, day: number): Hadith[] {
 export function hadithAdvice(h: Hadith, lang: AdviceLang): Advice {
   return {
     kind: 'hadith',
-    key: `hadith:${h.n}`,
+    key: `hadith:${hadithId(h)}`,
     text: h[lang],
-    source: `${HADITH_BOOK[lang]} ${h.n}`,
-    link: hadithLink(h.n),
+    source: hadithSource(h, lang),
+    link: hadithUrl(h),
     ai: lang === 'uz',
   };
 }

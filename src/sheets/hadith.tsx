@@ -2,17 +2,16 @@
 // The full texts load only when this sheet opens.
 import { useEffect, useState } from 'react';
 import { ArrowSquareOut } from '@phosphor-icons/react';
-import { HADITHS, HADITH_BOOK, hadithLink } from '../content/hadith';
+import { HADITH_BOOK, findHadith, hadithId, hadithLink, hadithSource, hadithUrl } from '../content/hadith';
 import { getLang, t } from '../i18n';
 import { openLink } from '../tg/telegram';
 import { Card, Tap } from '../ui/kit';
 import { Sheet } from '../ui/Sheet';
-import { dailyHadithFull } from '../store/daily';
 
 type Full = Record<string, { en: string; ru: string; ar: string }>;
 let cache: Full | null = null;
 
-export function HadithSheet({ n, onClose }: { n: number; onClose: () => void }) {
+export function HadithSheet({ n, book, onClose }: { n: number; book?: 'muslim'; onClose: () => void }) {
   const [full, setFull] = useState<Full | null>(cache);
   const [failed, setFailed] = useState(false);
 
@@ -27,19 +26,18 @@ export function HadithSheet({ n, onClose }: { n: number; onClose: () => void }) 
   }, []);
 
   const lang = getLang();
-  const short = HADITHS.find((h) => h.n === n);
-  // The server's random hadith of the day brings its own full texts; the app's own come from the file.
-  const daily = dailyHadithFull(n);
-  const text = daily ? { en: daily.en, ru: daily.ru, ar: daily.ar ?? '' } : full?.[String(n)];
+  const id = hadithId({ n, book });
+  const short = findHadith(id);
+  const text = full?.[id];
   // There is no Uzbek edition: Uzbek readers get an AI translation, as in the bot.
-  const translation = lang === 'uz' ? daily?.uz ?? short?.uz : text?.[lang] || short?.[lang];
+  const translation = lang === 'uz' ? short?.uz : text?.[lang] || short?.[lang];
 
   return (
     <Sheet
-      title={`${HADITH_BOOK[lang]} ${n}`}
+      title={short ? hadithSource(short, lang) : `${HADITH_BOOK[lang]} ${n}`}
       onClose={onClose}
       foot={
-        <Tap className="btn soft" onTap={() => openLink(hadithLink(n))}>
+        <Tap className="btn soft" onTap={() => openLink(short ? hadithUrl(short) : hadithLink(n))}>
           <ArrowSquareOut size={18} weight="duotone" />
           {t('hadith.open')}
         </Tap>
@@ -49,7 +47,7 @@ export function HadithSheet({ n, onClose }: { n: number; onClose: () => void }) 
         <Card>
           <div className="hadith-ar" dir="rtl" lang="ar">{text.ar}</div>
         </Card>
-      ) : !daily && !full && !failed ? (
+      ) : !full && !failed ? (
         <Card><div className="t-small muted center">{t('hadith.loading')}</div></Card>
       ) : null}
       {translation ? (

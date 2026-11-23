@@ -11,8 +11,6 @@ export interface Ctx {
   url: URL;
   auth: AuthUser;
   now: number;
-  /** Work that may go on after the answer is sent (the Worker's waitUntil). */
-  wait?: (work: Promise<unknown>) => void;
 }
 
 export interface UserRow {

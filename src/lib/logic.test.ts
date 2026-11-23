@@ -13,7 +13,7 @@ import { hadithAdvice, momentTags, pickAdvice } from './advisor';
 import { hijriDate, isRamadan } from './hijri';
 import { PASSAGES, ayahEnd, dayIndex, passageLink, passageOfDay, passageRef, translationParts } from './ayah';
 import { RECITERS, ayahAudioUrl, reciterOf } from '../content/reciters';
-import { HADITHS } from '../content/hadith';
+import { HADITHS, findHadith, hadithId, hadithOfDay, hadithSource, hadithUrl } from '../content/hadith';
 import { HIKMAH, MOTIVATION } from '../content/wisdom';
 import { MAX_SUGGESTIONS, sanitizePlan, suggestPlan } from './planner';
 import { FREE_FOLDER_LIMIT, canCreateFolder, isPlusActive } from './plus';
@@ -478,7 +478,10 @@ test('companion: shows the nearest model of the same gender, younger first', () 
 
 test('advisor: every quote has all three languages and a source', () => {
   for (const h of HADITHS) for (const l of ['en', 'ru', 'uz'] as const) assert.ok(h[l].trim(), `hadith ${h.n} ${l}`);
-  assert.equal(new Set(HADITHS.map((h) => h.n)).size, HADITHS.length, 'no hadith twice');
+  assert.equal(HADITHS.length, 180);
+  assert.equal(new Set(HADITHS.map(hadithId)).size, HADITHS.length, 'no hadith twice');
+  for (const h of HADITHS) assert.ok(!/[`'‘’]/.test(h.uz), `hadith ${hadithId(h)}: Uzbek uses ʻ and ʼ`);
+  for (const h of HADITHS) if (h.book === 'muslim') assert.ok(h.no && h.ref, `hadith ${hadithId(h)} has its number and reference`);
   for (const w of HIKMAH) for (const l of ['en', 'ru', 'uz'] as const) assert.ok(w[l].trim(), `hikmah ${w.id} ${l}`);
   for (const w of HIKMAH) if (w.from === 'ar') assert.ok(w.ar, `${w.id} has the Arabic`);
   for (const m of MOTIVATION) for (const l of ['en', 'ru', 'uz'] as const) assert.ok(m[l].trim());
@@ -486,6 +489,23 @@ test('advisor: every quote has all three languages and a source', () => {
   assert.equal(h.ai, true); // the Uzbek hadith is labelled as an AI translation
   assert.equal(hadithAdvice(HADITHS[0], 'en').ai, false);
   assert.match(h.link ?? '', /^https:\/\/sunnah\.com\/bukhari:\d+$/);
+});
+
+test('hadith: Muslim sources and links, and one a day changing at midnight in Busan', () => {
+  const m = findHadith('muslim:6592')!;
+  assert.equal(hadithSource(m, 'en'), 'Sahih Muslim 2588');
+  assert.equal(hadithUrl(m), 'https://sunnah.com/muslim/45/90');
+  assert.equal(hadithAdvice(m, 'en').key, 'hadith:muslim:6592');
+  assert.equal(hadithSource(findHadith('6464')!, 'uz'), 'Sahih al-Buxoriy 6464');
+  // 23:59 and 00:01 in Busan (UTC+9) on the same UTC date are different days.
+  const before = Date.UTC(2026, 10, 24, 14, 59);
+  const after = Date.UTC(2026, 10, 24, 15, 1);
+  assert.notEqual(hadithId(hadithOfDay(before)), hadithId(hadithOfDay(after)));
+  assert.equal(hadithId(hadithOfDay(after)), hadithId(hadithOfDay(after + 20 * 3_600_000)));
+  // 180 days on, the same one again; every one of them comes up in between.
+  const seen = new Set(Array.from({ length: 180 }, (_, i) => hadithId(hadithOfDay(after + i * 86_400_000))));
+  assert.equal(seen.size, 180);
+  assert.equal(hadithId(hadithOfDay(after + 180 * 86_400_000)), hadithId(hadithOfDay(after)));
 });
 
 test('advisor: the moment picks the topic, taps move on, days rotate', () => {
@@ -498,7 +518,7 @@ test('advisor: the moment picks the topic, taps move on, days rotate', () => {
   assert.notEqual(pickAdvice('hadith', ctx, 100, 1).key, a.key); // a tap moves on
   assert.notEqual(pickAdvice('hadith', ctx, 101, 0).key, a.key); // the next day starts elsewhere
   const ramadan = pickAdvice('hadith', { ...ctx, ramadan: true }, 100, 0);
-  assert.ok(HADITHS.find((x) => `hadith:${x.n}` === ramadan.key)?.tags.includes('ramadan'));
+  assert.ok(HADITHS.find((x) => `hadith:${hadithId(x)}` === ramadan.key)?.tags.includes('ramadan'));
   const keys = new Set(Array.from({ length: HIKMAH.length }, (_, i) => pickAdvice('hikmah', ctx, 7, i).key));
   assert.equal(keys.size, HIKMAH.length); // a full round before anything repeats
 });

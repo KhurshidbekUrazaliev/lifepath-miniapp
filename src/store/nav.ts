@@ -57,7 +57,7 @@ export type Sheet =
   | { name: 'planner'; taskId: string }
   | { name: 'reminder'; taskId: string }
   | { name: 'echo' }
-  | { name: 'hadith'; n: number }
+  | { name: 'hadith'; n: number; book?: 'muslim' }
   | { name: 'ayah'; id: string }
   | { name: 'place' }
   | { name: 'rank' }

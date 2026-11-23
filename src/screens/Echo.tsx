@@ -11,9 +11,8 @@ import { ATTRIBUTES, ageInDays, attrLevel } from '../lib/echo';
 import { GROWTH_IDS, GROWTH_LEVELS, TOP_STAGE } from '../lib/companion';
 import type { Advice, AdviceKind } from '../lib/advisor';
 import { ITEMS, Item, SLOTS, Slot, canBuy, earnProgress, isOwned, itemById, sparkBalance, wornOutfit } from '../lib/wardrobe';
-import { haptic, openLink, shareText } from '../tg/telegram';
-import { prefetchHadith, randomHadith } from '../store/hadith';
-import { Key, getLang, t, tn } from '../i18n';
+import { haptic, shareText } from '../tg/telegram';
+import { Key, t, tn } from '../i18n';
 import { fmtNumber } from '../i18n/format';
 import { Bar, Card, Chips, Empty, Header, IconBtn, Num, Screen, Section, Tap, cx } from '../ui/kit';
 import { CompanionHandle, CompanionStage } from '../companion/CompanionStage';
@@ -24,6 +23,12 @@ import type { TapPart } from '../companion/types';
 import { Emoji } from '../ui/Emoji';
 
 const REACTIONS = 6;
+
+/** The reading sheet for an advice key: "hadith:6464" or "hadith:muslim:6592". */
+function hadithScreen(key: string): { name: 'hadith'; n: number; book?: 'muslim' } {
+  const [, a, b] = key.split(':');
+  return b ? { name: 'hadith', n: Number(b), book: 'muslim' } : { name: 'hadith', n: Number(a) };
+}
 
 export function Echo() {
   const e = useEcho();
@@ -43,35 +48,16 @@ export function Echo() {
     if (s === 'ready') setTimeout(() => stage.current?.play('wave'), 350);
   }, []);
 
-  const asked = useRef(0);
-  const serverOk = useServer((s) => s.status === 'ok');
-  // The first Hadis tap is answered at once: one is fetched as the screen opens.
-  useEffect(() => {
-    if (serverOk) prefetchHadith(getLang());
-  }, [serverOk]);
   const ask = (kind: AdviceKind) => {
     clearTimeout(busy.current);
-    const mine = ++asked.current;
+    const advice: Advice = advisor.next(kind);
     const thinks = stage.current?.play('think') ?? false;
-    const started = Date.now();
-    const say = (advice: Advice) => {
-      if (mine !== asked.current) return; // another chip was tapped meanwhile
+    setSpeech({ ...advice, thinking: true });
+    busy.current = setTimeout(() => {
       setSpeech(advice);
       stage.current?.play('talk');
       haptic('soft');
-    };
-    if (kind === 'hadith') {
-      // A random one from the six books; the app's own list when the server cannot give one.
-      setSpeech({ kind: 'hadith', key: `hadith-wait-${mine}`, text: '', thinking: true });
-      void randomHadith(getLang()).then((got) => {
-        const advice = got ?? advisor.next(kind);
-        busy.current = setTimeout(() => say(advice), Math.max(0, (thinks ? 1100 : 450) - (Date.now() - started)));
-      });
-      return;
-    }
-    const advice: Advice = advisor.next(kind);
-    setSpeech({ ...advice, thinking: true });
-    busy.current = setTimeout(() => say(advice), thinks ? 1100 : 450);
+    }, thinks ? 1100 : 450);
   };
 
   const onTap = (part: TapPart) => {
@@ -146,16 +132,7 @@ export function Echo() {
           speech={speech}
           onDone={() => stage.current?.play('idle')}
           onShare={share}
-          onRead={
-            speech.kind === 'hadith'
-              ? () => {
-                  // One of the app's own (key "hadith:<n>") opens in the app; one from the six books on sunnah.com.
-                  const parts = speech.key.split(':');
-                  if (parts.length === 2) open({ name: 'hadith', n: Number(parts[1]) });
-                  else if (speech.link) openLink(speech.link);
-                }
-              : undefined
-          }
+          onRead={speech.kind === 'hadith' ? () => open(hadithScreen(speech.key)) : undefined}
         />
       </div>
 
