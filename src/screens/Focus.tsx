@@ -12,7 +12,7 @@ import { BREAK_MINUTES, CUSTOM_MAX, CUSTOM_MIN, FOCUS_MINUTES, clock, customMinu
 import { dayKey } from '../lib/dates';
 import { Key, t, tn } from '../i18n';
 import { fmtHours } from '../i18n/format';
-import { haptic } from '../tg/telegram';
+import { haptic, isNative } from '../tg/telegram';
 import { Card, Chips, Header, Ring, Screen, Tap, cx } from '../ui/kit';
 import { Emoji } from '../ui/Emoji';
 import { CompanionHandle, CompanionStage } from '../companion/CompanionStage';
@@ -276,7 +276,7 @@ export function Focus({ route }: { route: Extract<Route, { name: 'focus' }> }) {
         {today.n > 0 ? t('focus.today', { sessions: tn('focus.sessions', today.n), time: fmtHours(today.min) }) : t('focus.today.none')}
         {stats?.total ? ` · ${t('focus.total', { time: fmtHours(stats.total) })}` : ''}
       </div>
-      <div className="t-tiny faint center focus-away">{t(reminders && canMessage ? 'focus.away.bot' : 'focus.away')}</div>
+      <div className="t-tiny faint center focus-away">{t(reminders && canMessage ? (isNative ? 'app.focus.away' : 'focus.away.bot') : 'focus.away')}</div>
 
       <Card className="focus-quote">
         <span className="t-small">{t('focus.hadith')}</span>

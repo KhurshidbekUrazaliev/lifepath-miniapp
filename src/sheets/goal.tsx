@@ -8,7 +8,7 @@ import { ProgressType, Task } from '../lib/types';
 import { dayKey } from '../lib/dates';
 import { dayKeyToMs } from '../lib/calendar';
 import { suggestPlan } from '../lib/planner';
-import { haptic } from '../tg/telegram';
+import { haptic, isNative } from '../tg/telegram';
 import { Key, t, tn } from '../i18n';
 import { dayLabel, fmtAmount, fmtTimeStr } from '../i18n/format';
 import { Card, EmojiPick, Field, Segmented, Swatches, Tap, Toggle, cx } from '../ui/kit';
@@ -266,7 +266,7 @@ export function ReminderSheet({ sheet, onClose }: { sheet: Extract<SheetState, {
       <Card className="row" style={{ gap: 12 }}>
         <div className="grow">
           <div className="t-body clip">{task.title}</div>
-          <div className="t-small muted">{t('goal.reminder.hint')}</div>
+          <div className="t-small muted">{t(isNative ? 'app.goal.reminder.hint' : 'goal.reminder.hint')}</div>
         </div>
         <Toggle on={on} onChange={setOn} label={t('goal.reminder')} />
       </Card>

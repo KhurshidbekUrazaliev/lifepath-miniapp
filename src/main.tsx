@@ -14,6 +14,8 @@ import { reportError, watchForErrors } from './store/report';
 import { loadLang, resolveLang, setLang } from './i18n';
 import { tgUser } from './tg/telegram';
 import { AppBroken, ErrorBoundary } from './ui/ErrorBoundary';
+import { hideSplash, isNative, onNotificationTap } from './native/bridge';
+import { openDeepLink } from './store/nav';
 
 bootTelegram();
 // From here on the bot's server is told when the app breaks (store/report.ts).
@@ -43,7 +45,9 @@ async function start(): Promise<void> {
 
 const root = createRoot(document.getElementById('root')!);
 start().then(
-  () =>
+  () => {
+    // The phone app: a tapped reminder opens what it is about, as the bot's buttons do in Telegram.
+    if (isNative) onNotificationTap(openDeepLink);
     // Phosphor icons default to duotone (bold or fill where a screen asks for it).
     root.render(
       <ErrorBoundary scope="app">
@@ -51,11 +55,14 @@ start().then(
           <App />
         </IconContext.Provider>
       </ErrorBoundary>,
-    ),
+    );
+    requestAnimationFrame(() => hideSplash());
+  },
   (e) => {
     // Starting failed before anything was drawn: the same screen a broken app gets, in place of the logo.
     reportError('error', e, 'start');
     root.render(<AppBroken />);
+    hideSplash();
   },
 );
 

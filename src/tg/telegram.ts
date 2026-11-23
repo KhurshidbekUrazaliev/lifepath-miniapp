@@ -7,6 +7,10 @@ declare global {
   }
 }
 
+import {
+  bootNative, isNative, nativeHaptic, nativeLocation, nativeOpenLink, nativePlatform, nativeShareText, paintBars, askNotifications,
+} from '../native/bridge';
+
 const wa: any = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
 
 /** True only when the page was really opened by Telegram (it then carries signed init data). */
@@ -39,7 +43,9 @@ export const tgUser: TgUser = rawUser
 export const initData: string = inTelegram ? wa.initData : '';
 /** Telegram Premium: stories with a link need it. */
 export const isPremium: boolean = rawUser?.is_premium === true;
-export const platform: string = inTelegram ? String(wa.platform ?? 'unknown') : 'browser';
+export const platform: string = inTelegram ? String(wa.platform ?? 'unknown') : isNative ? `app-${nativePlatform}` : 'browser';
+/** The phone app (Capacitor), not Telegram and not a browser tab. */
+export { isNative };
 export const isMobile: boolean = platform === 'ios' || platform === 'android' || platform === 'android_x';
 
 /** Deep-link parameter: t.me/<bot>?startapp=<param>, or ?open=<param> on buttons the bot sends. */
@@ -71,6 +77,7 @@ export const setHaptics = (on: boolean) => {
 };
 
 export function haptic(kind: Haptic = 'light'): void {
+  if (hapticsOn && isNative) return nativeHaptic(kind);
   if (!hapticsOn || !atLeast('6.1')) return;
   try {
     const h = wa.HapticFeedback;
@@ -93,6 +100,7 @@ export function telegramScheme(): Scheme {
 
 /** Paints Telegram's own header, background and bottom bar in the app's colors. */
 export function paintChrome(bg: string): void {
+  if (isNative) return paintBars(bg);
   if (!inTelegram) return;
   try {
     if (atLeast('6.9')) wa.setHeaderColor(bg);
@@ -124,6 +132,8 @@ export function onTelegramEvent(event: string, handler: (payload?: any) => void)
 
 /** Call once at start: tells Telegram the app is ready and sets the window up. */
 export function bootTelegram(): void {
+  // The phone's back button: the same steps back as Telegram's (App.tsx sets them), else leave the app.
+  if (isNative) return bootNative(() => (backHandler ? (backHandler(), true) : false));
   if (!inTelegram) return;
   try {
     wa.ready();
@@ -168,6 +178,7 @@ export function setSettingsButton(handler: () => void): void {
 // ---------- Links, sharing, home screen ----------
 
 export function openLink(url: string): void {
+  if (isNative) return nativeOpenLink(url);
   if (inTelegram) {
     try {
       if (/^https?:\/\/t\.me\//i.test(url)) wa.openTelegramLink(url);
@@ -181,6 +192,7 @@ export function openLink(url: string): void {
 }
 
 export function shareText(text: string, url: string): void {
+  if (isNative) return nativeShareText(text, url);
   openLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
 }
 
@@ -228,6 +240,8 @@ export function hideKeyboard(): void {
 /** Asks the user to let the bot message them (needed for reminders). Resolves true when allowed. */
 export function requestWriteAccess(): Promise<boolean> {
   return new Promise((resolve) => {
+    // In the phone app the reminders are the phone's own notifications: this asks to show them.
+    if (isNative) return void askNotifications().then(resolve);
     if (!atLeast('6.9')) return resolve(inTelegram);
     try {
       wa.requestWriteAccess((allowed: boolean) => resolve(!!allowed));
@@ -377,6 +391,7 @@ export type LocationResult = { lat: number; lon: number } | 'denied' | 'unavaila
 
 /** Where the phone is: Telegram's location manager (8.0+, it asks once for this bot), else the browser's. */
 export function getLocation(): Promise<LocationResult> {
+  if (isNative) return nativeLocation();
   return new Promise((resolve) => {
     const browser = () => {
       if (!navigator.geolocation) return resolve('unavailable');

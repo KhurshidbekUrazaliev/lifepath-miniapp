@@ -20,7 +20,9 @@ import { letterReminder, weekLetter } from '../lib/week';
 import { weekNow, weekWords } from './week';
 import type { Settings } from '../lib/types';
 import { getLang, t } from '../i18n';
-import { requestWriteAccess } from '../tg/telegram';
+import { isNative, requestWriteAccess } from '../tg/telegram';
+import { notificationsAllowed } from '../native/bridge';
+import { applyOnPhone, askExactAlarms, plan, type PhonePrayers } from '../native/notify';
 import { planTitle } from '../ui/parts';
 
 const timeZone = (): string => {
@@ -176,6 +178,17 @@ async function pushReminders(d: Data): Promise<boolean> {
   }
 }
 
+/** The phone app: the same reminders, as the phone's own notifications. Nothing leaves the phone. */
+async function pushPhone(d: Data): Promise<void> {
+  const on = d.settings.reminders;
+  const prayer = on ? prayerReminders(d.settings) : { enabled: false };
+  const nudge = on && d.profile.nudge.enabled
+    ? { hour: d.profile.nudge.hour, minute: d.profile.nudge.minute, text: `🔥 ${t('notif.msg.nudge')}`, lastActiveDay: d.profile.streak.lastDay ?? null }
+    : null;
+  await applyOnPhone(plan(on ? buildReminders(d) : [], prayer.enabled ? (prayer as unknown as PhonePrayers) : null, nudge));
+  useServer.setState({ canMessage: await notificationsAllowed() });
+}
+
 async function pushActivity(d: Data): Promise<void> {
   const week = weekStartMs();
   // The last day something earned XP, when that is today or yesterday: what buddy streaks count.
@@ -209,6 +222,13 @@ export function syncActivity(): Promise<void> {
  * Returns why it could not, when it could not.
  */
 export async function enableReminders(): Promise<'ok' | 'denied' | 'off'> {
+  if (isNative) {
+    if (!(await requestWriteAccess())) return 'denied';
+    useStore.getState().setSettings({ reminders: true });
+    await askExactAlarms();
+    await pushPhone(snapshot());
+    return 'ok';
+  }
   if (useServer.getState().status !== 'ok') return 'off';
   const allowed = await requestWriteAccess();
   if (!allowed) return 'denied';
@@ -219,7 +239,7 @@ export async function enableReminders(): Promise<'ok' | 'denied' | 'off'> {
 
 export function disableReminders(): void {
   useStore.getState().setSettings({ reminders: false });
-  void pushReminders(snapshot());
+  void (isNative ? pushPhone(snapshot()) : pushReminders(snapshot()));
 }
 
 const PRAYER_KEYS = ['prayerAlerts', 'prayerAlertList', 'prayerBefore', 'jumuah', 'place', 'prayerMethod', 'asr'] as const;
@@ -234,6 +254,7 @@ export function useServerSync(): void {
     const send = () => {
       const what = want;
       want = { reminders: false, activity: false };
+      if (isNative && what.reminders) void pushPhone(snapshot());
       if (useServer.getState().status !== 'ok') return;
       const d = snapshot();
       if (what.reminders) void pushReminders(d);
@@ -252,6 +273,8 @@ export function useServerSync(): void {
     // Back in the app on a new day, or with a part still missing: ask for the day's ayah and hadith.
     const onShow = () => {
       if (!document.hidden) void fetchDaily(getLang());
+      // A new day moves the one-off reminders (journal, nudge, prayer times) a day on.
+      if (!document.hidden && isNative) schedule(true, false, 500);
     };
     document.addEventListener('visibilitychange', onShow);
 

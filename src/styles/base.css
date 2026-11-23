@@ -14,6 +14,12 @@
   --safe-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
   --safe-bottom: max(var(--tg-safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px));
   --kb: 0px; /* on-screen keyboard height, set from JS while a sheet has focus */
+}
+
+/* The phone app draws behind the status and navigation bars; Capacitor reports their size. */
+html.native {
+  --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 
   --blue: #3d7bff;
   --blue-hi: #6aa0ff;

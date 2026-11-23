@@ -12,6 +12,7 @@ import { Key, locale, t } from '../i18n';
 import { fmtLongDate } from '../i18n/format';
 import { haptic } from '../tg/telegram';
 import { useLock } from './lock';
+import { isNative, nativeShareFile } from '../native/bridge';
 
 // ---------- the journal as text ----------
 
@@ -50,7 +51,7 @@ export async function journalOpen(): Promise<'open' | 'unlocked' | 'refused'> {
 }
 
 /** True where the phone has a share sheet the page can call. */
-export const canShare = (): boolean => typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+export const canShare = (): boolean => isNative || (typeof navigator !== 'undefined' && typeof navigator.share === 'function');
 
 const cancelled = (e: unknown): boolean => (e as { name?: string } | null)?.name === 'AbortError';
 
@@ -65,6 +66,7 @@ async function copy(text: string): Promise<boolean> {
 
 /** Through the share sheet: as a text file where the phone shares files, as text where it does not. */
 async function share(text: string): Promise<'shared' | 'cancelled' | 'failed'> {
+  if (isNative) return nativeShareFile(new Blob([text], { type: 'text/plain' }), 'lifepath-journal.txt', t('jtext.title'));
   try {
     const file = typeof File === 'function' ? new File([text], 'lifepath-journal.txt', { type: 'text/plain' }) : null;
     if (file && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: t('jtext.title') });
@@ -192,6 +194,10 @@ export async function drawYear(view: YearView, title: string): Promise<Blob> {
  * file: the picture is then shown full-screen instead, to be pressed and held.
  */
 export async function sharePicture(blob: Blob, name: string): Promise<'shared' | 'cancelled' | 'unavailable'> {
+  if (isNative) {
+    const r = await nativeShareFile(blob, name);
+    return r === 'failed' ? 'unavailable' : r;
+  }
   try {
     const file = new File([blob], name, { type: 'image/png' });
     if (!canShare() || !navigator.canShare?.({ files: [file] })) return 'unavailable';

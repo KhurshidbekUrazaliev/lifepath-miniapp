@@ -4,6 +4,7 @@ import { BellRinging, Sparkle } from '@phosphor-icons/react';
 import { useData, useStore } from '../store/store';
 import { useNav } from '../store/nav';
 import { useServer } from '../store/server';
+import { isNative } from '../tg/telegram';
 import { disableReminders, enableReminders } from '../store/serverSync';
 import { dayKey } from '../lib/dates';
 import { daysLeftForProof, evidenceState, pendingSparks } from '../lib/evidence';
@@ -36,14 +37,14 @@ export function RemindersSwitch({ onProblem }: { onProblem: (message: string) =>
   return (
     <Toggle
       on={on}
-      label={t('notif.bot')}
+      label={t(isNative ? 'app.notif.bot' : 'notif.bot')}
       onChange={async (next) => {
         if (busy) return;
         if (!next) return disableReminders();
         setBusy(true);
         const result = await enableReminders();
         setBusy(false);
-        onProblem(result === 'denied' ? t('notif.denied') : result === 'off' ? t('notif.off') : '');
+        onProblem(result === 'denied' ? t(isNative ? 'app.notif.denied' : 'notif.denied') : result === 'off' ? t('notif.off') : '');
       }}
     />
   );
@@ -91,12 +92,12 @@ export function Inbox() {
         <div className="row" style={{ gap: 14 }}>
           <Glyph className="bubble" color="var(--blue-hi)" icon={<BellRinging size={21} />} />
           <div className="grow">
-            <div className="t-body">{t('inbox.reminders')}</div>
-            <div className="t-small muted">{d.settings.reminders ? t('inbox.reminders.on') : t('inbox.reminders.off')}</div>
+            <div className="t-body">{t(isNative ? 'app.inbox.reminders' : 'inbox.reminders')}</div>
+            <div className="t-small muted">{d.settings.reminders ? t('inbox.reminders.on') : t(isNative ? 'app.inbox.reminders.off' : 'inbox.reminders.off')}</div>
           </div>
           <RemindersSwitch onProblem={setProblem} />
         </div>
-        {problem || (server === 'off' && !d.settings.reminders) ? (
+        {problem || (server === 'off' && !isNative && !d.settings.reminders) ? (
           <div className="t-small" style={{ marginTop: 12, color: problem ? 'var(--orange)' : 'var(--text-3)' }}>{problem || t('notif.off')}</div>
         ) : null}
       </Card>

@@ -20,6 +20,7 @@ import { Emoji } from '../ui/Emoji';
 import { Face, FeelBar, feelName } from './Feel';
 import { Private } from './Private';
 import { useLocked } from './lock';
+import { isNative } from '../tg/telegram';
 
 // ---------- shared ----------
 
@@ -356,7 +357,7 @@ function PrivateNote() {
   return (
     <div className="j-private">
       <LockSimple size={14} weight="fill" />
-      <span>{t('j.private')}</span>
+      <span>{t(isNative ? 'app.j.private' : 'j.private')}</span>
     </div>
   );
 }

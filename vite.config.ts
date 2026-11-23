@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 /**
@@ -19,8 +19,16 @@ function buildId(): string {
 }
 
 // The Worker (wrangler dev, port 8787) serves /api during local development.
-export default defineConfig(({ command }) => ({
-  plugins: [react()],
+// `--mode native` builds the phone app (Capacitor, android/): the same app without Telegram's script,
+// which there would only be a request to telegram.org on every start.
+const noTelegramScript = (): Plugin => ({
+  name: 'lifepath-no-telegram-script',
+  transformIndexHtml: (html) =>
+    html.replace(/[ \t]*<!-- Telegram asks.*?-->\s*/, '').replace(/[ \t]*<script src="https:\/\/telegram\.org\/js\/[^"]*"><\/script>\s*/, ''),
+});
+
+export default defineConfig(({ command, mode }) => ({
+  plugins: [react(), ...(mode === 'native' ? [noTelegramScript()] : [])],
   // A build knows its name; the dev server is simply "dev".
   define: command === 'build' ? { __LP_BUILD__: JSON.stringify(buildId()) } : {},
   server: {

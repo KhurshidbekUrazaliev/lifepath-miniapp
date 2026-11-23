@@ -8,7 +8,7 @@ import { restartWeek } from '../store/week';
 import { useServer } from '../store/server';
 import { buildDemo } from '../store/demo';
 import { buildReminders, enableReminders } from '../store/serverSync';
-import { addToHomeScreen, canAddToHome, canFullscreen, haptic, openLink, tgUser } from '../tg/telegram';
+import { addToHomeScreen, canAddToHome, canFullscreen, haptic, isNative, openLink, tgUser } from '../tg/telegram';
 import { LangSetting, ThemeSetting } from '../lib/types';
 import { getLang, t, tn } from '../i18n';
 import { fmtTime, pct, weekdayShort } from '../i18n/format';
@@ -66,7 +66,7 @@ export function Settings() {
   }, []);
 
   const themeName = { auto: t('theme.auto'), dark: t('theme.dark'), light: t('theme.light') }[settings.theme];
-  const langName = { auto: t('lang.auto'), en: 'English', uz: 'Oʻzbekcha', ru: 'Русский' }[settings.lang];
+  const langName = { auto: t(isNative ? 'app.lang.auto' : 'lang.auto'), en: 'English', uz: 'Oʻzbekcha', ru: 'Русский' }[settings.lang];
   const goals = [20, 30, 50, 80];
 
   return (
@@ -187,7 +187,7 @@ export function Language() {
   const lang = useStore((s) => s.settings.lang);
   const setSettings = useStore((s) => s.setSettings);
   const options: { id: LangSetting; label: string }[] = [
-    { id: 'auto', label: t('lang.auto') },
+    { id: 'auto', label: t(isNative ? 'app.lang.auto' : 'lang.auto') },
     { id: 'en', label: 'English' },
     { id: 'uz', label: 'Oʻzbekcha' },
     { id: 'ru', label: 'Русский' },
@@ -294,14 +294,14 @@ function PrayerAlerts() {
     setBusy(true);
     const result = await enableReminders();
     setBusy(false);
-    setProblem(result === 'denied' ? t('notif.denied') : result === 'off' ? t('notif.off') : '');
+    setProblem(result === 'denied' ? t(isNative ? 'app.notif.denied' : 'notif.denied') : result === 'off' ? t('notif.off') : '');
     if (result === 'ok') then();
   };
   const togglePrayers = (on: boolean) => {
     setProblem('');
     if (!on) return setSettings({ prayerAlerts: false });
     if (!settings.place) {
-      setProblem(t('faith.alerts.needPlace'));
+      setProblem(t(isNative ? 'app.faith.alerts.needPlace' : 'faith.alerts.needPlace'));
       return open({ name: 'place' });
     }
     void withBot(() => setSettings({ prayerAlerts: true }));
@@ -319,12 +319,12 @@ function PrayerAlerts() {
   };
 
   return (
-    <Section title={t('faith.alerts')}>
+    <Section title={t(isNative ? 'app.faith.alerts' : 'faith.alerts')}>
       <Card pad={false} className="list">
         <Row
           icon={<BellRinging size={21} />}
           title={t('faith.alerts.prayer')}
-          sub={t('faith.alerts.prayer.hint')}
+          sub={t(isNative ? 'app.faith.alerts.prayer.hint' : 'faith.alerts.prayer.hint')}
           right={<Toggle on={prayerOn} onChange={togglePrayers} label={t('faith.alerts.prayer')} />}
         />
         {prayerOn ? (
@@ -446,7 +446,7 @@ export function Notifications() {
     <Screen>
       <Header title={t('settings.notifications')} noGear />
       <Card pad={false} className="list">
-        <Row title={t('notif.bot')} sub={t('notif.bot.hint')} right={<RemindersSwitch onProblem={setProblem} />} />
+        <Row title={t(isNative ? 'app.notif.bot' : 'notif.bot')} sub={t(isNative ? 'app.notif.bot.hint' : 'notif.bot.hint')} right={<RemindersSwitch onProblem={setProblem} />} />
         <Row
           title={t('notif.nudge')}
           sub={t('notif.nudge.hint')}
@@ -490,7 +490,7 @@ export function Notifications() {
           right={<Toggle on={settings.weekLetter !== false} onChange={(weekLetter) => setSettings({ weekLetter })} label={t('notif.week')} />}
         />
       </Card>
-      {problem || server === 'off' ? (
+      {problem || (server === 'off' && !isNative) ? (
         <div className="t-small" style={{ color: problem ? 'var(--orange)' : 'var(--text-3)', padding: '0 4px' }}>{problem || t('notif.off')}</div>
       ) : null}
 
@@ -531,7 +531,7 @@ export function DataPrivacy() {
       return;
     }
     const result = await lock.turnOn(t('lock.reason'));
-    if (result !== 'ok') setLockNote(t(result === 'unavailable' ? 'lock.unavailable' : 'lock.refused'));
+    if (result !== 'ok') setLockNote(t(result === 'unavailable' ? (isNative ? 'app.lock.unavailable' : 'lock.unavailable') : 'lock.refused'));
   };
 
   return (
@@ -542,7 +542,7 @@ export function DataPrivacy() {
           <Database size={21} style={{ color: 'var(--blue-hi)' }} />
           <span className="t-body">{t('data.where')}</span>
         </div>
-        <div className="t-small muted" style={{ lineHeight: 1.5 }}>{t('data.where.body')}</div>
+        <div className="t-small muted" style={{ lineHeight: 1.5 }}>{t(isNative ? 'app.data.where.body' : 'data.where.body')}</div>
         <div style={{ marginTop: 14 }}>
           <Bar value={Math.max(usage.share, 0.01)} />
           <div className="t-small muted" style={{ marginTop: 8 }}>{t('data.usage', { pct: pct(usage.share) })}</div>

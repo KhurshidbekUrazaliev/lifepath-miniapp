@@ -50,6 +50,19 @@ npm run typecheck      # app and Worker
 npm run build && npm run test:worker   # the Worker end to end against the fake Telegram
 ```
 
+## Android app
+
+The same app, packaged for Android with Capacitor in `android/`. It runs without Telegram: the data stays on the phone, reminders and prayer times are the phone's own notifications, and the parts that need the bot (Together, rankings, Plus) say they live in Telegram. `src/native/` holds the phone side; `src/tg/telegram.ts` hands each Telegram call to it when the app runs on a phone.
+
+Needs the Android SDK (`~/Library/Android/sdk`, platform 36) and Node 22 for the Capacitor CLI (`scripts/cap.mjs` finds it through nvm).
+
+```
+npm run android:apk      # web build (--mode native), copy into android/, signed release APK
+npm run android:icons    # launcher icon, splash and notification icon from public/icon.svg
+```
+
+The APK is `android/app/build/outputs/apk/release/app-release.apk`. It is signed with the key in `~/.android/lifepath-release.jks`, which `android/keystore.properties` points to; both stay out of git. Keep a copy of that key: an update signed with any other key will not install over the app.
+
 ## Deploy (Cloudflare free plan)
 
 ```bash

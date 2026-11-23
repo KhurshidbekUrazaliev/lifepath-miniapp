@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="lp_page">#EEF2FA</color>
+    <color name="colorPrimary">#8E6BF2</color>
+    <color name="colorPrimaryDark">#070A13</color>
+    <color name="colorAccent">#3D7BFF</color>
+</resources>
