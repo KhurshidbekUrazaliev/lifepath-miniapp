@@ -22,7 +22,11 @@ if (isNative && typeof document !== 'undefined') document.documentElement.classL
  * raising this tells the phones that have an older one.
  */
 export const LATEST_ANDROID_BUILD = 2;
-export const APK_URL = 'https://github.com/KhurshidbekUrazaliev/lifepath-miniapp/releases/latest';
+export const SITE_URL = 'https://lifepath.khurshidbekdev.workers.dev';
+/** The newest APK, served by the site itself (npm run android:apk puts it in public/). */
+export const APK_URL = `${SITE_URL}/LifePath.apk`;
+/** The bot, which opens the Mini App. */
+export const BOT_URL = 'https://t.me/LifePathAppBot';
 
 /** This phone's Android build number, or 0 outside the app (or before it is known). */
 export async function androidBuild(): Promise<number> {

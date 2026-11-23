@@ -8,7 +8,7 @@ import { restartWeek } from '../store/week';
 import { useServer } from '../store/server';
 import { buildDemo } from '../store/demo';
 import { buildReminders, enableReminders } from '../store/serverSync';
-import { addToHomeScreen, canAddToHome, canFullscreen, haptic, isNative, openLink, tgUser } from '../tg/telegram';
+import { addToHomeScreen, canAddToHome, canFullscreen, haptic, inBrowser, inTelegram, isNative, openLink, tgUser } from '../tg/telegram';
 import { LangSetting, ThemeSetting } from '../lib/types';
 import { getLang, t, tn } from '../i18n';
 import { fmtTime, pct, weekdayShort } from '../i18n/format';
@@ -26,7 +26,7 @@ import { openIlmulHaq } from '../ui/IlmulHaq';
 import { useLock } from '../journal/lock';
 import { copyBackup, useJournalOut } from '../journal/out';
 import { House } from '@phosphor-icons/react';
-import { AccountCard, UpdateCard } from '../native/SignIn';
+import { AccountCard, GetAppCard, UpdateCard } from '../native/SignIn';
 
 const deviceZone = (): string => {
   try {
@@ -66,8 +66,8 @@ export function Settings() {
     return () => clearInterval(timer);
   }, []);
 
-  const themeName = { auto: t('theme.auto'), dark: t('theme.dark'), light: t('theme.light') }[settings.theme];
-  const langName = { auto: t(isNative ? 'app.lang.auto' : 'lang.auto'), en: 'English', uz: 'Oʻzbekcha', ru: 'Русский' }[settings.lang];
+  const themeName = { auto: t(inTelegram ? 'theme.auto' : 'app.theme.auto'), dark: t('theme.dark'), light: t('theme.light') }[settings.theme];
+  const langName = { auto: t(!inTelegram ? 'app.lang.auto' : 'lang.auto'), en: 'English', uz: 'Oʻzbekcha', ru: 'Русский' }[settings.lang];
   const goals = [20, 30, 50, 80];
 
   return (
@@ -107,9 +107,11 @@ export function Settings() {
       </Card>
 
       {isNative ? <UpdateCard /> : null}
-      {isNative ? <AccountCard /> : null}
+      {!inTelegram ? <AccountCard /> : null}
+      {inBrowser ? <GetAppCard /> : null}
 
-      <Card className="row" style={{ gap: 14 }}>
+      {/* Outside Telegram there is no Telegram cloud: the account card above shows the sync. */}
+      {inTelegram ? <Card className="row" style={{ gap: 14 }}>
         <Glyph className="bubble" color={sync.status === 'offline' ? 'var(--orange)' : 'var(--blue-hi)'} icon={sync.status === 'offline' || sync.status === 'local' ? <CloudSlash size={21} /> : <Cloud size={21} />} />
         <div className="grow">
           <div className="t-body">{t('settings.sync')}</div>
@@ -120,7 +122,7 @@ export function Settings() {
             <ArrowsClockwise size={16} className={sync.status === 'syncing' ? 'spin' : undefined} />
           </Tap>
         ) : null}
-      </Card>
+      </Card> : null}
 
       {admin ? (
         <Card pad={false} className="list">
@@ -170,7 +172,7 @@ export function Appearance() {
           value={settings.theme}
           onChange={(theme) => setSettings({ theme })}
           options={[
-            { id: 'auto', label: t('theme.auto') },
+            { id: 'auto', label: t(inTelegram ? 'theme.auto' : 'app.theme.auto') },
             { id: 'dark', label: t('theme.dark') },
             { id: 'light', label: t('theme.light') },
           ]}
@@ -191,7 +193,7 @@ export function Language() {
   const lang = useStore((s) => s.settings.lang);
   const setSettings = useStore((s) => s.setSettings);
   const options: { id: LangSetting; label: string }[] = [
-    { id: 'auto', label: t(isNative ? 'app.lang.auto' : 'lang.auto') },
+    { id: 'auto', label: t(!inTelegram ? 'app.lang.auto' : 'lang.auto') },
     { id: 'en', label: 'English' },
     { id: 'uz', label: 'Oʻzbekcha' },
     { id: 'ru', label: 'Русский' },
@@ -546,7 +548,7 @@ export function DataPrivacy() {
           <Database size={21} style={{ color: 'var(--blue-hi)' }} />
           <span className="t-body">{t('data.where')}</span>
         </div>
-        <div className="t-small muted" style={{ lineHeight: 1.5 }}>{t(isNative ? 'app.data.where.body' : 'data.where.body')}</div>
+        <div className="t-small muted" style={{ lineHeight: 1.5 }}>{t(!inTelegram ? 'app.data.where.body' : 'data.where.body')}</div>
         <div style={{ marginTop: 14 }}>
           <Bar value={Math.max(usage.share, 0.01)} />
           <div className="t-small muted" style={{ marginTop: 8 }}>{t('data.usage', { pct: pct(usage.share) })}</div>

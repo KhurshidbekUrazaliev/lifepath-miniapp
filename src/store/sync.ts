@@ -9,7 +9,7 @@
 // against what both last agreed on, push what differs, and announce it with the manifest last. The
 // layout and merge rules are pure and live in lib/cloudCodec.ts; this file does timing and I/O.
 import { create } from 'zustand';
-import { cloud, hasCloud, isNative, onTelegramEvent, tgUser } from '../tg/telegram';
+import { cloud, hasCloud, inTelegram, onTelegramEvent, tgUser } from '../tg/telegram';
 import {
   KeyMap, MANIFEST_KEY, Placement, chunksOf, decode, diff, encode, keysOf, manifestFor, merge, parseManifest, sameData, unlisted, usage,
 } from '../lib/cloudCodec';
@@ -279,8 +279,8 @@ const shared = new Syncer(
   false,
   ({ status, at }) => {
     useSync.setState({ shared: status, ...(at ? { sharedAt: at } : {}) });
-    // On the phone the shared copy is the only cloud, so the usual sync line shows it.
-    if (isNative) useSync.setState({ status, ...(at ? { lastSyncedAt: at } : {}) });
+    // Outside Telegram the shared copy is the only cloud, so the usual sync line shows it.
+    if (!inTelegram) useSync.setState({ status, ...(at ? { lastSyncedAt: at } : {}) });
   },
   () => sharedOn,
 );
@@ -314,7 +314,7 @@ export function clearShared(): void {
   } catch {
     // nothing saved
   }
-  useSync.setState({ shared: 'off', ...(isNative ? { status: 'local' as SyncStatus } : {}) });
+  useSync.setState({ shared: 'off', ...(!inTelegram ? { status: 'local' as SyncStatus } : {}) });
 }
 
 // ---------- Wiring ----------

@@ -17,7 +17,7 @@
     "models": "node scripts/companion-models.mjs",
     "build:native": "tsc --noEmit && vite build --mode native",
     "android:sync": "npm run build:native && node scripts/cap.mjs sync android",
-    "android:apk": "npm run android:sync && cd android && ./gradlew assembleRelease",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleRelease && cp app/build/outputs/apk/release/app-release.apk ../public/LifePath.apk",
     "android:icons": "node scripts/app-icons.mjs"
   },
   "dependencies": {

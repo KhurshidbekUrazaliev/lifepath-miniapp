@@ -1,14 +1,14 @@
 // The phone app's link to Telegram: sign in through the bot, so the data, rankings and friends of the
-// Mini App are here too (native/account.ts). Shown only in the phone app.
+// Mini App are here too (native/account.ts). Shown in the phone app and in a browser, never in Telegram.
 import { useEffect, useState } from 'react';
-import { DownloadSimple, SignOut, SpinnerGap, TelegramLogo } from '@phosphor-icons/react';
+import { AndroidLogo, DownloadSimple, SignOut, SpinnerGap, TelegramLogo } from '@phosphor-icons/react';
 import { t } from '../i18n';
 import { useServer } from '../store/server';
 import { useSync } from '../store/sync';
 import { openLink, tgUser } from '../tg/telegram';
 import { Card, Glyph, Tap } from '../ui/kit';
 import { appToken, cancelSignIn, signIn, signOut, useSignIn } from './account';
-import { APK_URL, LATEST_ANDROID_BUILD, androidBuild } from './bridge';
+import { APK_URL, BOT_URL, LATEST_ANDROID_BUILD, androidBuild } from './bridge';
 
 /** The button alone, with what is happening under it (the first screen uses this). */
 export function SignInButton({ className = 'btn soft' }: { className?: string }) {
@@ -84,6 +84,38 @@ export function UpdateCard() {
       <Tap className="btn primary sm pill" style={{ width: 'auto' }} onTap={() => openLink(APK_URL)}>
         <DownloadSimple size={16} />
       </Tap>
+    </Card>
+  );
+}
+
+/** The two other ways to use LifePath, for the browser (the first screen and Settings). */
+export function GetTheApp() {
+  return (
+    <div className="row" style={{ gap: 10 }}>
+      <Tap className="btn soft sm" style={{ flex: 1 }} onTap={() => (window.location.href = APK_URL)}>
+        <AndroidLogo size={17} weight="fill" />
+        Android
+      </Tap>
+      <Tap className="btn soft sm" style={{ flex: 1 }} onTap={() => openLink(BOT_URL)}>
+        <TelegramLogo size={17} weight="fill" />
+        Telegram
+      </Tap>
+    </div>
+  );
+}
+
+/** Settings in a browser: the phone app and the Mini App. */
+export function GetAppCard() {
+  return (
+    <Card>
+      <div className="row" style={{ gap: 14, marginBottom: 12 }}>
+        <Glyph className="bubble" color="var(--green)" icon={<AndroidLogo size={21} />} />
+        <div className="grow">
+          <div className="t-body">{t('web.android')}</div>
+          <div className="t-small muted">{t('web.android.hint')}</div>
+        </div>
+      </div>
+      <GetTheApp />
     </Card>
   );
 }

@@ -2,7 +2,7 @@
 // the bot with "/start login_<code>", and waits until the bot has tied the code to the person who
 // pressed Start. The session token it gets is kept on this phone only.
 import { create } from 'zustand';
-import { openLink } from '../tg/telegram';
+import { inBrowser, openLink } from '../tg/telegram';
 
 const TOKEN_KEY = 'lp:app:token';
 const POLL_MS = 2000;
@@ -25,11 +25,15 @@ let attempt = 0;
 export async function signIn(): Promise<void> {
   const mine = ++attempt;
   useSignIn.setState({ state: 'waiting' });
+  // A browser opens a new tab only straight from the tap, so it is opened now and pointed at the bot later.
+  const tab = inBrowser ? window.open('', '_blank') : null;
   try {
     const res = await fetch('/api/app/login', { method: 'POST' });
     const start = (await res.json()) as { code: string; bot: string | null; expiresAt: number };
     if (!res.ok || !start.code || !start.bot) throw new Error('no code');
-    openLink(`https://t.me/${start.bot}?start=login_${start.code}`);
+    const link = `https://t.me/${start.bot}?start=login_${start.code}`;
+    if (tab) tab.location.href = link;
+    else openLink(link);
     while (mine === attempt && Date.now() < start.expiresAt) {
       await new Promise((r) => setTimeout(r, POLL_MS));
       if (document.hidden) continue; // Telegram is in front: ask again when the app is back
@@ -45,6 +49,7 @@ export async function signIn(): Promise<void> {
     }
     if (mine === attempt) useSignIn.setState({ state: 'expired' });
   } catch {
+    tab?.close();
     if (mine === attempt) useSignIn.setState({ state: 'failed' });
   }
 }

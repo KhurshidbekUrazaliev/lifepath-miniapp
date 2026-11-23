@@ -7,3 +7,9 @@
 
 /companion/*.glb
   Cache-Control: public, max-age=31556952, immutable
+
+# The Android app: downloaded under its name, and always the newest one.
+/LifePath.apk
+  Content-Type: application/vnd.android.package-archive
+  Content-Disposition: attachment; filename="LifePath.apk"
+  Cache-Control: no-cache

@@ -46,6 +46,8 @@ export const isPremium: boolean = rawUser?.is_premium === true;
 export const platform: string = inTelegram ? String(wa.platform ?? 'unknown') : isNative ? `app-${nativePlatform}` : 'browser';
 /** The phone app (Capacitor), not Telegram and not a browser tab. */
 export { isNative };
+/** An ordinary browser: neither Telegram nor the phone app. It signs in through the bot, as the phone app does. */
+export const inBrowser: boolean = !inTelegram && !isNative;
 export const isMobile: boolean = platform === 'ios' || platform === 'android' || platform === 'android_x';
 
 /** Deep-link parameter: t.me/<bot>?startapp=<param>, or ?open=<param> on buttons the bot sends. */

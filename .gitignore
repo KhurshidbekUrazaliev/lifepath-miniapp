@@ -14,3 +14,6 @@ design/2.jpg
 
 # Raw Tripo downloads (big); the compressed copies the app uses live in public/
 design/companion/models/
+
+# The APK the site serves: npm run android:apk copies it here, npm run deploy uploads it
+public/LifePath.apk

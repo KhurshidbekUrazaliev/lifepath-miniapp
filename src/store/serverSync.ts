@@ -20,7 +20,7 @@ import { letterReminder, weekLetter } from '../lib/week';
 import { weekNow, weekWords } from './week';
 import type { Settings } from '../lib/types';
 import { getLang, t } from '../i18n';
-import { isNative, requestWriteAccess } from '../tg/telegram';
+import { inTelegram, isNative, requestWriteAccess } from '../tg/telegram';
 import { notificationsAllowed } from '../native/bridge';
 import { applyOnPhone, askExactAlarms, plan, type PhonePrayers } from '../native/notify';
 import { planTitle } from '../ui/parts';
@@ -230,7 +230,8 @@ export async function enableReminders(): Promise<'ok' | 'denied' | 'off'> {
     return 'ok';
   }
   if (useServer.getState().status !== 'ok') return 'off';
-  const allowed = await requestWriteAccess();
+  // In a browser the bot may write once the user has started it (signing in does that).
+  const allowed = inTelegram ? await requestWriteAccess() : useServer.getState().canMessage;
   if (!allowed) return 'denied';
   useStore.getState().setSettings({ reminders: true });
   await pushReminders(snapshot());

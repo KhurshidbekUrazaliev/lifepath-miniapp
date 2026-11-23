@@ -14,8 +14,8 @@ export class ApiError extends Error {
 
 function authHeader(): string | null {
   if (inTelegram) return `tma ${initData}`;
-  // The phone app, once signed in through the bot (native/account.ts).
-  const token = isNative ? appToken() : null;
+  // The phone app or a browser, once signed in through the bot (native/account.ts).
+  const token = appToken();
   if (token) return `app ${token}`;
   if (import.meta.env.DEV) {
     // Local development against `wrangler dev` (the Worker only accepts this when DEV_AUTH=1).
@@ -228,8 +228,8 @@ export const useServer = create<ServerState>()((set) => ({
       rememberGift(sparksGift);
       const wardrobeOpen = h.access?.wardrobe === true;
       rememberWardrobe(wardrobeOpen);
-      if (isNative) {
-        // Signed in on the phone: the name and @username come from the server, as Telegram gives them in the Mini App.
+      if (!inTelegram) {
+        // Signed in on the phone or in a browser: the name and @username come from the server, as Telegram gives them in the Mini App.
         tgUser.id = h.user.id;
         tgUser.firstName = h.user.firstName;
         tgUser.username = h.user.username ?? undefined;
@@ -251,7 +251,7 @@ export const useServer = create<ServerState>()((set) => ({
       startShared();
     } catch (e) {
       // A phone whose session the server no longer knows signs out quietly; its data stays.
-      if (isNative && e instanceof ApiError && e.status === 401) dropToken();
+      if (!inTelegram && e instanceof ApiError && e.status === 401) dropToken();
       set({ status: 'off' });
     }
   },
