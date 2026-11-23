@@ -1258,6 +1258,7 @@ export const en = {
   'web.android': 'Get the Android app',
   'web.android.hint': 'Install it on your phone; your data comes along when you sign in.',
   'web.telegram': 'Open in Telegram',
+  'app.signin.empty': 'Your data shows up here after LifePath has been opened once in Telegram. Open it there, then come back. Starting afresh is fine too.',
   'app.lang.auto': 'Match the device',
   'app.theme.auto': 'Match the device',
   'app.notif.bot': 'Reminders',

@@ -1214,6 +1214,7 @@ export const uz: Record<string, string> = {
   'web.android': 'Android ilovasini yuklab olish',
   'web.android.hint': 'Telefoningizga oʻrnating: Telegram orqali kirsangiz, maʼlumotlaringiz ham oʻtadi.',
   'web.telegram': 'Telegramda ochish',
+  'app.signin.empty': 'Maʼlumotlaringiz LifePath Telegramda bir marta ochilgandan keyin shu yerga keladi. Uni Telegramda oching, soʻng qayting. Yangidan boshlasangiz ham boʻladi.',
   'app.lang.auto': 'Qurilma kabi',
   'app.theme.auto': 'Qurilma kabi',
   'app.notif.bot': 'Eslatmalar',

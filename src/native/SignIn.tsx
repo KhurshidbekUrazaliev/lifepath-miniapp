@@ -13,6 +13,22 @@ import { APK_URL, BOT_URL, LATEST_ANDROID_BUILD, androidBuild } from './bridge';
 /** The button alone, with what is happening under it (the first screen uses this). */
 export function SignInButton({ className = 'btn soft' }: { className?: string }) {
   const state = useSignIn((s) => s.state);
+  const server = useServer((s) => s.status);
+  if (appToken()) {
+    // Signed in, but nothing came down yet: the Mini App has not sent its data to the shared copy.
+    return (
+      <div className="t-small muted center" style={{ lineHeight: 1.5 }}>
+        <div className="t-body" style={{ color: 'var(--text)', marginBottom: 4 }}>
+          {tgUser.username ? `@${tgUser.username}` : tgUser.firstName || t('app.signedIn')}
+        </div>
+        {server === 'ok' ? t('app.signin.empty') : t('app.signedIn.offline')}
+        <Tap className="btn soft sm" style={{ margin: '10px auto 0', width: 'auto', padding: '0 18px' }} onTap={() => openLink(`${BOT_URL}?startapp`)}>
+          <TelegramLogo size={17} weight="fill" />
+          {t('web.telegram')}
+        </Tap>
+      </div>
+    );
+  }
   const waiting = state === 'waiting';
   return (
     <>

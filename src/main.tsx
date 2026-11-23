@@ -16,6 +16,8 @@ import { tgUser } from './tg/telegram';
 import { AppBroken, ErrorBoundary } from './ui/ErrorBoundary';
 import { hideSplash, isNative, onNotificationTap } from './native/bridge';
 import { openDeepLink } from './store/nav';
+import { inTelegram } from './tg/telegram';
+import { resumeSignIn } from './native/account';
 
 bootTelegram();
 // From here on the bot's server is told when the app breaks (store/report.ts).
@@ -41,6 +43,11 @@ async function start(): Promise<void> {
   }
 
   startSync();
+  // Outside Telegram: a sign-in the bot finished while the app was away (or restarted) completes now.
+  if (!inTelegram) {
+    resumeSignIn();
+    document.addEventListener('visibilitychange', () => document.hidden || resumeSignIn());
+  }
 }
 
 const root = createRoot(document.getElementById('root')!);

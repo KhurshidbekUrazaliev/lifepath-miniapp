@@ -102,6 +102,9 @@ interface Cache {
   pending?: Data; // local state not in the cloud yet (the Telegram syncer only: it also keeps this device's copy)
 }
 
+/** A device (or a copy) nobody has set up yet: its empty data must neither be sent nor win a merge. */
+const blank = (d: Data): boolean => !d.settings.onboarded;
+
 /** The data as the shared copy may hold it: everything but the journal. */
 const withoutJournal = (d: Data): Data => ({ ...d, pages: [] });
 
@@ -194,7 +197,9 @@ class Syncer {
           } else {
             // The journal is this device's alone: what comes down never has it, and must not take it away.
             const keep = (d: Data): Data => ({ ...d, pages: local.pages });
-            merged = merge(local, this.base ? keep(this.base) : null, keep(remote.data));
+            if (blank(remote.data)) merged = local; // a copy never set up has nothing to add
+            else if (blank(local)) merged = keep(remote.data); // a new device takes everything as it is
+            else merged = merge(local, this.base ? keep(this.base) : null, keep(remote.data));
           }
           this.placement = remote.placement;
           this.base = remote.data;
@@ -213,11 +218,12 @@ class Syncer {
         }
         this.fresh = false;
 
-        // Push whatever differs from what the cloud holds.
+        // Push whatever differs from what the cloud holds. A device not set up yet sends nothing to the
+        // shared copy: it would only be an empty copy for the others to merge with.
         const data = snapshot();
         const target = encode(this.shape(data), this.placement);
         const { write, remove } = diff(this.cache.cloud, target);
-        if (write.length || remove.length || !remoteManifest) {
+        if ((this.journal || !blank(data)) && (write.length || remove.length || !remoteManifest)) {
           const rev = this.cache.rev + 1;
           await this.store.setItems(write.map((k) => [k, target[k]]));
           const manifest = JSON.stringify(manifestFor(target, rev));
@@ -358,7 +364,8 @@ export function startSync(): void {
 
   const back = () => {
     const last = Math.max(useSync.getState().lastSyncedAt ?? 0, useSync.getState().sharedAt ?? 0);
-    if (Date.now() - last > 20_000) void syncNow();
+    // A device waiting for its data (signed in, not set up) asks every time it comes back.
+    if (Date.now() - last > 20_000 || blank(snapshot())) void syncNow();
   };
   document.addEventListener('visibilitychange', () => (document.hidden ? flush() : back()));
   window.addEventListener('pagehide', flush);
