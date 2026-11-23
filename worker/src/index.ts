@@ -3,6 +3,7 @@
 import { handlePhoto, handleSetup } from './admin';
 import { handleApi } from './api';
 import { cleanAppLogins } from './app';
+import { growHadith } from './hadith';
 import { cleanUp, runChallengeResults } from './challenges';
 import { cleanUpTogether } from './gkhatm';
 import { devAuthEnabled } from './auth';
@@ -14,11 +15,11 @@ import { serveStory } from './stories';
 import { handleWebhook } from './webhook';
 
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, exec): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
     try {
-      if (path.startsWith('/api/')) return await handleApi(request, env, url);
+      if (path.startsWith('/api/')) return await handleApi(request, env, url, exec);
       if (path === '/tg/webhook') return await handleWebhook(request, env, url);
       if (path === '/admin/setup') return await handleSetup(request, env, url);
       if (path === '/admin/photo') return await handlePhoto(request, env);
@@ -56,5 +57,7 @@ export default {
     }
     // Once a day: forget the errors that have not been reported again for a month.
     if (at.getUTCMinutes() === 0 && at.getUTCHours() === 3) await cleanErrors(env, now);
+    // Every ten minutes: one more hadith for the Hadis button, fetched and translated ahead of anyone's tap.
+    if (at.getUTCMinutes() % 10 === 5) await growHadith(env, now);
   },
 } satisfies ExportedHandler<Env>;

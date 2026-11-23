@@ -1,20 +1,27 @@
-// The ayah and the hadith of the day as the server picked them at random from Quran.com and Sahih
-// al-Bukhari (worker/src/daily.ts): the same two for everyone on a date. Kept on the phone for the
-// day; until they come (in demo, offline, outside Telegram) the app shows its own lists in turn.
+// The ayah and the hadith of the day (worker/src/daily.ts): the ayah picked at random from Quran.com,
+// the hadith chosen by the owner from the six books; the same two for everyone on a date. Kept on the
+// phone for the day. A date with no hadith chosen (by 12:00 in Busan), and the demo, offline and
+// signed-out app, show the app's own list in turn.
 import { create } from 'zustand';
 import type { Ayah, Passage } from '../lib/ayah';
 import { dayKey } from '../lib/dates';
 import type { Advice, AdviceLang } from '../lib/advisor';
 import { HADITH_BOOK, hadithLink } from '../content/hadith';
 import { api } from './server';
+import { BOOK_NAMES } from './hadith';
 
 export interface DailyHadith {
+  /** The book; missing on the earlier ones, all from Sahih al-Bukhari. */
+  book?: keyof typeof BOOK_NAMES;
   n: number;
+  /** Sahih Muslim: its book and hadith on sunnah.com. */
+  ref?: [number, number];
   ar?: string;
   en: string;
   ru: string;
-  /** The AI's Uzbek; missing while the AI could not write it. */
+  /** The AI's Uzbek (checked by the owner); missing while the AI could not write it. */
   uz?: string;
+  ruAi?: boolean;
 }
 
 interface Daily {
@@ -98,18 +105,29 @@ export function useDailyHadith(lang: AdviceLang): Advice | null {
   const h = d.day === dayKey() ? d.hadith : null;
   const text = h?.[lang];
   if (!h || !text) return null;
+  if (h.book && h.book !== 'bukhari') {
+    const muslim = h.book === 'muslim' && h.ref;
+    return {
+      kind: 'hadith',
+      key: `hadith:${h.book}:${h.n}`,
+      text: quotedPart(text),
+      source: `${BOOK_NAMES[h.book][lang]} ${muslim ? `${h.ref![0]}:${h.ref![1]}` : h.n}`,
+      link: muslim ? `https://sunnah.com/muslim/${h.ref![0] || 'introduction'}/${h.ref![1]}` : `https://sunnah.com/${h.book}:${h.n}`,
+      ai: lang === 'uz' || (lang === 'ru' && !!h.ruAi),
+    };
+  }
   return {
     kind: 'hadith',
     key: `hadith:${h.n}`,
     text: quotedPart(text),
     source: `${HADITH_BOOK[lang]} ${h.n}`,
     link: hadithLink(h.n),
-    ai: lang === 'uz',
+    ai: lang === 'uz' || (lang === 'ru' && !!h.ruAi),
   };
 }
 
 /** The full texts of the day's hadith, when it is number `n`. */
 export function dailyHadithFull(n: number): DailyHadith | null {
   const h = useDaily.getState().hadith;
-  return h && h.n === n ? h : null;
+  return h && h.n === n && (!h.book || h.book === 'bukhari') ? h : null;
 }

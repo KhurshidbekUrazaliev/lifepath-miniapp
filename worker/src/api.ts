@@ -16,6 +16,7 @@ import { getRankings, postActivity, putRankProfile } from './rankings';
 import { putReminders, reschedule } from './reminders';
 import { postStory } from './stories';
 import { getDaily } from './daily';
+import { getAdminHadith, getHadith, postAdminFind, postAdminPick, postAdminShuffle, putAdminHadith } from './hadith';
 import { tg } from './telegram';
 import { loadUser, rows, type Ctx } from './users';
 import { lang, timeZone } from './validate';
@@ -129,6 +130,7 @@ const ROUTES = new Map<string, (c: Ctx) => Promise<Response>>([
   ['POST /api/gkhatm/delete', postKhatmDelete],
   ['POST /api/story', postStory],
   ['GET /api/daily', getDaily],
+  ['GET /api/hadith', getHadith],
   ['POST /api/app/logout', postAppLogout],
   ['GET /api/kv/keys', getKvKeys],
   ['POST /api/kv/get', postKvGet],
@@ -141,9 +143,14 @@ const ADMIN_ROUTES = new Map<string, (c: Ctx) => Promise<Response>>([
   ['GET /api/admin/users', getAdminUsers],
   ['PUT /api/admin/access', putAdminAccess],
   ['GET /api/admin/errors', getAdminErrors],
+  ['GET /api/admin/hadith', getAdminHadith],
+  ['PUT /api/admin/hadith', putAdminHadith],
+  ['POST /api/admin/hadith/shuffle', postAdminShuffle],
+  ['POST /api/admin/hadith/pick', postAdminPick],
+  ['POST /api/admin/hadith/find', postAdminFind],
 ]);
 
-export async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
+export async function handleApi(request: Request, env: Env, url: URL, exec?: ExecutionContext): Promise<Response> {
   const key = `${request.method} ${url.pathname}`;
   // Signing in to the Android app comes before there is anyone to authenticate.
   if (key === 'POST /api/app/login') return postAppLogin(request, env, Date.now());
@@ -159,5 +166,5 @@ export async function handleApi(request: Request, env: Env, url: URL): Promise<R
   if (limit && !limit.success) throw rateLimited();
   if (owners && !isAdmin(env, auth)) throw notFound();
 
-  return handler({ request, env, url, auth, now });
+  return handler({ request, env, url, auth, now, ...(exec ? { wait: (work: Promise<unknown>) => exec.waitUntil(work) } : {}) });
 }

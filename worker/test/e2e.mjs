@@ -1025,14 +1025,24 @@ try {
     'the first ask fetches the ayah, without the footnote marks and with the Uzbek ʻ',
     d?.ayah,
   );
-  check(
-    d?.hadith?.n > 0 && d.hadith.ru.includes('«') && d.hadith.en.startsWith('Narrated Abu Huraira: ') && d.hadith.ar && d.hadith.uz === undefined,
-    'and a short hadith in three languages (no Uzbek with the AI off)',
-    d?.hadith,
-  );
-  check(mock.sources.length - asked === 4, 'one ask of each source', mock.sources.slice(asked));
+  check(d?.hadith === null, 'no hadith until the owner chooses one (the app shows its own)', d?.hadith);
+  check(mock.sources.length - asked === 1, 'one ask, of the Qurʼan', mock.sources.slice(asked));
   const again = await call('GET', `/api/daily?day=${utcToday}`, { user: bob });
-  check(JSON.stringify(again.json) === JSON.stringify(d) && mock.sources.length - asked === 4, 'everyone gets the same pair, kept from the first ask');
+  check(JSON.stringify(again.json) === JSON.stringify(d) && mock.sources.length - asked === 1, 'everyone gets the same, kept from the first ask');
+
+  // The owner approves a hadith's Uzbek and makes it the hadith of the day.
+  const kept = { book: 'tirmidhi', n: 1527, en: 'It is not for a person to vow about that over which he has no control.', ru: 'Не должен человек давать обет в том, над чем он не властен.', uz: 'Inson oʻz ixtiyorida boʻlmagan narsaga nazr qilmasin.', ruAi: true };
+  execFileSync('npx', ['wrangler', 'd1', 'execute', 'lifepath', '--local', '--persist-to', dir, '--command',
+    `INSERT INTO hadith_cache (id, data, made_at) VALUES ('tirmidhi:1527', '${JSON.stringify(kept).replace(/'/g, "''")}', ${Date.now()})`], { env, stdio: 'pipe' });
+  const queued = await call('GET', '/api/admin/hadith', { user: carol });
+  check(queued.json?.waiting === 1 && queued.json.list[0]?.id === 'tirmidhi:1527' && queued.json.daily?.id === null, 'it waits for the owner, and no hadith of the day is chosen', queued.json);
+  check((await call('GET', '/api/hadith?lang=uz', { user: carol })).json?.hadith === null, 'Uzbek users do not get it yet');
+  const chose = await call('PUT', '/api/admin/hadith', { user: carol, body: { id: 'tirmidhi:1527', ok: true, uz: 'Inson oʻz ixtiyorida boʻlmagan narsaga nazr qilmaydi.', daily: true } });
+  check(chose.status === 200 && chose.json?.daily?.id === 'tirmidhi:1527', 'approved, corrected and made the hadith of the day', chose.json);
+  check((await call('GET', '/api/hadith?lang=uz', { user: carol })).json?.hadith?.uz === 'Inson oʻz ixtiyorida boʻlmagan narsaga nazr qilmaydi.', 'Uzbek users get it now, as corrected');
+  const forDay = chose.json?.daily?.day;
+  const dayOk = await call('GET', `/api/daily?day=${forDay}`, { user: bob });
+  if (dayOk.status === 200) check(dayOk.json?.hadith?.book === 'tirmidhi' && dayOk.json.hadith.n === 1527, 'the day it was chosen for shows it', dayOk.json?.hadith);
 
   // ---------- blocking ----------
   console.log('\nblocking');
@@ -1041,6 +1051,22 @@ try {
   check((await call('POST', '/api/hello', { user: bob, body: { tz: 'UTC', lang: 'uz' } })).json?.reminders.canMessage === false, 'blocking the bot is remembered');
   await webhook(member('member'));
   check((await call('POST', '/api/hello', { user: bob, body: { tz: 'UTC', lang: 'uz' } })).json?.reminders.canMessage === true, 'unblocking is remembered');
+
+  // ---------- the Hadis button ----------
+  console.log('\nhadis button');
+  check((await call('GET', '/api/hadith')).status === 401, 'needs a user');
+  const dina = { id: 556, first_name: 'Dina', language_code: 'uz' };
+  const hb = await call('GET', '/api/hadith', { user: dina });
+  // With the AI off nothing new can be translated: only the one kept above (in the day's checks) comes.
+  check(hb.status === 200 && hb.json?.hadith?.n === 1527, 'with the AI off: a kept one, nothing new', hb.json);
+  check((await call('GET', '/api/hadith?lang=uz', { user: dina })).json?.hadith?.n === 1527, 'in Uzbek: the approved one');
+  const queue = await call('GET', '/api/admin/hadith', { user: carol });
+  check(queue.status === 200 && Array.isArray(queue.json?.list) && queue.json.waiting === 0, 'the owner sees the Uzbek waiting to be checked', queue.json);
+  check((await call('GET', '/api/admin/hadith', { user: dina })).status === 404, 'nobody else does');
+  check((await call('PUT', '/api/admin/hadith', { user: carol, body: { id: 'bukhari:1', ok: true, uz: 'Albatta, amallar niyatlarga koʻradir.' } })).status === 400, 'approving one that is not kept: 400');
+  check((await call('POST', '/api/admin/hadith/find', { user: carol, body: { book: 'quran', n: 1 } })).status === 400, 'finding in an unknown book: 400');
+  check((await call('POST', '/api/admin/hadith/find', { user: dina, body: { book: 'bukhari', n: 1 } })).status === 404, 'only the owner finds and shuffles');
+  check((await call('POST', '/api/admin/hadith/pick', { user: carol, body: { id: 'abudawud:1' } })).status === 400, 'a hadith al-Albani did not grade Sahih cannot be chosen');
 
   // ---------- the Android app ----------
   console.log('\nandroid app');

@@ -18,7 +18,7 @@ export const BUKHARI_COUNT = 7563;
 /** A failed day is tried again after this long, so a source that is down is not asked on every call. */
 const RETRY_MS = 15 * 60_000;
 /** The model that writes the Uzbek hadith (Cloudflare Workers AI; about 20 of the 10,000 free daily units). */
-const MODEL = '@cf/openai/gpt-oss-120b';
+export const MODEL = '@cf/openai/gpt-oss-120b';
 
 export interface DailyAyah {
   k: string; // "2:255"
@@ -30,7 +30,11 @@ export interface DailyAyah {
 }
 
 export interface DailyHadith {
-  n: number; // Sahih al-Bukhari number
+  /** The book (missing: Sahih al-Bukhari, as before the owner chose them). */
+  book?: string;
+  n: number;
+  /** Sahih Muslim: its book and hadith on sunnah.com. */
+  ref?: [number, number];
   ar?: string;
   en: string;
   ru: string;
@@ -113,7 +117,7 @@ export function suitsTheDay(ru: string, en: string): boolean {
 
 // ---------- the sources ----------
 
-async function getJson(url: string): Promise<any | null> {
+export async function getJson(url: string): Promise<any | null> {
   const res = await fetch(url, { headers: { Accept: 'application/json' }, cf: { cacheTtl: 3600 } } as RequestInit);
   if (!res.ok) return null;
   return res.json();
@@ -249,18 +253,9 @@ export async function dailyFor(env: Env, day: string, now: number): Promise<Dail
   } catch (e) {
     console.error('daily: ayah', describe(e));
   }
-  try {
-    if (!hadith) hadith = await pickHadith(env, env.HADITH_API || HADITH_API);
-    else if (!hadith.uz) {
-      // A hadith kept without its Uzbek (the AI was down) gets it on a later try.
-      const uz = await uzbekHadith(env, hadith.ru);
-      if (uz) hadith = { ...hadith, uz };
-    }
-  } catch (e) {
-    console.error('daily: hadith', describe(e));
-  }
-  const ai = !!env.AI && env.DAILY_AI !== '0';
-  const done = ayah && hadith && (hadith.uz || !ai) ? 1 : 0;
+  // The hadith of the day is the owner's choice now (daily_pick, read in getDaily), not picked here.
+  hadith = null;
+  const done = ayah ? 1 : 0;
   await env.DB.prepare('UPDATE daily SET ayah = ?, hadith = ?, made_at = ?, done = ? WHERE day = ?')
     .bind(ayah ? JSON.stringify(ayah) : null, hadith ? JSON.stringify(hadith) : null, now, done, day)
     .run();
@@ -272,5 +267,24 @@ export async function dailyFor(env: Env, day: string, now: number): Promise<Dail
 export async function getDaily(c: Ctx): Promise<Response> {
   const day = c.url.searchParams.get('day') ?? '';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !daysNow(c.now).includes(day)) throw badRequest('day');
-  return json(await dailyFor(c.env, day, c.now));
+  const daily = await dailyFor(c.env, day, c.now);
+  return json({ ...daily, hadith: await chosenHadith(c.env, day) });
+}
+
+// ---------- the hadith of the day: the owner's choice ----------
+
+const KST_MS = 9 * 60 * 60_000;
+/** 12:00 in Busan of a date: after it, that date's hadith stays as it is. */
+export const pickDeadline = (day: string): number => Date.parse(`${day}T00:00:00Z`) + 3 * 60 * 60_000;
+
+/** The date a choice made now is for: today in Busan until 12:00 there, then tomorrow. */
+export function pickDay(now: number): string {
+  const today = utcDay(now + KST_MS);
+  return now < pickDeadline(today) ? today : utcDay(Date.parse(`${today}T00:00:00Z`) + DAY_MS);
+}
+
+/** The hadith the owner chose for a date, or null (the app then shows one of its own). */
+export async function chosenHadith(env: Env, day: string): Promise<DailyHadith | null> {
+  const row = await env.DB.prepare('SELECT data FROM daily_pick WHERE day = ?1').bind(day).first<{ data: string }>();
+  return parse<DailyHadith>(row?.data ?? null);
 }
